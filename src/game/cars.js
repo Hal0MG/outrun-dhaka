@@ -9,25 +9,25 @@ export const CARS = [
   {
     id: 'rosso', name: 'ROSSO 86', bn: 'রোসো ৮৬', tag: 'FLAT-12 · 1986 · RIGHT-HAND DRIVE',
     blurb: 'Flat-twelve wedge, right-hand drive, imported in 1989 by an uncle nobody talks about.',
-    top: 340, accel: 0.9, grip: 0.82, width: 1.98, length: 4.5,
+    top: 390, accel: 1.05, grip: 0.82, width: 1.98, length: 4.5,
     colors: ['#c8102e', '#f2f0ea', '#111318', '#ffb000', '#1d5fa8'],
   },
   {
     id: 'premio', name: 'UNCLE PREMIO', bn: 'আঙ্কেল প্রিমিও', tag: '1.8 VVT-i · TISSUE BOX INCLUDED',
     blurb: 'The official car of Dhaka uncles. Tissue box on the rear shelf. Indestructible.',
-    top: 300, accel: 0.8, grip: 0.95, width: 1.74, length: 4.6,
+    top: 345, accel: 0.92, grip: 0.95, width: 1.74, length: 4.6,
     colors: ['#f2f2ee', '#b9bcc0', '#1c1c1e', '#7a1d22', '#2b4a6b'],
   },
   {
     id: 'cng', name: 'CNG TURBO', bn: 'সিএনজি টার্বো', tag: 'THREE WHEELS · ONE CAGE · ZERO FEAR',
     blurb: 'Three wheels, one cage, zero fear. Squeezes through gaps that do not exist.',
-    top: 260, accel: 1.1, grip: 0.88, width: 1.4, length: 2.7,
+    top: 300, accel: 1.2, grip: 0.88, width: 1.4, length: 2.7,
     colors: ['#1f8a3c', '#ffb000', '#c8102e', '#1d5fa8', '#111318'],
   },
   {
     id: 'rickshaw', name: 'RICKSHAW 9000', bn: 'রিকশা ৯০০০', tag: 'HAND-PAINTED · JET-ASSISTED',
     blurb: 'Hand-painted, jet-assisted. The puller has not been told. Unlocks after your first goal.',
-    top: 370, accel: 1.0, grip: 0.7, width: 1.15, length: 2.6, locked: true,
+    top: 420, accel: 1.12, grip: 0.7, width: 1.15, length: 2.6, locked: true,
     colors: ['#c8102e', '#1d5fa8', '#118a4a', '#ffb000', '#7b2f9e'],
   },
 ];
@@ -113,18 +113,41 @@ function profileBody(points, arches, width, bevel = 0.05) {
 
 function wheelMesh(r, w, tyreMat, rimMat) {
   const g = new THREE.Group();
-  const tyre = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 20, 1), tyreMat);
+  // tyre with rounded shoulders
+  const tyre = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w * 0.82, 32, 1, true), tyreMat);
   tyre.rotation.z = Math.PI / 2;
   g.add(tyre);
-  const rim = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.68, r * 0.68, w + 0.01, 16, 1), rimMat);
-  rim.rotation.z = Math.PI / 2;
-  g.add(rim);
-  // spokes so rotation reads
-  for (let i = 0; i < 5; i++) {
-    const sp = new THREE.Mesh(new THREE.BoxGeometry(w + 0.03, r * 1.1, 0.05), new THREE.MeshStandardMaterial({ color: '#3a3d42', metalness: 0.6, roughness: 0.4 }));
-    sp.rotation.x = (i / 5) * Math.PI;
+  for (const sx of [-1, 1]) {
+    const wall = new THREE.Mesh(new THREE.TorusGeometry(r * 0.86, r * 0.13, 6, 32), tyreMat);
+    wall.rotation.y = Math.PI / 2;
+    wall.position.x = sx * w * 0.41;
+    g.add(wall);
+  }
+  // dished rim: barrel, lip ring, ten split spokes, centre cap with lugs
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.7, r * 0.7, w * 0.9, 24, 1, true), rimMat);
+  barrel.rotation.z = Math.PI / 2;
+  g.add(barrel);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(r * 0.7, 0.012, 4, 28), rimMat);
+  lip.rotation.y = Math.PI / 2;
+  lip.position.x = w * 0.46;
+  g.add(lip);
+  const dark = wheelMesh.dark || (wheelMesh.dark = new THREE.MeshStandardMaterial({ color: '#151618', metalness: 0.4, roughness: 0.6 }));
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(r * 0.69, 24), dark);
+  disc.rotation.y = Math.PI / 2;
+  disc.position.x = w * 0.2;
+  g.add(disc);
+  const spokeGeo = new THREE.BoxGeometry(0.03, r * 0.62, 0.035);
+  spokeGeo.translate(0, r * 0.34, 0);
+  for (let i = 0; i < 10; i++) {
+    const sp = new THREE.Mesh(spokeGeo, rimMat);
+    sp.rotation.x = (i / 10) * Math.PI * 2 + (i % 2 ? 0.1 : -0.1);
+    sp.position.x = w * 0.4;
     g.add(sp);
   }
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.13, r * 0.15, 0.05, 12), rimMat);
+  cap.rotation.z = Math.PI / 2;
+  cap.position.x = w * 0.44;
+  g.add(cap);
   return g;
 }
 
@@ -167,6 +190,7 @@ export function buildPlayerCar(def, colorHex, assets) {
   const tailMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 0.05, 0.03) });
   const headMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.5, 2.4, 2.1) });
   const amberMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.2, 0.2) });
+  const caliperMat = new THREE.MeshStandardMaterial({ color: '#c8102e', roughness: 0.4, metalness: 0.3 });
   const leather = new THREE.MeshStandardMaterial({ color: '#1a1414', roughness: 0.5, metalness: 0.1 });
   const piping = new THREE.MeshStandardMaterial({ color: '#c49a6c', roughness: 0.6 });
   const out = { group, body, paint, wheels: [], front: [], popups: [], tailMat, headMat, exhaust: [], seats: [], def };
@@ -176,6 +200,9 @@ export function buildPlayerCar(def, colorHex, assets) {
     const pivot = new THREE.Group();
     pivot.position.set(x, y, z);
     pivot.add(wm);
+    const cal = new THREE.Mesh(new THREE.BoxGeometry(0.06, r * 0.5, r * 0.32), caliperMat);
+    cal.position.set(Math.sign(x) * w * 0.12, r * 0.25, front ? r * 0.25 : -r * 0.25);
+    pivot.add(cal);
     body.add(pivot);
     out.wheels.push(wm);
     if (front) out.front.push(pivot);
@@ -401,6 +428,26 @@ export function buildPlayerCar(def, colorHex, assets) {
     out.dims = { len: m.len, wid: m.wid, hgt: m.hgt };
     out.headLocal = [new THREE.Vector3(0, 0.62, -1.2)];
     out.atlasBased = true;
+  }
+
+  if (!out.atlasBased) {
+    const W = out.dims.wid, L = out.dims.len;
+    for (const sx of [-1, 1]) {
+      const sk = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, L * 0.42), black);
+      sk.position.set(sx * (W / 2 - 0.01), 0.22, 0);
+      body.add(sk);
+    }
+    const dif = new THREE.Mesh(new THREE.BoxGeometry(W - 0.5, 0.1, 0.3), black);
+    dif.position.set(0, 0.2, L / 2 - 0.12);
+    body.add(dif);
+    for (const x of [-0.3, -0.1, 0.1, 0.3]) {
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.14, 0.28), black);
+      fin.position.set(x, 0.18, L / 2 - 0.08);
+      body.add(fin);
+    }
+    const lipM = new THREE.Mesh(new THREE.BoxGeometry(W - 0.3, 0.04, 0.18), black);
+    lipM.position.set(0, 0.17, -L / 2 + 0.1);
+    body.add(lipM);
   }
 
   // headlight spot (only on at night)

@@ -398,7 +398,7 @@ export class Menus {
       $('carBn').textContent = def.tag || '';
       $('carBlurb').textContent = def.blurb;
       const stat = (label, v) => `<span>${label}</span><div class="bar"><b style="width:${Math.round(v * 100)}%"></b></div>`;
-      $('carStats').innerHTML = stat('TOP SPEED', def.top / 330) + stat('ACCEL', def.accel) + stat('GRIP', def.grip) + `<span>KM/H</span><span>${bn(def.top)}</span>`;
+      $('carStats').innerHTML = stat('TOP SPEED', def.top / 430) + stat('ACCEL', def.accel / 1.2) + stat('GRIP', def.grip) + `<span>KM/H</span><span>${bn(def.top)}</span>`;
       $('carColors').innerHTML = def.colors.map((c, i) => `<b data-i="${i}" style="background:${c}" class="${i === this.game.colorIndex ? 'sel' : ''}"></b>`).join('');
     } else if (s === 'radio') {
       const rows = TRACKS.map((t, i) => `<li data-i="${i}" class="${i === this.sel ? 'sel' : ''}"><b>${t.freq}</b><span>${t.station}<small>“${t.title}” · raag ${t.raga}</small></span><em>${t.bpm} bpm</em></li>`);

@@ -36,11 +36,11 @@ export class CameraRig {
     const cam = this.cam;
     const v = player.v;
     const vr = v / player.vmax;
-    let back = 7.2, height = 2.35, ahead = 20, lookH = 1.15, xf = 0.9;
+    let back = 5.9, height = 2.0, ahead = 20, lookH = 1.15, xf = 0.9;
     if (this.mode === 'far') { back = 11.5; height = 3.9; ahead = 22; lookH = 0.6; xf = 0.65; }
     if (this.mode === 'hood') { back = -0.4; height = 1.18; ahead = 30; lookH = 1.0; xf = 1; }
     if (this.mode === 'low') { back = 5.0; height = 1.05; ahead = 18; lookH = 0.8; xf = 0.9; }
-    back += vr * (this.mode === 'hood' ? 0 : 0.7);
+    back -= vr * (this.mode === 'hood' ? 0 : 0.4);
 
     if (opts.cinematic) {
       // slow orbit around the car (title screen, endings)
@@ -105,7 +105,7 @@ export class CameraRig {
     this.roll = damp(this.roll, rollT, 4, dt);
     cam.rotateZ(this.roll);
     const portrait = cam.aspect < 1 ? (1 - cam.aspect) * 30 : 0;
-    const fovT = (this.mode === 'hood' ? 66 : 58) + vr * vr * 16 + (opts.boost || 0) + portrait;
+    const fovT = (this.mode === 'hood' ? 66 : 58) + vr * vr * 5 + (opts.boost || 0) * 0.35 + portrait;
     cam.fov = damp(cam.fov, fovT, 3, dt);
     cam.updateProjectionMatrix();
     this.camS = sc;

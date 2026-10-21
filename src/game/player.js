@@ -278,7 +278,8 @@ export class Player {
     }
 
     // visual yaw
-    let yawT = -this.vx * 0.012 - this.drift * 0.32 * Math.sign(k || steer || 1);
+    // nose points where you are steering; in a drift it tucks into the bend (tail out)
+    let yawT = this.vx * 0.014 + this.drift * 0.3 * Math.sign(k || steer || 1);
     if (this.spin) yawT = (this.spin.t / this.spin.dur) * Math.PI * 2 * this.spin.dir;
     this.yawRel = this.spin ? yawT : damp(this.yawRel, yawT, 6, dt);
     this.lean = damp(this.lean, -steer * 0.035 * Math.min(vr, 1) + k * this.v * this.v * 0.0004 * (sec.cf ?? 1), 6, dt);

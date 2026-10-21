@@ -75,7 +75,7 @@ export function discZ(B, x, y, z, r, seg, color, dir = 1, region) {
 
 function wheels(B, A, W, z0, z1, r, w = 0.24) {
   for (const z of [z0, z1]) {
-    for (const x of [-W / 2 + w / 2 + 0.03, W / 2 - w / 2 - 0.03]) B.wheel(x, r, z, r, w, 12, [1, 1, 1], A.get('tyre'), A.get('rim'));
+    for (const x of [-W / 2 + w / 2 + 0.03, W / 2 - w / 2 - 0.03]) B.wheel(x, r, z, r, w, 20, [1, 1, 1], A.get('tyre'), A.get('rim'));
   }
 }
 
@@ -84,6 +84,66 @@ function plate(B, A, z, y, back = true) {
   const zz = z + (back ? 0.012 : -0.012);
   if (back) B.quad([-hw, y - hh, zz], [hw, y - hh, zz], [hw, y + hh, zz], [-hw, y + hh, zz], [0, 0, 1, 1], [1, 1, 1], A.get('plate'));
   else B.quad([hw, y - hh, zz], [-hw, y - hh, zz], [-hw, y + hh, zz], [hw, y + hh, zz], [0, 0, 1, 1], [1, 1, 1], A.get('plate'));
+}
+
+// the small stuff that makes a box read as a car: arches, skirts, seams,
+// mirrors, handles, lips, diffuser, exhaust tips, window trim
+function detailBody(B, A, sp, bodyCol) {
+  const white = A.get('white');
+  const W = sp.W, hw = W / 2, L2 = sp.L / 2;
+  const [wz0, wz1] = sp.wheelZ;
+  const r = sp.r;
+  for (const s of [-1, 1]) {
+    // wheel-arch lips: dark half-rings standing proud of the body
+    for (const wz of [wz0, wz1]) {
+      const n = 9;
+      for (let i = 0; i < n; i++) {
+        const a0 = Math.PI * (i / n), a1 = Math.PI * ((i + 1) / n);
+        const R = r + 0.06;
+        const z0 = wz + Math.cos(a0) * R, y0 = r + Math.sin(a0) * R;
+        const z1 = wz + Math.cos(a1) * R, y1 = r + Math.sin(a1) * R;
+        const x = s * (hw + 0.012);
+        const t = 0.05;
+        const p = (z, y, k) => [x, y + Math.sin(Math.atan2(y - r, z - wz)) * k, z + Math.cos(Math.atan2(y - r, z - wz)) * k];
+        const q = [p(z0, y0, 0), p(z1, y1, 0), p(z1, y1, t), p(z0, y0, t)];
+        if (s > 0) B.quad(q[0], q[1], q[2], q[3], [0, 0, 1, 1], TRIM, white);
+        else B.quad(q[1], q[0], q[3], q[2], [0, 0, 1, 1], TRIM, white);
+      }
+    }
+    // side skirt between the wheels
+    const sk0 = wz0 + r + 0.08, sk1 = wz1 - r - 0.08;
+    if (sk1 > sk0) B.box(s * (hw - 0.02), 0.2, (sk0 + sk1) / 2, 0.08, 0.1, sk1 - sk0, 0, { color: TRIM, region: white });
+    // door seams and handles
+    const doorFront = wz0 + r + 0.2, doorRear = sp.pillars && sp.pillars.length > 1 ? Math.max(...sp.pillars) + 0.05 : (wz1 - r - 0.25);
+    for (const z of [doorFront, doorRear]) if (z > wz0 && z < wz1) B.box(s * (hw + 0.004), sp.bumperH + 0.05, z, 0.008, sp.belt - sp.bumperH - 0.08, 0.012, 0, { color: DARK, region: white });
+    if (sp.pillars && sp.pillars.length > 1) {
+      const mid = Math.min(...sp.pillars);
+      B.box(s * (hw + 0.004), sp.bumperH + 0.05, mid, 0.008, sp.belt - sp.bumperH - 0.08, 0.012, 0, { color: DARK, region: white });
+    }
+    B.box(s * (hw + 0.012), sp.belt - 0.13, doorFront + 0.55, 0.02, 0.03, 0.14, 0, { color: CHROME, region: white });
+    // body crease catching the light
+    B.box(s * (hw + 0.006), sp.belt - 0.2, (wz0 + wz1) / 2, 0.01, 0.018, (wz1 - wz0) + 0.6, 0, { color: [Math.min(1.25, bodyCol[0] * 1.2 + 0.08), Math.min(1.25, bodyCol[1] * 1.2 + 0.08), Math.min(1.25, bodyCol[2] * 1.2 + 0.08)], region: white });
+    // mirrors on stalks
+    if (sp.cabin) {
+      const mz = sp.cabin[0][0] - 0.12;
+      B.box(s * (hw + 0.05), sp.belt + 0.02, mz, 0.06, 0.04, 0.06, 0, { color: DARK, region: white });
+      B.box(s * (hw + 0.13), sp.belt + 0.04, mz, 0.15, 0.1, 0.07, 0, { color: bodyCol, region: white });
+      B.box(s * (hw + 0.13), sp.belt + 0.05, mz + 0.037, 0.12, 0.07, 0.006, 0, { color: [0.55, 0.62, 0.7], region: white });
+    }
+  }
+  // front lip and rear diffuser
+  B.box(0, 0.12, -L2 + 0.08, W - 0.3, 0.05, 0.2, 0, { color: DARK, region: white });
+  B.box(0, 0.14, L2 - 0.12, W - 0.5, 0.08, 0.24, 0, { color: DARK, region: white });
+  for (const x of [-0.3, -0.1, 0.1, 0.3]) B.box(x, 0.12, L2 - 0.04, 0.02, 0.12, 0.2, 0, { color: TRIM, region: white });
+  // exhaust tips
+  for (const x of sp.exhausts || [-hw + 0.38, hw - 0.38]) discZ(B, x, 0.24, L2 + 0.03, 0.05, 10, CHROME, 1, white);
+  for (const x of sp.exhausts || [-hw + 0.38, hw - 0.38]) discZ(B, x, 0.24, L2 + 0.035, 0.035, 10, [0.03, 0.03, 0.03], 1, white);
+  // window trim along the roofline
+  if (sp.cabin) {
+    const tw = (sp.cabinW || hw - 0.1);
+    const zA = sp.cabin[1][0], zB = sp.cabin[2][0];
+    for (const s of [-1, 1]) B.box(s * (tw - (sp.roofY - sp.belt) * (sp.tumble ?? 0.18) + 0.01), sp.roofY - 0.03, (zA + zB) / 2, 0.02, 0.03, Math.abs(zB - zA), 0, { color: DARK, region: white });
+  }
 }
 
 // a generic car: lower body + glasshouse + roof, from a compact spec
@@ -117,6 +177,7 @@ function carFromSpec(A, sp) {
     }
   }
   wheels(B, A, W, sp.wheelZ[0], sp.wheelZ[1], sp.r, sp.tyreW || 0.24);
+  detailBody(B, A, sp, bodyCol);
   // bumpers/grille
   const L2 = sp.L / 2;
   if (sp.grille !== false) B.quad([hw - 0.25, sp.grilleY - 0.09, -L2 - 0.02], [-hw + 0.25, sp.grilleY - 0.09, -L2 - 0.02], [-hw + 0.25, sp.grilleY + 0.09, -L2 - 0.02], [hw - 0.25, sp.grilleY + 0.09, -L2 - 0.02], [0, 0, 1, 1], [1, 1, 1], A.get('grille'));

@@ -210,6 +210,59 @@ export class AudioEngine {
       lfo2.start();
       this.L.rotor = r;
     }
+    // tyre roar on the tarmac
+    this.L.road = mk('lowpass', 320, 0.9);
+    this.L.road.g.connect(this.eng);
+    // high wind whistle around the mirrors at speed
+    this.L.whistle = mk('bandpass', 2400, 9);
+    this.L.whistle.g.connect(this.eng);
+    // gusts: a slow random wobble on the wind level
+    {
+      const gl = ctx.createOscillator(); gl.frequency.value = 0.23;
+      const gl2 = ctx.createOscillator(); gl2.frequency.value = 0.61;
+      const gg = ctx.createGain(); gg.gain.value = 0.35;
+      this.gust = ctx.createGain(); this.gust.gain.value = 1;
+      gl.connect(gg); gl2.connect(gg);
+      gg.connect(this.gust.gain);
+      this.L.wind.g.disconnect();
+      this.L.wind.g.connect(this.gust).connect(this.eng);
+      gl.start(); gl2.start();
+    }
+    // street chatter: noise through moving vowel formants, a crowd you hear but can't follow
+    {
+      this.chat = ctx.createGain(); this.chat.gain.value = 0;
+      this.chat.connect(this.amb);
+      const formants = [[520, 6, 0.9, 3.1], [900, 7, 0.7, 4.3], [1500, 8, 0.45, 5.7], [2500, 9, 0.25, 2.3]];
+      for (const [fr, q, a, rate] of formants) {
+        for (const side of [-0.6, 0.5]) {
+          const n = this.noise();
+          const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fr * (1 + side * 0.08); bp.Q.value = q;
+          const lfo = ctx.createOscillator(); lfo.frequency.value = rate * (1 + side * 0.13);
+          const lg = ctx.createGain(); lg.gain.value = fr * 0.18;
+          lfo.connect(lg).connect(bp.frequency);
+          const am = ctx.createGain(); am.gain.value = a * 0.5;
+          const al = ctx.createOscillator(); al.frequency.value = rate * 1.7 + side;
+          const alg = ctx.createGain(); alg.gain.value = a * 0.5;
+          al.connect(alg).connect(am.gain);
+          const pn = ctx.createStereoPanner(); pn.pan.value = side;
+          n.connect(bp).connect(am).connect(pn).connect(this.chat);
+          n.start(ctx.currentTime + Math.random()); lfo.start(); al.start();
+        }
+      }
+    }
+    // the nearest rival's engine: two detuned saws through a growl filter, panned to where they are
+    {
+      this.riv = {};
+      const R = this.riv;
+      R.o1 = ctx.createOscillator(); R.o1.type = 'sawtooth';
+      R.o2 = ctx.createOscillator(); R.o2.type = 'sawtooth'; R.o2.detune.value = 14;
+      R.f = ctx.createBiquadFilter(); R.f.type = 'lowpass'; R.f.Q.value = 3; R.f.frequency.value = 600;
+      R.g = ctx.createGain(); R.g.gain.value = 0;
+      R.p = ctx.createStereoPanner();
+      R.o1.connect(R.f); R.o2.connect(R.f);
+      R.f.connect(R.g).connect(R.p).connect(this.sfx);
+      R.o1.start(); R.o2.start();
+    }
     // nitro hiss
     this.L.nitro = mk('highpass', 1800, 0.6);
     this.L.nitro.g.connect(this.eng);
@@ -315,7 +368,21 @@ export class AudioEngine {
     const L = this.L;
     const sp = clamp(p.speed / 80, 0, 1.2);
     L.wind.flt.frequency.setTargetAtTime(300 + sp * 2200, t, 0.1);
-    L.wind.g.gain.setTargetAtTime(sp * sp * (p.convertible ? 0.32 : 0.14), t, 0.1);
+    L.wind.g.gain.setTargetAtTime(sp * sp * (p.convertible ? 0.36 : 0.18), t, 0.1);
+    L.road.g.gain.setTargetAtTime(clamp(p.speed / 30, 0, 1) * 0.16 * (1 + (p.rain || 0) * 0.6), t, 0.1);
+    L.road.flt.frequency.setTargetAtTime(180 + sp * 420, t, 0.1);
+    L.whistle.g.gain.setTargetAtTime(Math.max(0, sp - 0.65) * 0.05, t, 0.2);
+    L.whistle.flt.frequency.setTargetAtTime(1800 + sp * 1600, t, 0.2);
+    this.chat.gain.setTargetAtTime((p.crowd || 0) * 0.07 * (1 - clamp(p.speed / 110, 0, 0.7)), t, 0.4);
+    const rv = p.rival;
+    if (rv) {
+      const fr = 38 + rv.v * 0.9;
+      this.riv.o1.frequency.setTargetAtTime(fr, t, 0.05);
+      this.riv.o2.frequency.setTargetAtTime(fr * 2.01, t, 0.05);
+      this.riv.f.frequency.setTargetAtTime(400 + rv.v * 18, t, 0.08);
+      this.riv.p.pan.setTargetAtTime(clamp(rv.pan, -1, 1), t, 0.05);
+      this.riv.g.gain.setTargetAtTime(0.06 * clamp(1 - rv.d / 45, 0, 1), t, 0.06);
+    } else this.riv.g.gain.setTargetAtTime(0, t, 0.15);
     L.screech.g.gain.setTargetAtTime(clamp(p.slip, 0, 1) * 0.18 * (p.speed > 8 ? 1 : 0), t, 0.05);
     L.rumble.g.gain.setTargetAtTime(p.offroad * clamp(p.speed / 20, 0, 1) * 0.5, t, 0.05);
     L.scrape.g.gain.setTargetAtTime(p.scrape ? 0.22 : 0, t, 0.03);
@@ -479,6 +546,39 @@ export class AudioEngine {
   splash() {
     this.noiseHit(0.5, 0.35, 'lowpass', 1200, 0.8, { to: 300 });
   }
+  // a car flashing past: rising then falling band of noise and engine tone, swept across the stereo field
+  passBy(relV, side, big = false) {
+    if (!this.ready) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const k = clamp(relV / 60, 0.25, 1.4);
+    const dur = 0.55 / Math.max(0.5, k);
+    const pan = ctx.createStereoPanner();
+    pan.pan.setValueAtTime(side * 0.2, t);
+    pan.pan.linearRampToValueAtTime(side * 0.95, t + dur);
+    pan.connect(this.sfx);
+    const n = this.noise(false);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.4;
+    bp.frequency.setValueAtTime(900 * k + 300, t);
+    bp.frequency.exponentialRampToValueAtTime(260, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22 * k * (big ? 1.4 : 1), t + dur * 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    n.connect(bp).connect(g).connect(pan);
+    n.start(t, Math.random()); n.stop(t + dur + 0.05);
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    const f0 = big ? 70 : 110;
+    o.frequency.setValueAtTime(f0 * (1 + k * 0.25), t);
+    o.frequency.exponentialRampToValueAtTime(f0 * (1 - k * 0.2), t + dur);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.06 * k, t + dur * 0.3);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp).connect(og).connect(pan);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+
   whoosh(pan = 0) {
     this.noiseHit(0.45, 0.22, 'bandpass', 600, 1.5, { to: 2400, a: 0.12 });
   }

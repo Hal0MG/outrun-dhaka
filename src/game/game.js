@@ -1295,7 +1295,19 @@ export class Game {
       engineOn: !quiet, convertible: P.def.id === 'rosso',
       rain: this.weather.rain, city: L('river') ? 0.5 : 1 - this.night * 0.3, river: L('river') || st.farWater ? 1 : 0,
       siren: quiet ? 0 : this.siren || 0, rotor: quiet ? 0 : heli, boost: P.boosting && this.state === 'race',
+      crowd: quiet ? 0 : clamp(0.25 + (st.peds ?? 0.5) * 0.6, 0, 1) * (tr.sectionAt(Math.min(P.s, tr.length)).closed ? 1.4 : 1),
+      rival: quiet ? null : this.nearestRival(),
     });
+    // cars flashing past you
+    if (!quiet) {
+      for (const v of this.traffic.list) {
+        if (v.track !== tr || v.wreck) continue;
+        const rel = v.s - P.s;
+        const relV = P.v - (v.oncoming ? -v.v : v.v);
+        if (v._pr > 0 && rel <= 0 && Math.abs(v.x - P.x) < 5.5 && Math.abs(relV) > 12) audio.passBy(Math.abs(relV), Math.sign(v.x - P.x) || 1, v.type === 'bus' || v.type === 'truck' || v.type === 'brtc');
+        v._pr = rel;
+      }
+    }
     this.ambT = (this.ambT || 0) - dt;
     if (this.ambT <= 0) {
       const dens = (st.traffic?.density || 15) / 20;
@@ -1319,6 +1331,19 @@ export class Game {
       this.shipT = (this.shipT || 5) - dt;
       if (this.shipT <= 0) { this.shipT = 9 + fx.next() * 10; audio.shipHorn(-0.7); }
     }
+  }
+
+  nearestRival() {
+    if (!this.racing) return null;
+    const P = this.player;
+    let best = null;
+    for (const r of this.race.rivals) {
+      const v = r.veh;
+      if (!v || v.wreck || v.track !== P.track) continue;
+      const d = Math.hypot(v.s - P.s, v.x - P.x);
+      if (d < 45 && (!best || d < best.d)) best = { d, v: v.v, pan: (v.x - P.x) / 8 };
+    }
+    return best;
   }
 
   // ------------------------------------------------------------ HUD
@@ -1381,7 +1406,7 @@ export class Game {
         for (const p of order) if (p > r.prog) pos++;
         if (pp > r.prog) pos++;
         list.push({ x: (v.x * 0.5 + 0.5) * W, y: (-v.y * 0.5 + 0.5) * H, name: r.name, pos, boss: r.i === 0, a: rel < 130 ? 1 : (170 - rel) / 40 });
-        if (list.length >= 6) break;
+        if (list.length >= 2) break;
       }
     }
     this.hud.tags(list);

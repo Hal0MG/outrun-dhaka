@@ -368,6 +368,85 @@ class Instruments {
     }
   }
 
+  crash(t, v = 1) {
+    const ctx = this.ctx;
+    const n = this.nsrc(t, 2.2);
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4500;
+    const pk = ctx.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 7800; pk.gain.value = 6;
+    const g = this.g(t, 0.12 * v, 0.002, 1.9);
+    const pan = ctx.createStereoPanner(); pan.pan.value = 0.35;
+    n.connect(hp).connect(pk).connect(g).connect(pan).connect(this.drums);
+    g.connect(this.rev);
+  }
+
+  ride(t, v = 1) {
+    const ctx = this.ctx;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 6500; bp.Q.value = 2;
+    const g = this.g(t, 0.045 * v, 0.001, 0.35);
+    const pan = ctx.createStereoPanner(); pan.pan.value = 0.3;
+    bp.connect(g).connect(pan).connect(this.drums);
+    for (const fr of [512, 761, 1127]) {
+      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = fr * 3.1;
+      o.connect(bp); o.start(t); o.stop(t + 0.4);
+    }
+  }
+
+  // white-noise sweep up into a section change
+  riser(t, dur, v = 1) {
+    const ctx = this.ctx;
+    const n = this.nsrc(t, dur);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2.5;
+    bp.frequency.setValueAtTime(400, t);
+    bp.frequency.exponentialRampToValueAtTime(9000, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.09 * v, t + dur * 0.95);
+    g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    n.connect(bp).connect(g).connect(this.mix);
+    g.connect(this.rev);
+  }
+
+  // sub thump on the downbeat after a riser
+  impact(t, v = 1) {
+    const ctx = this.ctx;
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(70, t);
+    o.frequency.exponentialRampToValueAtTime(30, t + 0.9);
+    const g = this.g(t, 0.5 * v, 0.004, 1.1);
+    o.connect(g).connect(this.mix);
+    o.start(t); o.stop(t + 1.2);
+  }
+
+  // bright 16th arpeggio, ping-ponged through the delay
+  arp(t, m, dur, v = 1, bright = 0.5) {
+    const ctx = this.ctx;
+    const o = ctx.createOscillator(); o.type = 'square';
+    o.frequency.value = hz(m);
+    const o2 = ctx.createOscillator(); o2.type = 'sawtooth';
+    o2.frequency.value = hz(m) * 1.003;
+    const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.Q.value = 4;
+    flt.frequency.setValueAtTime(900 + bright * 4200, t);
+    flt.frequency.exponentialRampToValueAtTime(500, t + dur * 1.5);
+    const g = this.g(t, 0.035 * v, 0.002, dur * 1.4);
+    const pan = ctx.createStereoPanner(); pan.pan.value = (Math.round(t * 1000) % 2) ? 0.45 : -0.45;
+    o.connect(flt); o2.connect(flt);
+    flt.connect(g).connect(pan).connect(this.out);
+    g.connect(this.delay);
+    o.start(t); o2.start(t); o.stop(t + dur * 2); o2.stop(t + dur * 2);
+  }
+
+  // soft counter-line: a hollow triangle an octave below the lead
+  counter(t, m, dur, v = 1) {
+    const ctx = this.ctx;
+    const o = ctx.createOscillator(); o.type = 'triangle';
+    o.frequency.value = hz(m);
+    const g = this.g(t, 0.05 * v, 0.03, 0.3, Math.max(0.01, dur - 0.1));
+    const pan = ctx.createStereoPanner(); pan.pan.value = -0.3;
+    o.connect(g).connect(pan).connect(this.out);
+    g.connect(this.rev);
+    o.start(t); o.stop(t + dur + 0.5);
+  }
+
   ksBuffer(m) {
     if (this.ks[m]) return this.ks[m];
     // Karplus-Strong plucked string (ektara)
@@ -591,10 +670,34 @@ export class Music {
       const old = this.I.out;
       setTimeout(() => old.disconnect(), 600);
       this.I.out = audio.ctx.createGain();
-      this.I.out.connect(audio.music);
+      this.I.out.connect(this.I.duckG);
       this.I.delayOut.disconnect();
       this.I.delayOut.connect(this.I.out);
     }
+  }
+
+  // shared arrangement: 32-bar form with a breakdown, builds and drops
+  layers(t) {
+    const I = this.I, c = this.ctx, tr = this.track;
+    const bar = this.bar, step = this.step;
+    const b32 = bar % 32;
+    const slow = tr.bpm < 95;
+    const chord = c.chords[bar % c.chords.length];
+    const drop = b32 < 12 || (b32 >= 16 && b32 < 28);
+    if (step === 0 && b32 % 8 === 0 && bar > 0) { I.crash(t, 0.9); if (b32 === 0 || b32 === 16) I.impact(t, slow ? 0.6 : 1); }
+    if (b32 % 8 === 7 && step === 0) I.riser(t, c.sec16 * 16, slow ? 0.6 : 1);
+    // snare roll into the next phrase
+    if (!slow && b32 % 8 === 7 && step >= 10) I.snare(t, 0.35 + (step - 10) * 0.08, false);
+    if (!slow && drop && step % 4 === 2) I.ride(t, 0.8);
+    // arpeggio: rides the chord, filter opening across each 8-bar phrase
+    if (bar >= 4 && (drop || slow)) {
+      const tones = chord.slice(1);
+      const up = tones.concat(tones.map((m) => m + 12));
+      const seq = slow ? step % 2 === 0 : true;
+      if (seq) I.arp(t, up[(step >> (slow ? 1 : 0)) % up.length] + 12, c.sec16 * 0.9, slow ? 0.6 : 0.8, (b32 % 8) / 8);
+    }
+    // counter-line: chord third and fifth held under the melody in the second half
+    if (b32 >= 16 && step % 8 === 0) I.counter(t, chord[2] + 12, c.sec16 * 7, 0.9);
   }
 
   tick() {
@@ -606,6 +709,7 @@ export class Music {
       const sw = tr.swing && this.step % 2 === 1 ? this.ctx.sec16 * tr.swing : 0;
       try {
         tr.play(this.I, this.bar, this.step, t + sw, this.ctx);
+        this.layers(t + sw);
         const lb = this.ctx.lead[this.bar % this.ctx.lead.length];
         for (const n of lb) {
           if (n.step === this.step && n.m != null) {

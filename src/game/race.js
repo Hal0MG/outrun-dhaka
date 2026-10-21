@@ -39,7 +39,7 @@ export const FIELD = RIVALS.length + 1;
 export const TARGETS = [14, 10, 6, 3, 1];
 // rivals get a touch slower relative to you as the night goes on
 const LEVEL_PACE = [1.0, 0.99, 0.975, 0.965, 0.955];
-const AHEAD = 380, BEHIND = 130, MAX_LIVE = 9;
+const AHEAD = 380, BEHIND = 130, MAX_LIVE = 3;
 
 export class Race {
   constructor(game) {
@@ -145,6 +145,15 @@ export class Race {
     const racing = g.state === 'race';
     let live = 0;
     for (const r of this.rivals) if (r.veh) live++;
+    this.spawnCool = (this.spawnCool || 0) - dt;
+    // the closest unspawned rival in range is the only one allowed to appear this frame
+    this.nearest = null;
+    let nd = 1e9;
+    for (const r of this.rivals) {
+      if (r.veh || r.cool > 0) continue;
+      const rel = r.prog - this.routeBase - P.s;
+      if (rel > -BEHIND && rel < AHEAD && Math.abs(rel) < nd) { nd = Math.abs(rel); this.nearest = r; }
+    }
     for (const r of this.rivals) {
       r.wob += dt * 0.3;
       if (r.cool > 0) r.cool -= dt;
@@ -171,7 +180,7 @@ export class Race {
         r.v += clamp(v - r.v, -12 * dt, 15 * dt);
         r.prog += r.v * dt;
         const rel = s - P.s;
-        if (live < MAX_LIVE && r.cool <= 0 && rel > -BEHIND && rel < AHEAD && s > 5 && s < tr.length - 120 &&
+        if (live < MAX_LIVE && this.spawnCool <= 0 && r === this.nearest && r.cool <= 0 && rel > -BEHIND && rel < AHEAD && s > 5 && s < tr.length - 120 &&
             !(tr.isFinal && s > tr.goalS) && !closedAt(tr, s + 80, 0) && !this.contraBlock(tr, s) && !(P.air && Math.abs(rel) < 60)) {
           // only pop in where you can't see it happen
           const visible = rel > 40 && rel < 300;
@@ -183,6 +192,7 @@ export class Race {
               veh.enemy.base = v;
               r.veh = veh;
               live++;
+              this.spawnCool = 2.5; // rivals trickle in one at a time, never in a pack
             }
           }
         }
