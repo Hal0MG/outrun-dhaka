@@ -402,7 +402,7 @@ class Instruments {
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(0.09 * v, t + dur * 0.95);
     g.gain.linearRampToValueAtTime(0.0001, t + dur);
-    n.connect(bp).connect(g).connect(this.mix);
+    n.connect(bp).connect(g).connect(this.drums);
     g.connect(this.rev);
   }
 
@@ -413,7 +413,7 @@ class Instruments {
     o.frequency.setValueAtTime(70, t);
     o.frequency.exponentialRampToValueAtTime(30, t + 0.9);
     const g = this.g(t, 0.5 * v, 0.004, 1.1);
-    o.connect(g).connect(this.mix);
+    o.connect(g).connect(this.drums);
     o.start(t); o.stop(t + 1.2);
   }
 
@@ -618,13 +618,57 @@ export const TRACKS = [
   },
 ];
 
+// Two decks so one area's music can crossfade into the next without a gap.
+// Each deck has its own melodic and drum outputs; the Instruments object is
+// pointed at a deck's outputs while that deck schedules its notes.
+class Deck {
+  constructor(I, index, fadeIn) {
+    const ac = audio.ctx;
+    const tr = TRACKS[index];
+    this.index = index;
+    this.track = tr;
+    this.ctx = { chords: tr.chords.map(chordM), lead: parseLine(tr.lead), sec16: 60 / tr.bpm / 4 };
+    this.bar = 0;
+    this.step = 0;
+    this.prevNote = null;
+    this.nextT = ac.currentTime + 0.08;
+    this.out = ac.createGain();
+    this.out.connect(I.duckG);
+    this.drums = ac.createGain();
+    this.drums.gain.value = 0.95;
+    this.fader = ac.createGain();
+    this.drums.connect(this.fader).connect(I.mix);
+    this.kickShape = null;
+    const t = ac.currentTime;
+    for (const g of [this.out.gain, this.fader.gain]) {
+      g.setValueAtTime(fadeIn > 0 ? 0.0001 : 1, t);
+      if (fadeIn > 0) g.linearRampToValueAtTime(1, t + fadeIn);
+    }
+    this.alive = true;
+  }
+
+  fadeOut(sec) {
+    const t = audio.ctx.currentTime;
+    for (const g of [this.out.gain, this.fader.gain]) {
+      g.cancelScheduledValues(t);
+      g.setValueAtTime(Math.max(0.0001, g.value), t);
+      g.linearRampToValueAtTime(0.0001, t + sec);
+    }
+    this.endT = t + sec;
+  }
+
+  dispose() {
+    this.alive = false;
+    setTimeout(() => { this.out.disconnect(); this.fader.disconnect(); }, 1500);
+  }
+}
+
 export class Music {
   constructor() {
     this.I = null;
-    this.track = null;
-    this.playing = false;
+    this.decks = [];
     this.timer = null;
-    this.station = 0;
+    this.playing = false;
   }
 
   ensure() {
@@ -633,104 +677,89 @@ export class Music {
     return true;
   }
 
-  play(index) {
+  get index() { const d = this.decks[this.decks.length - 1]; return d ? d.index : -1; }
+  get track() { const d = this.decks[this.decks.length - 1]; return d ? d.track : null; }
+
+  // start a track; with fade > 0 the current one crossfades out over the same time
+  play(index, fade = 0.6) {
     if (!this.ensure()) return;
-    this.stop();
-    if (index == null || index < 0 || index >= TRACKS.length) return;
-    const tr = TRACKS[index];
-    this.track = tr;
-    this.index = index;
-    this.ctx = {
-      chords: tr.chords.map(chordM),
-      lead: parseLine(tr.lead),
-      sec16: 60 / tr.bpm / 4,
-    };
-    this.I.setTempo(tr.bpm);
-    this.bar = 0;
-    this.step = 0;
-    this.prevNote = null;
-    this.nextT = audio.ctx.currentTime + 0.1;
+    if (index == null || index < 0 || index >= TRACKS.length) { this.stop(); return; }
+    if (this.index === index && this.playing) return;
+    for (const d of this.decks) if (!d.endT) d.fadeOut(Math.max(0.3, fade));
+    const deck = new Deck(this.I, index, fade);
+    this.decks.push(deck);
+    this.I.setTempo(deck.track.bpm);
     this.playing = true;
-    this.I.out.gain.cancelScheduledValues(audio.ctx.currentTime);
-    this.I.out.gain.setValueAtTime(0.0001, audio.ctx.currentTime);
-    this.I.out.gain.linearRampToValueAtTime(1, audio.ctx.currentTime + 0.6);
-    this.timer = setInterval(() => this.tick(), 25);
+    if (!this.timer) this.timer = setInterval(() => this.tick(), 25);
   }
 
-  stop() {
+  stop(fade = 0.4) {
+    for (const d of this.decks) if (!d.endT) d.fadeOut(fade);
     this.playing = false;
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
-    if (this.I) {
-      const t = audio.ctx.currentTime;
-      this.I.out.gain.cancelScheduledValues(t);
-      this.I.out.gain.setValueAtTime(this.I.out.gain.value, t);
-      this.I.out.gain.linearRampToValueAtTime(0.0001, t + 0.3);
-      // fresh output node so tails of the old track fade independently
-      const old = this.I.out;
-      setTimeout(() => old.disconnect(), 600);
-      this.I.out = audio.ctx.createGain();
-      this.I.out.connect(this.I.duckG);
-      this.I.delayOut.disconnect();
-      this.I.delayOut.connect(this.I.out);
-    }
   }
 
   // shared arrangement: 32-bar form with a breakdown, builds and drops
-  layers(t) {
-    const I = this.I, c = this.ctx, tr = this.track;
-    const bar = this.bar, step = this.step;
+  layers(d, t) {
+    const I = this.I, c = d.ctx, tr = d.track;
+    const bar = d.bar, step = d.step;
     const b32 = bar % 32;
     const slow = tr.bpm < 95;
     const chord = c.chords[bar % c.chords.length];
     const drop = b32 < 12 || (b32 >= 16 && b32 < 28);
     if (step === 0 && b32 % 8 === 0 && bar > 0) { I.crash(t, 0.9); if (b32 === 0 || b32 === 16) I.impact(t, slow ? 0.6 : 1); }
     if (b32 % 8 === 7 && step === 0) I.riser(t, c.sec16 * 16, slow ? 0.6 : 1);
-    // snare roll into the next phrase
     if (!slow && b32 % 8 === 7 && step >= 10) I.snare(t, 0.35 + (step - 10) * 0.08, false);
     if (!slow && drop && step % 4 === 2) I.ride(t, 0.8);
-    // arpeggio: rides the chord, filter opening across each 8-bar phrase
     if (bar >= 4 && (drop || slow)) {
       const tones = chord.slice(1);
       const up = tones.concat(tones.map((m) => m + 12));
       const seq = slow ? step % 2 === 0 : true;
       if (seq) I.arp(t, up[(step >> (slow ? 1 : 0)) % up.length] + 12, c.sec16 * 0.9, slow ? 0.6 : 0.8, (b32 % 8) / 8);
     }
-    // counter-line: chord third and fifth held under the melody in the second half
     if (b32 >= 16 && step % 8 === 0) I.counter(t, chord[2] + 12, c.sec16 * 7, 0.9);
   }
 
   tick() {
-    if (!this.playing) return;
-    const ctx = audio.ctx;
-    const tr = this.track;
-    while (this.nextT < ctx.currentTime + 0.14) {
-      const t = this.nextT;
-      const sw = tr.swing && this.step % 2 === 1 ? this.ctx.sec16 * tr.swing : 0;
-      try {
-        tr.play(this.I, this.bar, this.step, t + sw, this.ctx);
-        this.layers(t + sw);
-        const lb = this.ctx.lead[this.bar % this.ctx.lead.length];
-        for (const n of lb) {
-          if (n.step === this.step && n.m != null) {
-            const dur = n.len * this.ctx.sec16;
-            if (tr.leadInst === 'bansuri') this.I.bansuri(t, n.m, dur, 1, this.prevNote);
-            else if (tr.leadInst === 'pluck') this.I.pluck(t, n.m, dur, 1);
-            else this.I.lead(t, n.m, dur, 1, n.len <= 2 ? null : this.prevNote, tr.leadType || 'square');
-            this.prevNote = n.m;
+    const ac = audio.ctx;
+    const I = this.I;
+    const keep = { out: I.out, drums: I.drums, kick: I.kickShape };
+    for (const d of this.decks) {
+      if (!d.alive) continue;
+      if (d.endT && ac.currentTime > d.endT + 0.2) { d.dispose(); continue; }
+      I.out = d.out;
+      I.drums = d.drums;
+      I.kickShape = d.kickShape;
+      const tr = d.track;
+      while (d.nextT < ac.currentTime + 0.14) {
+        const t = d.nextT;
+        const sw = tr.swing && d.step % 2 === 1 ? d.ctx.sec16 * tr.swing : 0;
+        try {
+          tr.play(I, d.bar, d.step, t + sw, d.ctx);
+          this.layers(d, t + sw);
+          const lb = d.ctx.lead[d.bar % d.ctx.lead.length];
+          for (const n of lb) {
+            if (n.step === d.step && n.m != null) {
+              const dur = n.len * d.ctx.sec16;
+              if (tr.leadInst === 'bansuri') I.bansuri(t, n.m, dur, 1, d.prevNote);
+              else if (tr.leadInst === 'pluck') I.pluck(t, n.m, dur, 1);
+              else I.lead(t, n.m, dur, 1, n.len <= 2 ? null : d.prevNote, tr.leadType || 'square');
+              d.prevNote = n.m;
+            }
           }
+        } catch (e) {
+          if (!this._warned) { console.warn('[music]', e); this._warned = true; }
         }
-      } catch (e) {
-        // never let a bad note kill the loop, but say so once
-        if (!this._warned) { console.warn("[music]", e); this._warned = true; }
+        d.nextT += d.ctx.sec16;
+        d.step++;
+        if (d.step >= 16) { d.step = 0; d.bar++; }
       }
-      this.nextT += this.ctx.sec16;
-      this.step++;
-      if (this.step >= 16) {
-        this.step = 0;
-        this.bar++;
-      }
+      d.kickShape = I.kickShape;
     }
+    I.out = keep.out;
+    I.drums = keep.drums;
+    I.kickShape = keep.kick;
+    this.decks = this.decks.filter((d) => d.alive);
+    if (!this.decks.length && this.timer) { clearInterval(this.timer); this.timer = null; }
   }
 }
 

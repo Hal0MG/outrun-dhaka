@@ -26,7 +26,7 @@ import { audio } from '../audio/audio.js';
 import { music, TRACKS } from '../audio/music.js';
 import { clamp, lerp, damp, smoothstep, fx, bn, fmtTime } from '../core/util.js';
 
-const COMBO = ['CLOSE CALL!', 'NICE!', 'SLICK!', 'WILD!', 'INSANE!', 'UNSTOPPABLE!'];
+const COMBO = ['NEAR MISS', 'NEAR MISS', 'NEAR MISS', 'NEAR MISS', 'NEAR MISS', 'NEAR MISS'];
 const SAREE_COLS = [[0.9, 0.08, 0.2], [1, 0.7, 0.05], [0.1, 0.6, 0.3], [1, 0.25, 0.6], [0.15, 0.4, 0.95], [0.6, 0.2, 0.8], [1, 1, 1]];
 
 export class Game {
@@ -96,6 +96,8 @@ export class Game {
   }
 
   resetWorld(stageId) {
+    this.instantAtmo = true;
+    this._tint = null;
     const tr = this.world.startTrack(stageId);
     this.player.reset(tr);
     this.player.s = tr.gateS - 18;
@@ -116,6 +118,7 @@ export class Game {
     this.outage = 0;
     this.cam.init = false;
     this.applyStageAtmo(tr);
+    this.instantAtmo = false;
     this.traffic.populate(tr, tr.gateS + 60, tr.gateS + 900, (tr.stage.traffic?.density || 15) * 0.9);
     this.envT = 0;
     this.sareeT = 0;
@@ -125,12 +128,14 @@ export class Game {
 
   applyStageAtmo(tr) {
     const st = tr.stage;
-    shared.uLampCol.value.set(st.lampColor || '#ffb04a');
-    shared.uMarkFade.value = st.markFade ?? 0.6;
+    this.lampTarget = (this.lampTarget || new THREE.Color()).set(st.lampColor || '#ffb04a');
+    this.markTarget = st.markFade ?? 0.6;
+    if (this.instantAtmo) { shared.uLampCol.value.copy(this.lampTarget); shared.uMarkFade.value = this.markTarget; }
     this.rainTarget = st.weather?.rain || 0;
     this.wetTarget = st.weather?.wet ?? this.rainTarget;
     this.storm = !!st.weather?.storm;
-    this.mist = st.weather?.mist || 0;
+    this.mistTarget = st.weather?.mist || 0;
+    if (this.instantAtmo) this.mist = this.mistTarget;
     const W = this.world;
     W.farDisc.material = st.farWater ? (tr.waterMat || W.mats.water) : W.farMatGround;
   }
@@ -162,10 +167,11 @@ export class Game {
       // the grid owns the first stretch of road
       this.traffic.list = this.traffic.list.filter((v) => v.s > this.player.s + 320);
     } else this.race.stop();
-    this.state = this.racing ? 'story' : 'countdown';
+    this.state = 'countdown';
+    this.areaMusic(STAGES.dhanmondi, 1.5);
     this.countT = 0;
     this.countStep = -1;
-    this.hud.setStage(STAGES.dhanmondi, !this.racing);
+    this.hud.setStage(STAGES.dhanmondi, true);
     this.hud.show(true);
     this.lowWarned = false;
     this.cam.mode = this.settings.camera || 'chase';
@@ -208,6 +214,7 @@ export class Game {
     this.goalReached = null;
     this.player.boost = 0.35;
     this.hud.show(true);
+    this.areaMusic(this.player.track.stage, 1.5);
     this.beginCountdown();
   }
 
@@ -545,7 +552,7 @@ export class Game {
       const bonus = CHECKPOINT_BONUS[tr.level] + (tr.stage.bonus || 0) + (this.settings.difficulty === 'easy' ? 6 : this.settings.difficulty === 'hard' ? -6 : 0);
       if (this.timeLeft !== Infinity) this.timeLeft += bonus;
       this.hud.timeAdded();
-      this.hud.message(`EXTENDED PLAY! +${bonus} SEC`, 2.6);
+      this.hud.message('CHECKPOINT', 2);
       this.hud.setStage(tr.stage, true);
       audio.checkpoint();
       this.lap = 0;
@@ -591,6 +598,11 @@ export class Game {
         this.say.say(l.id, true);
       }
     }
+    if (!tr.isFinal && P.s > tr.length - 260 && !tr.musicNext) {
+      tr.musicNext = true;
+      const kids = this.world.ensureChildren(tr);
+      if (kids) this.areaMusic(kids[0].stage, 6);
+    }
     if (!tr.isFinal && P.s > tr.length - 520 && !tr.forkSaid) {
       tr.forkSaid = true;
       const kids = this.world.ensureChildren(tr);
@@ -626,12 +638,12 @@ export class Game {
           if (fire(key)) {
             audio.powerCut();
             setTimeout(() => audio.generator(), 900);
-            this.hud.warn('LOAD SHEDDING!', 3.5);
+            this.hud.warn('POWER CUT', 3);
             this.flickerT = 1.2;
           }
         } else if (P.s >= b && fire(key + 'end')) {
           audio.powerBack();
-          this.hud.message('THE POWER’S BACK!', 1.6);
+          
           this.flickerT = 0.8;
         }
       } else if (e.type === 'busrace') {
@@ -642,7 +654,7 @@ export class Game {
       } else if (e.type === 'vip') {
         if (P.s > s && fire(key)) {
           const lane = T.spawnVIP(tr, P.s - 140);
-          this.hud.warn(`VIP MOTORCADE · LANE ${lane + 1} · MOVE!`, 5);
+          this.hud.warn('MOTORCADE BEHIND', 4);
           this.vipT = 14;
         }
       } else if (e.type === 'enemies') {
@@ -660,7 +672,7 @@ export class Game {
       } else if (e.type === 'teslas') {
         if (P.s > s && fire(key)) {
           for (let k = 0; k < Math.ceil((e.n || 6) * 0.85); k++) { const ts = P.s + 150 + k * 34 + fx.next() * 10; if (T.spawnable(tr, ts)) T.spawn(tr, ts, { type: 'tesla' }); }
-          this.hud.warn('TESLA SWARM!', 2.5);
+          this.hud.warn('E-RICKSHAWS AHEAD', 2.5);
           this.say.say('tesla', true);
         }
       } else if (e.type === 'boss') {
@@ -828,17 +840,15 @@ export class Game {
             const pts = Math.round(air * 20) * 100;
             this.addScore(pts);
             this.addBoost(0.12 + air * 0.05);
-            this.hud.combo(air > 1.6 ? 'BOLLYWOOD AIR!' : 'BIG AIR!', `+${bn(pts.toLocaleString('en-US'))}`);
+            this.hud.combo('BIG AIR', `+${bn(pts.toLocaleString('en-US'))}`);
           }
           if (e.kind === 'store') setTimeout(() => this.say.say('store', true), 300);
           if (e.kind === 'storeOut') {
             this.sareeT = 22;
             this.bags = true;
             this.updateExtras();
-            this.hud.takedown('SHOPPING SPREE!', 'Tuntuni bought four kurtas. Don’t ask.', 2.2);
             setTimeout(() => this.say.say('saree', true), 2600);
           }
-          if (e.kind === 'cinemaOut') this.hud.takedown('INTERVAL!', 'that was the climax', 2.2);
         }
       }
     }
@@ -903,7 +913,7 @@ export class Game {
           const pts = v.type === 'tesla' ? 1500 : 2500;
           this.addScore(pts);
           this.addBoost(0.06);
-          this.hud.combo(v.type === 'tesla' ? 'TESLA TIPPED!' : 'SHUNTED!', `+${bn(pts.toLocaleString('en-US'))}`);
+          this.hud.combo(v.type === 'tesla' ? 'TIPPED' : 'SHUNTED', `+${bn(pts.toLocaleString('en-US'))}`);
         }
       } else if (e.type === 'tesla') {
         audio.otherHorn('cngHorn', 25, 0);
@@ -939,7 +949,7 @@ export class Game {
           this.addBoost(0.02);
           this.smashN = (this.smashT > 0 ? this.smashN || 0 : 0) + 1;
           this.smashT = 1.6;
-          if (this.smashN > 2) this.hud.combo(this.smashN > 8 ? 'SHOPPING SPREE!' : 'DEMOLITION!', `×${this.smashN}`);
+          if (this.smashN > 2) this.hud.combo('SMASH', `×${this.smashN}`);
           if (this.smashN === 6 && fx.next() < 0.5) this.say.say('smash');
         }
       } else if (e.type === 'hazard') {
@@ -951,11 +961,11 @@ export class Game {
       } else if (e.type === 'pickup') {
         audio.checkpoint();
         this.debris(pos, 'money', null, 30);
-        if (racing) { this.addScore(b.score || 3000); this.hud.combo('LOOT RECOVERED!', `+${bn((b.score || 3000).toLocaleString('en-US'))}`); }
+        if (racing) { this.addScore(b.score || 3000); this.hud.combo('BONUS', `+${bn((b.score || 3000).toLocaleString('en-US'))}`); }
         this.bosses.damageHeli(0.07, 'loot');
       } else if (e.type === 'cat') {
         audio.tone('sine', 900, 0.25, 0.08, { to: 1400 });
-        if (racing) { this.addScore(1000); this.hud.combo('CAT SAVED!', 'it landed on its feet'); }
+        if (racing) { this.addScore(1000);  }
       } else if (e.type === 'land') {
         audio.thud();
         if (b.kind === 'tv' || b.kind === 'chandelier') { audio.glass(); this.debris(pos, 'glass', null, 10); }
@@ -1003,15 +1013,14 @@ export class Game {
         this.bounced++;
         this.addScore(-500);
         P.v *= 0.94;
-        const lines = ['SORRY, UNCLE!', 'SORRY, APA!', 'OOPS!', 'HE’S FINE!', 'SORRY, BHAI!', 'MY BAD!'];
-        this.hud.combo(fx.pick(lines), '-500 · apology fee');
+        const lines = ['PEDESTRIAN'];
+        this.hud.combo(fx.pick(lines), '−500');
         if (fx.next() < 0.35) this.say.say('ped');
       } else if (e.type === 'pedDown') {
         audio.thud();
       } else if (e.type === 'cow') {
         audio.moo();
         if (!P.spin && P.v > 10) P.startSpin(fx.sign());
-        if (racing) this.hud.combo('THE COW WINS', 'it did not move');
       }
     }
     this.peds.events.length = 0;
@@ -1026,7 +1035,7 @@ export class Game {
         this.hud.boss(true, e.b.name, e.b.sub);
         audio.bossStinger();
         this.say.say(e.b.kind === 'heli' ? 'heliIntro' : 'busIntro', true);
-        this.hud.takedown(e.b.kind === 'heli' ? 'THE GREAT ESCAPE' : 'THE MIDNIGHT BUS WAR', 'BOSS FIGHT', 2.4);
+        this.hud.takedown('BOSS FIGHT', '', 2);
       } else if (e.type === 'bossHit') {
         this.hud.bossHP(B.hpFrac(), true);
         if (e.why === 'ram' && racing) { audio.takedown(); this.cam.kick(0.5); this.hud.combo('HELI HIT!', '+10,000'); this.addScore(10000); this.say.say('heliHit', true); this.slowmo(0.35, 0.6); }
@@ -1039,15 +1048,15 @@ export class Game {
         const pts = 50000;
         this.addScore(pts);
         if (this.timeLeft !== Infinity) { this.timeLeft += 8; this.hud.timeAdded(); }
-        this.hud.takedown(e.b.kind === 'heli' ? 'SHE FLED!' : 'BUS WAR OVER!', `BOSS DEFEATED · +${bn(pts.toLocaleString('en-US'))} · +8 SEC`, 3);
+        this.hud.takedown('BOSS DEFEATED', `BOSS DEFEATED · +${bn(pts.toLocaleString('en-US'))} · +8 SEC`, 3);
         this.say.say(e.b.kind === 'heli' ? 'heliWin' : 'busWin', true);
         const pos = this.player.track.point(this.player.s + 30, 0, 12, new THREE.Vector3());
         for (let i = 0; i < 4; i++) this.particles.firework(pos.x + (fx.next() - 0.5) * 30, pos.y, pos.z + (fx.next() - 0.5) * 30);
       } else if (e.type === 'bossGone') {
         this.hud.boss(false);
-        if (racing && e.b.hp > 0) { this.hud.warn(e.b.kind === 'heli' ? 'ESCAPED WITH THE LOOT' : 'THEY GAVE UP', 3); if (e.b.kind === 'heli') this.say.say('heliLose', true); }
+        if (racing && e.b.hp > 0) { this.hud.warn('BOSS ESCAPED', 3); if (e.b.kind === 'heli') this.say.say('heliLose', true); }
       } else if (e.type === 'busDown') {
-        if (racing) { this.addScore(15000); this.hud.takedown('BUS DOWN!', '+15,000 · everyone climbs out the windows', 2); this.slowmo(0.4, 0.6); }
+        if (racing) { this.addScore(15000); this.hud.takedown('BUS DOWN', '+15,000', 2); this.slowmo(0.4, 0.6); }
         const v = e.v;
         for (let i = 0; i < 6; i++) this.peds.add(v.track, v.s + (fx.next() - 0.5) * 8, v.x + (fx.next() - 0.5) * 3, 'street', { vx: fx.sign() * 1.6 });
       } else if (e.type === 'busHonk') {
@@ -1078,7 +1087,17 @@ export class Game {
     const hour = this.hourNow();
     this.hour = hour;
     const sunAz = (tr.meanYaw || 0) + (st.sunOffset || 0);
-    const S = this.atmo.compute(hour, sunAz, st.tint, { rain: this.weather.rain, mist: this.mist || 0 }, this.outage || 0);
+    // ease district colour grading, lamp colour and mist across a boundary instead of snapping
+    const k = 1 - Math.exp(-dt * 0.45);
+    const tt = st.tint || { color: '#ffffff', amount: 0 };
+    if (!this._tint) this._tint = { color: new THREE.Color(tt.color || '#ffffff'), amount: tt.amount || 0, fogMul: tt.fogMul || 1 };
+    this._tint.color.lerp(this._tc = (this._tc || new THREE.Color()).set(tt.color || '#ffffff'), k);
+    this._tint.amount += ((tt.amount || 0) - this._tint.amount) * k;
+    this._tint.fogMul += ((tt.fogMul || 1) - this._tint.fogMul) * k;
+    if (this.lampTarget) shared.uLampCol.value.lerp(this.lampTarget, k);
+    if (this.markTarget != null) shared.uMarkFade.value += (this.markTarget - shared.uMarkFade.value) * k;
+    this.mist = (this.mist || 0) + ((this.mistTarget || 0) - (this.mist || 0)) * k;
+    const S = this.atmo.compute(hour, sunAz, this._tint, { rain: this.weather.rain, mist: this.mist || 0 }, this.outage || 0);
     this.S = S;
     this.night = smoothstep(18.2, 19.2, hour) * (1 - smoothstep(29.3, 30.0, hour));
     this.scene.fog.color.copy(S.fog);
@@ -1410,6 +1429,22 @@ export class Game {
       }
     }
     this.hud.tags(list);
+  }
+
+  // ------------------------------------------------------------ music: each district has its own song
+  areaMusic(stage, fade = 5) {
+    if (this.musicOff) return;
+    const i = TRACKS.findIndex((t) => t.id === stage.music);
+    if (i < 0) return;
+    music.play(i, fade);
+    const t = TRACKS[i];
+    this.hud.radio(`${t.title.toUpperCase()}`, t.freq, true);
+  }
+
+  toggleMusic() {
+    this.musicOff = !this.musicOff;
+    if (this.musicOff) { music.stop(1); this.hud.radio('MUSIC OFF', '--.-', false); }
+    else this.areaMusic(this.player.track.stage, 1.5);
   }
 
   // ------------------------------------------------------------ radio

@@ -46,8 +46,8 @@
   <!-- ======================== LOADING -->
   <section id="loading" class="screen show">
     <div class="wheel" aria-hidden="true"><div class="hub"></div></div>
-    <div class="load-bn">HOLD ON, BHAI…</div>
-    <div class="load-msg" id="loadMsg">Warming up the engine</div>
+    <div class="load-bn">LOADING</div>
+    <div class="load-msg" id="loadMsg"></div>
   </section>
 
   <!-- ======================== TITLE -->
@@ -57,12 +57,10 @@
       <svg class="fl fl2" style="--f1:#ff2e88;--f2:#22d3ee"><use href="#flower"/></svg>
       <div class="logo-bn">DHAKA</div>
       <div class="logo-en">OUTRUN</div>
-      <div class="logo-ribbon"><span>DHANMONDI</span><b>→</b><span>EVERYWHERE</span></div>
     </div>
     <div class="press" id="pressStart">CLICK OR PRESS ENTER</div>
     <nav class="menu" id="mainMenu" hidden>
       <button data-act="arcade"><span>THE RUN</span><i>24 DRIVERS · FINISH FIRST</i></button>
-      <button data-act="cruise"><span>FREE DRIVE</span><i>NO RIVALS · NO RULES</i></button>
       <button data-act="garage"><span>GARAGE</span><i>PICK A RIDE</i></button>
       <button data-act="scores"><span>HIGH SCORES</span><i>HALL OF FAME</i></button>
       <button data-act="settings"><span>SETTINGS</span><i>TWEAK</i></button>
@@ -70,14 +68,14 @@
     </nav>
     <div class="title-foot">
       <span id="endingsFound"></span>
-      <span class="keys">↑ gas · ↓ brake · ←→ steer · SPACE nitro · H horn · C camera · R radio · V photo · ESC pause</span>
+      <span class="keys">↑ gas · ↓ brake · ←→ steer · SPACE nitro · H horn · C camera · R music on/off · V photo · ESC / P pause</span>
     </div>
   </section>
 
   <!-- ======================== GARAGE -->
   <section id="garage" class="screen">
     <div class="panel garage-card">
-      <div class="plate-head"><span>GARAGE</span><i>NO. 27</i></div>
+      <div class="plate-head"><span>GARAGE</span></div>
       <div class="car-name" id="carName">ROSSO 86</div>
       <div class="car-bn" id="carBn"></div>
       <p class="car-blurb" id="carBlurb"></p>
@@ -132,9 +130,9 @@
       <div class="how-grid">
         <div><b>↑ / W</b> gas &nbsp; <b>↓ / S</b> brake &nbsp; <b>← →</b> steer &nbsp; <b>SPACE</b> nitro</div>
         <div><b>H</b> horn (slow traffic sometimes moves over) &nbsp; <b>SHIFT</b> LO / HI (manual gearbox)</div>
-        <div><b>C</b> camera &nbsp; <b>R</b> next radio station &nbsp; <b>V</b> photo mode &nbsp; <b>ESC</b> pause &nbsp; <b>F</b> fullscreen</div>
-        <p>THE RUN: twenty-four drivers race across Dhaka in one night, and you start last. Each stage has a target position you must reach before it ends, or you are out. Win the final stage to take the prize. At the end of each stage the road splits: keep left or right to choose your route. Five exits, five endings.</p>
-        <p>Rivals block and shove. Police and RAB will try to run you off the road. Shove any of them into traffic, walls and each other for a <b>TAKEDOWN</b>: a wrecked rival drops way back. Near misses, drifts, big air and smashed stalls fill the <b>NITRO</b> bar. Jammed? Hit the ramp and take the wrong side. Mind the pedestrians. They bounce, but they hold grudges.</p>
+        <div><b>C</b> camera &nbsp; <b>R</b> music on/off &nbsp; <b>V</b> photo mode &nbsp; <b>ESC / P</b> pause &nbsp; <b>F</b> fullscreen</div>
+        <p>THE RUN: twenty-four drivers race across Dhaka in one night, and you start last. Each stage has a target position you must reach before it ends, or you are out. Win the final stage at the Padma Bridge.</p>
+        <p>Rivals block and shove. Police and RAB will try to run you off the road. Shove any of them into traffic, walls and each other for a <b>TAKEDOWN</b>: a wrecked rival drops way back. Near misses, drifts, big air and smashed stalls fill the <b>NITRO</b> bar. Jammed? Hit the ramp and take the wrong side.</p>
         <p>Gamepad works (RT gas, LT brake, B nitro, X shift, RB horn, Y camera). On a phone, use the on-screen pedals.</p>
       </div>
       <div class="hint">BACKSPACE back</div>
@@ -193,6 +191,7 @@
     <div class="signal" id="signal"><i class="r"></i><i class="y"></i><i class="g"></i></div>
     <div class="h-cam" id="hCam"></div>
     <div class="h-saree" id="hSaree"></div>
+    <button class="h-pause" id="hPause" title="Pause (Esc / P)">II</button>
   </section>
   <div class="photo-hint" id="photoHint" hidden>PHOTO MODE &nbsp;·&nbsp; ←→ orbit · ↑↓ height · SPACE / H zoom · V exit</div>
 
@@ -210,7 +209,7 @@
   <!-- ======================== PAUSE -->
   <section id="pause" class="screen dim">
     <div class="panel pause-card">
-      <div class="plate-head"><span>PAUSED</span><i>CHA BREAK</i></div>
+      <div class="plate-head"><span>PAUSED</span></div>
       <nav class="menu small" id="pauseMenu">
         <button data-act="resume"><span>RESUME</span></button>
         <button data-act="restart"><span>RESTART</span></button>
@@ -237,7 +236,7 @@
     <div class="over">
       <div class="over-bn" id="overBn">ELIMINATED</div>
       <div class="over-en" id="overEn">THE RUN IS OVER</div>
-      <div class="over-sub" id="overSub">Stuck in traffic. Again tomorrow.</div>
+      <div class="over-sub" id="overSub"></div>
       <div class="pc-tally" id="overTally"></div>
       <div class="hint" id="overHint">ENTER continue</div>
     </div>

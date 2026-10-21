@@ -352,3 +352,6 @@ body.touch .h-boss { top: calc(104px + env(safe-area-inset-top, 0px)); }
 .b-bn { font-size: 17px; }
 .h-bubble.loud .b-bn { font-size: 20px; }
 body.touch .h-bubble { top: calc(168px + env(safe-area-inset-top, 0px)); left: 10px; max-width: 70vw; }
+
+.h-pause { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(96px + env(safe-area-inset-top, 0px)); pointer-events: auto; width: 34px; height: 30px; font-family: var(--f-display); font-size: 13px; background: var(--paper); color: #000; border: 2px solid #000; box-shadow: 3px 3px 0 #000; cursor: pointer; }
+body.touch .h-pause { display: none; }

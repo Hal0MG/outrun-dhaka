@@ -148,7 +148,7 @@ export class HUD {
   setStage(stage, big = true) {
     this.stageBn.textContent = stage.name.toUpperCase();
     this.stageEn.textContent = `STAGE ${stage.level + 1} / ${ROUTE.length}`;
-    this.stageSub.textContent = stage.sub;
+    this.stageSub.textContent = '';
     if (big) {
       this.stage.classList.add('big');
       this.stageT = 3.4;

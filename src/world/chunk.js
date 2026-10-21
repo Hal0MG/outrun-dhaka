@@ -14,11 +14,30 @@ import { oppLayout } from './zones.js';
 
 export const CHUNK = 100;
 
+// Districts blend into each other: across the ~600 m either side of a boundary,
+// each chunk borrows the look (buildings, trees, street life) of the neighbouring
+// district with a probability that ramps, so the city changes gradually.
+const STYLE_KEYS = ['facades', 'shops', 'heights', 'backHeights', 'trees', 'lakeTrees', 'streetTrees', 'parkTrees', 'life', 'medianPlants', 'billboards', 'fairyP', 'lifeDensity', 'wallLife', 'groundTint'];
+const BLEND = 600;
+function blendedStage(world, track, ci) {
+  const st = track.stage;
+  const mid = ci * CHUNK + CHUNK / 2;
+  let other = null, p = 0;
+  if (track.parent && mid < BLEND) { other = track.parent.stage; p = 0.5 * (1 - mid / BLEND); }
+  else if (!track.isFinal && track.length - mid < BLEND && track.children) { other = track.children[0].stage; p = 0.5 * (1 - (track.length - mid) / BLEND); }
+  if (!other) return st;
+  const r = new RNG(hashStr(track.id) + ci * 131).next();
+  if (r >= p) return st;
+  const mix = Object.create(st);
+  for (const k of STYLE_KEYS) if (other[k] !== undefined) mix[k] = other[k];
+  return mix;
+}
+
 export class ChunkCtx {
   constructor(world, track, ci) {
     this.world = world;
     this.track = track;
-    this.stage = track.stage;
+    this.stage = blendedStage(world, track, ci);
     this.ci = ci;
     this.s0 = ci * CHUNK;
     this.s1 = Math.min((ci + 1) * CHUNK, track.length + (track.isFinal ? 600 : 0));

@@ -9,10 +9,13 @@ import { audio } from './audio/audio.js';
 import { music, TRACKS } from './audio/music.js';
 
 const DEFAULTS = {
-  quality: 'high', qualityAuto: true, difficulty: 'normal', manual: false, musicVol: 0.6, sfxVol: 0.8,
-  camera: 'chase', blur: true, crt: false, touch: 'auto', car: 0, color: 0, station: 0, slowmo: true,
+  quality: 'high', qualityAuto: false, difficulty: 'normal', manual: false, musicVol: 0.6, sfxVol: 0.8,
+  camera: 'chase', blur: true, crt: true, touch: 'auto', car: 0, color: 0, station: 0, slowmo: true,
 };
-const settings = { ...DEFAULTS, ...store.get('settings', {}) };
+// v2 presets: high resolution and the CRT filter on for everyone, once
+const saved = store.get('settings', {});
+if (saved.v !== 2) Object.assign(saved, { v: 2, quality: 'high', qualityAuto: false, crt: true });
+const settings = { ...DEFAULTS, ...saved };
 const saveSettings = () => store.set('settings', settings);
 
 const loadMsg = document.getElementById('loadMsg');
@@ -30,7 +33,7 @@ async function loadFonts() {
 }
 
 async function boot() {
-  progress('Loading fonts');
+  progress('');
   await loadFonts();
   await nextFrame();
   const canvas = document.getElementById('gl');
@@ -45,10 +48,9 @@ async function boot() {
   const hud = new HUD();
   const dialogue = new Dialogue(hud);
   const game = new Game(R, input, hud, dialogue, settings);
-  const steps = ['Painting facades', 'Painting rickshaw art', 'Lettering signboards', 'Planting krishnachura'];
   let si = 0;
-  await game.init(async (m) => { progress(m); si++; });
-  progress('Building Dhanmondi');
+  await game.init(async () => { si++; });
+  progress('');
   await nextFrame();
   const menus = new Menus(game, input, settings, saveSettings);
   window.__game = game;
@@ -149,18 +151,15 @@ async function boot() {
       else document.exitFullscreen?.();
     }
     if (input.pressed('mute')) { audio.muted = !audio.muted; audio.applyVolumes(); }
-    if (menus.screen === 'race') {
+    // menus first; the race keys only act if we were racing before and after (so ESC can't pause and unpause in one frame)
+    const wasRace = menus.screen === 'race';
+    menus.update(dt);
+    if (wasRace && menus.screen === 'race') {
       if (input.pressed('photo')) game.togglePhoto();
       if (input.pressed('pause') && game.state !== 'photo') menus.pause();
       else if (input.pressed('pause') && game.state === 'photo') game.togglePhoto();
-      if (input.pressed('radio')) {
-        audio.init();
-        audio.tune();
-        const n = TRACKS.length + 1;
-        game.setStation(((game.station ?? 0) + 1) % n);
-      }
+      if (input.pressed('radio')) game.toggleMusic();
     }
-    menus.update(dt);
     // sub-step long frames for stable physics; one step per frame normally
     const steps = Math.min(8, Math.max(1, Math.ceil(dt / (1 / 55))));
     try {

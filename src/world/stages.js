@@ -111,7 +111,7 @@ export const STAGES = {
     stalls: [[1900, 2280, -1]],
     events: [
       { type: 'teslas', s: 560, n: 6 },
-      { type: 'enemies', role: 'police', s: 1500, n: 2, label: 'TRAFFIC POLICE ON YOUR TAIL!' },
+      { type: 'enemies', role: 'police', s: 1500, n: 2, label: 'POLICE BEHIND' },
       { type: 'jam', s: 2950, len: 170 },
     ],
     lines: [{ s: 80, id: 'start' }, { s: 1180, id: 'sarobar' }, { s: 1880, id: 'stalls' }, { s: 2620, id: 'abahani' }],
@@ -247,7 +247,7 @@ export const STAGES = {
     events: [
       { type: 'enemies', role: 'police', s: 380, n: 2 },
       { type: 'busrace', s: 900 },
-      { type: 'title', s: 1250, text: 'METRO DASH', small: 'road closed · take the stairs' },
+      { type: 'title', s: 1250, text: 'METRO DASH', small: '' },
       { type: 'railTrain', s: 1730, lane: 1, ahead: 600, speed: 18 },
       { type: 'railTrain', s: 2090, lane: -1, ahead: 520, speed: 20 },
       { type: 'teslas', s: 2950, n: 6 },
@@ -285,7 +285,7 @@ export const STAGES = {
       { type: 'fountain', s: 2600, side: -1, dist: 70 },
     ],
     events: [
-      { type: 'title', s: 150, text: 'MALL CRAWL', small: 'level 7: cineplex · no parking' },
+      { type: 'title', s: 150, text: 'MALL CRAWL', small: '' },
       { type: 'racers', s: 1450, n: 3 },
     ],
     lines: [{ s: 120, id: 'mall' }, { s: 420, id: 'spiral' }, { s: 830, id: 'cinema' }, { s: 1400, id: 'hatirjheel' }, { s: 2550, id: 'fountain' }],
@@ -375,7 +375,7 @@ export const STAGES = {
       { type: 'embassy', s: 2700, side: -1, dist: 12, clear: [2660, 2740] },
     ],
     events: [
-      { type: 'enemies', role: 'rab', s: 700, n: 3, label: 'RAB! BLACK SUVS ON YOUR TAIL!' },
+      { type: 'enemies', role: 'rab', s: 700, n: 3, label: 'RAB BEHIND' },
       { type: 'vip', s: 1700 },
       { type: 'racers', s: 2300, n: 2 },
     ],
@@ -458,7 +458,7 @@ export const STAGES = {
       { type: 'highwayHotel', s: 900, side: -1, dist: 24 },
       { type: 'highwayHotel', s: 3000, side: -1, dist: 24 },
     ],
-    events: [{ type: 'busrace', s: 600 }, { type: 'enemies', role: 'police', s: 1300, n: 3, label: 'HIGHWAY POLICE ON YOUR TAIL!' }],
+    events: [{ type: 'busrace', s: 600 }, { type: 'enemies', role: 'police', s: 1300, n: 3, label: 'POLICE BEHIND' }],
     lines: [{ s: 80, id: 'highway' }, { s: 850, id: 'rosmalai' }, { s: 2000, id: 'meghna' }],
     ending: 'highway',
   },
@@ -484,7 +484,7 @@ export const STAGES = {
       { type: 'jfp', s: 740, side: -1, dist: 70, clear: [660, 800] },
     ],
     events: [
-      { type: 'title', s: 700, text: 'FUTURE PARK', small: 'all rides open · no cars allowed' },
+      { type: 'title', s: 700, text: 'FUTURE PARK', small: '' },
       { type: 'racers', s: 2050, n: 4 },
     ],
     lines: [{ s: 80, id: 'kuril' }, { s: 780, id: 'jfp' }, { s: 2100, id: 'racers' }, { s: 2700, id: 'kash' }],
@@ -590,8 +590,11 @@ export const ROUTE = [
   'motijheel', 'mirpur', 'airport', 'purbachal', 'highway', 'savar', 'padma',
 ];
 const H0 = 17.35, H1 = 30.35;
+// each district has its own song; consecutive districts never share one
+const AREA_MUSIC = ['monsoon', 'baul', 'buriganga', 'monsoon', 'kalbaishakhi', 'buriganga', 'baul', 'kalbaishakhi', 'buriganga', 'monsoon', 'buriganga', 'baul', 'kalbaishakhi', 'baul', 'monsoon'];
 ROUTE.forEach((id, i) => {
   const st = STAGES[id];
+  st.music = AREA_MUSIC[i];
   st.level = i;
   st.final = i === ROUTE.length - 1;
 });

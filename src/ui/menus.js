@@ -38,6 +38,7 @@ export class Menus {
       if (b) { audio.init(); fn(b.dataset.act, b); }
     });
     click('mainMenu', (a) => this.mainAction(a));
+    $('hPause').addEventListener('click', () => this.pause());
     click('pauseMenu', (a) => this.pauseAction(a));
     click('garage', (a) => this.garageAction(a));
     $('title').addEventListener('click', (e) => {
@@ -68,7 +69,7 @@ export class Menus {
   }
 
   updateEndingsLabel() {
-    $('endingsFound').textContent = `ENDINGS FOUND ${this.endings.size}/5`;
+    $('endingsFound').textContent = '';
   }
 
   openMenu() {
@@ -190,11 +191,7 @@ export class Menus {
       this.settings.car = g.carIndex;
       this.settings.color = g.colorIndex;
       this.save();
-      this.show('radio');
-      this.game.state = 'radio';
-      this.sel = this.settings.station ?? 0;
-      this.previewStation();
-      this.refresh();
+      this.startRace();
     }
   }
 
@@ -212,7 +209,6 @@ export class Menus {
 
   startRace() {
     audio.confirm();
-    this.settings.station = this.sel;
     this.save();
     for (const s of SCREENS) $(s).classList.remove('show');
     this.screen = 'race';
@@ -287,10 +283,10 @@ export class Menus {
     this.endings.add(id);
     store.set('endings', [...this.endings]);
     this.updateEndingsLabel();
-    $('pcBn').textContent = E.headline;
+    $('pcBn').textContent = '';
     $('pcTitle').textContent = E.title.toUpperCase();
     $('pcStamp').textContent = String(this.endings.size);
-    $('pcLines').innerHTML = E.lines.map((l) => `<p>${l}</p>`).join('');
+    $('pcLines').innerHTML = '';
     const total = Math.floor(g.score + g.goalBonus);
     this.finalScore = total;
     $('pcTally').innerHTML = `
@@ -310,7 +306,7 @@ export class Menus {
     ps.forEach((p, i) => setTimeout(() => p.classList.add('in'), 700 + i * 1300));
     setTimeout(() => { this.endingReady = true; }, 1500);
     if (this.endings.size === 1) {
-      $('pcHint').textContent = 'ENTER continue · RICKSHAW 9000 unlocked in the garage';
+      $('pcHint').textContent = 'ENTER continue · new car unlocked in the garage';
     } else $('pcHint').textContent = 'ENTER continue';
   }
 
@@ -321,7 +317,7 @@ export class Menus {
     const E = g.eliminated;
     $('overBn').textContent = E ? 'ELIMINATED' : 'TIME UP';
     $('overEn').textContent = E ? (E.need === 1 ? `FINISHED P${E.pos}` : `P${E.pos} · NEEDED P${E.need}`) : 'GAME OVER';
-    $('overSub').textContent = E ? (E.need === 1 ? 'Second place pays nothing. Golden Bhai does not do silver.' : 'The field rolled on without you.') : 'Stuck in traffic. Again tomorrow.';
+    $('overSub').textContent = '';
     $('overHint').textContent = E ? 'ENTER retry stage · BACKSPACE give up' : 'ENTER continue';
     $('overTally').innerHTML = `<span>SCORE</span><span>${bn(total.toLocaleString('en-US'))}</span><span>REACHED</span><span>${STAGES[g.path[g.path.length - 1]].name.toUpperCase()}</span>`;
     this.show('gameover');
@@ -368,7 +364,7 @@ export class Menus {
       ['SFX VOLUME', 'sfxVol', [0, 0.2, 0.4, 0.6, 0.8, 1], (v) => Math.round(v * 100) + '%'],
       ['CAMERA', 'camera', ['chase', 'far', 'hood', 'low']],
       ['SPEED BLUR', 'blur', [true, false], (v) => (v ? 'ON' : 'OFF')],
-      ['SLOW MOTION', 'slowmo', [true, false], (v) => (v ? 'BOLLYWOOD' : 'OFF')],
+      ['SLOW MOTION', 'slowmo', [true, false], (v) => (v ? 'ON' : 'OFF')],
       ['CRT SCANLINES', 'crt', [false, true], (v) => (v ? 'ON' : 'OFF')],
       ['TOUCH CONTROLS', 'touch', ['auto', 'on', 'off']],
     ];
@@ -395,8 +391,8 @@ export class Menus {
       const def = CARS[this.game.carIndex];
       const locked = def.locked && !this.endings.size;
       $('carName').innerHTML = def.name + (locked ? '<span class="lock">LOCKED</span>' : '');
-      $('carBn').textContent = def.tag || '';
-      $('carBlurb').textContent = def.blurb;
+      $('carBn').textContent = '';
+      $('carBlurb').textContent = '';
       const stat = (label, v) => `<span>${label}</span><div class="bar"><b style="width:${Math.round(v * 100)}%"></b></div>`;
       $('carStats').innerHTML = stat('TOP SPEED', def.top / 430) + stat('ACCEL', def.accel / 1.2) + stat('GRIP', def.grip) + `<span>KM/H</span><span>${bn(def.top)}</span>`;
       $('carColors').innerHTML = def.colors.map((c, i) => `<b data-i="${i}" style="background:${c}" class="${i === this.game.colorIndex ? 'sel' : ''}"></b>`).join('');
