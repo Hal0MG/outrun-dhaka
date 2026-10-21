@@ -258,7 +258,7 @@ body.touch .b-en { font-size: 12px; }
 .pc-tally .tot { color: var(--red); font-size: 20px; border-top: 3px solid #000; padding-top: 4px; }
 #pcMap { display: block; margin-top: 12px; width: 100%; max-width: 360px; height: auto; }
 .over { pointer-events: auto; text-align: center; }
-.over-bn { font-family: var(--f-display); font-size: clamp(60px, 12vw, 130px); color: var(--red); -webkit-text-stroke: 3px #000; paint-order: stroke fill; text-shadow: 7px 7px 0 #000; line-height: 1; }
+.over-bn { font-family: var(--f-display); font-size: clamp(38px, 12vw, 130px); color: var(--red); -webkit-text-stroke: 3px #000; paint-order: stroke fill; text-shadow: 7px 7px 0 #000; line-height: 1; }
 .over-en { font-family: var(--f-shade); font-size: clamp(30px, 5vw, 56px); color: var(--marigold); }
 .over-sub { font-size: 18px; margin: 10px 0 16px; text-shadow: 2px 2px 0 #000; }
 .over .pc-tally { margin: 0 auto; color: var(--paper); text-shadow: 2px 2px 0 #000; }
@@ -338,4 +338,10 @@ body.touch .h-boss { top: calc(104px + env(safe-area-inset-top, 0px)); }
 @media (max-width: 640px) {
   .h-obj { top: calc(96px + env(safe-area-inset-top, 0px)); font-size: 10px; }
   .story-grid { display: none; }
+}
+@media (max-width: 640px) {
+  /* phones: the position plate owns the top-left, so the stage name only shows as the big banner */
+  .h-stage:not(.big) { opacity: 0; }
+  .h-progress { left: auto; right: 12px; transform: none; width: 38vw; top: calc(78px + env(safe-area-inset-top, 0px)); }
+  .h-obj { top: calc(108px + env(safe-area-inset-top, 0px)); }
 }
