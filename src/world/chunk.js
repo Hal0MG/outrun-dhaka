@@ -266,6 +266,7 @@ function placeBuildingsRow(ctx, a, b, side, xIn, opts) {
     if (ctx.isClear(s, side, xIn + 5) || ctx.isClear(s + w, side, xIn + 5)) { s += w + 2; continue; }
     if (!opts.noStreets) { const hit = hitStreet(ctx, side, s, s + w); if (hit) { s = Math.max(s + 1, hit[1] + 0.5); continue; } }
     PR.building(ctx, s, side, xIn + setback, w, d, h, style, { signP: opts.signP });
+    if (style.shop && opts.balconies !== false && rng.chance(0.7)) PR.balconies(ctx, s, side, xIn + setback, w, h, 3.75);
     // rooftop billboard
     if (opts.billboards && rng.chance(opts.bbP || 0.12) && h < 40) {
       PR.billboard(ctx, s + w / 2, side, xIn + setback + d * 0.4, h + 5, rng.pick(opts.billboards), { legs: 5, ground: true, obstacle: false });

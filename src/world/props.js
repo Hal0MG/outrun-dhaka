@@ -526,3 +526,46 @@ export function mosque(ctx, s, side, x, scale = 1, opts = {}) {
   }
   ctx.obstacle(s, side * x, d / 2 + 2, w / 2 + 2, 'solid');
 }
+
+// Balconies on the road-facing wall of a building: a slab with a low parapet, now and then a person
+// leaning out, a chair or a saree hung to dry. s is the building's start, xNear its facade distance, gf the shop height.
+export function balconies(ctx, s, side, xNear, w, h, gf) {
+  const rng = ctx.rng;
+  const floors = Math.floor((h - gf - 1.2) / 3.2);
+  if (floors < 1 || w < 5.5) return;
+  const B = ctx.B.misc;
+  const conc = ctx.misc.get('concrete_smooth');
+  const white = ctx.misc.get('white');
+  const yaw = ctx.track.yawAt(s + w / 2);
+  const boxYaw = side < 0 ? yaw - Math.PI / 2 : yaw + Math.PI / 2;
+  const people = ['p_kameez', 'p_saree', 'p_lungi', 'p_shirt', 'p_panjabi'];
+  const used = new Set();
+  const rows = Math.min(floors, rng.int(1, 3));
+  for (let r = 0; r < rows; r++) {
+    const f = rng.int(0, floors - 1);
+    if (used.has(f)) continue;
+    used.add(f);
+    const y = gf + 0.5 + f * 3.2;
+    const n = w > 10 ? 2 : 1;
+    for (let k = 0; k < n; k++) {
+      const sb = s + w * (n === 1 ? 0.5 : 0.28 + 0.44 * k);
+      const bw = 2.6, depth = 1.1;
+      const slab = ctx.P(sb, side * (xNear - depth / 2 + 0.05), y, true);
+      B.box(slab[0], slab[1], slab[2], bw, 0.16, depth, boxYaw, { color: [0.76, 0.74, 0.7], region: conc, tile: [2, 1] });
+      // parapet across the front, short stubs at the ends
+      const front = ctx.P(sb, side * (xNear - depth + 0.08), y + 0.16, true);
+      B.box(front[0], front[1], front[2], bw, 0.62, 0.1, boxYaw, { color: [0.62, 0.6, 0.56], region: conc, tile: [2, 1] });
+      for (const e of [-1, 1]) {
+        const end = ctx.P(sb + e * (bw / 2 - 0.05), side * (xNear - depth / 2), y + 0.16, true);
+        B.box(end[0], end[1], end[2], 0.1, 0.62, depth, boxYaw, { color: [0.62, 0.6, 0.56], region: conc, tile: [1, 1] });
+      }
+      const base = ctx.P(sb + rng.range(-0.6, 0.6), side * (xNear - depth / 2), y + 0.16, true);
+      if (rng.chance(0.55)) ctx.sprites.add(rng.pick(people), base[0], base[1], base[2], 0.95, { flip: rng.chance(0.5), lamp: 1 });
+      if (rng.chance(0.4)) {
+        // laundry on the rail
+        const cl = ctx.P(sb, side * (xNear - depth + 0.14), y + 0.6, true);
+        ctx.B.fx.box(cl[0], cl[1], cl[2], bw * 0.7, 0.8, 0.03, boxYaw, { color: [1, 1, 1], region: ctx.fx.get('saree' + rng.int(0, 5)) });
+      }
+    }
+  }
+}

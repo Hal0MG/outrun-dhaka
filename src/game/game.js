@@ -16,6 +16,7 @@ import { Traffic } from './traffic.js';
 import { Peds } from './peds.js';
 import { Stalls, DEBRIS } from './stalls.js';
 import { Dialogue } from '../ui/dialogue.js';
+import { Ambience } from './ambience.js';
 import { Particles } from './particles.js';
 import { Weather } from './weather.js';
 import { loadCarAssets } from './carassets.js';
@@ -57,6 +58,7 @@ export class Game {
     this.peds = new Peds(this.scene, this.world);
     this.stalls = new Stalls(this.scene, this.world);
     this.say = new Dialogue(this.hud);
+    this.ambience = new Ambience(this);
     this._cars = [];
     this._bv = new THREE.Vector3();
     this.particles = new Particles(this.scene);
@@ -98,6 +100,7 @@ export class Game {
     this.traffic.clear();
     this.peds.clear();
     this.stalls.clear();
+    this.ambience.clear();
     this.sky.setSkyline(tr.stage.skyline || 'midrise', true);
     this.cam.init = false;
     this.applyStageAtmo(tr);
@@ -136,6 +139,7 @@ export class Game {
     this.hud.reset(kind);
     this.say.reset();
     this._lowFuel = false;
+    this.raceT = 0;
     this.hud.setStage(tr.stage, kind);
     this.hud.show(true);
     this.cam.mode = 'chase';
@@ -156,6 +160,7 @@ export class Game {
     this.hud.message(n === laps ? 'FINAL LAP' : `LAP ${n} / ${laps}`, 2);
     audio.checkpoint();
     this.say.say(n === laps ? 'finalLap' : 'lap', 1, true);
+    if (n === laps) setTimeout(() => this.say.say('tipLastLap', 1, false, 9999), 3200);
   }
 
   onKnockout(cut, knocked) {
@@ -228,6 +233,7 @@ export class Game {
       this.handleFork();
       this.race.update(dt);
       this.updateRoad(dt, st);
+      if (this.race.active) this.ambience.update(dt, P, this.night, this.S ? this.S.glow : 0);
       this.world.stream(P.track, P.s, 2, cinematic === 'ending' ? 300 : 160);
       this.world.update(dt, this.time);
       this.updateFx(dt);
@@ -285,7 +291,7 @@ export class Game {
     const go = st === 'race';
     const movers = this.movers();
     this.traffic.update(dt, go, movers);
-    this.peds.update(dt, P, go, this.traffic.factor * 0.8, this.traffic.cars, movers);
+    this.peds.update(dt, P, go, this.traffic.factor * 1.1, this.traffic.cars, movers);
     this.stalls.update(dt, R.playerG(), movers);
     this.say.update(dt);
     for (const e of this.traffic.events) {
@@ -310,6 +316,40 @@ export class Game {
     }
     this.stalls.events.length = 0;
     if (P.scrape && P.v > 20) this.say.say('scrape', 0.02);
+    if (go) this.coach(dt);
+  }
+
+  // advice that helps win: what is coming up, what to do about it
+  coach(dt) {
+    const P = this.player, R = this.race, tr = P.track;
+    const say = this.say;
+    const vr = P.v / P.vmax;
+    this.raceT = (this.raceT || 0) + dt;
+    const kAt = (d) => Math.abs(tr.kAt(Math.min(P.s + d, tr.length)));
+    // how pickups work, once, early
+    if (this.raceT > 7) say.say('tipPickups', 1, false, 9999);
+    // nitro in hand with a straight ahead
+    if (P.nitro >= 1 && !P.boosting && vr > 0.7 && R.position > 1 && Math.max(kAt(60), kAt(140), kAt(220)) < 0.0015) say.say('tipNitro', 1, false, 28);
+    // a sharp bend at speed
+    if (vr > 0.9 && !P.boosting && kAt(95) > 0.0075) say.say('tipBend', 1, false, 22);
+    // fuel getting low, a can on the way
+    if (P.fuel < 0.5) say.say('tipFuel', 1, false, 30);
+    // sat on the verge
+    if (P.offroad > 0.85 && P.v > 35) this._grass = (this._grass || 0) + dt; else this._grass = 0;
+    if (this._grass > 1.2) say.say('tipGrass', 1, false, 25);
+    // a car right ahead in your lane
+    const PG = R.playerG();
+    for (const r of R.rivals) {
+      const d = r.G - PG;
+      if (!r.out && d > 4 && d < 26 && Math.abs(r.x - P.x) < 2.3 && vr > 0.6) { say.say('tipOvertake', 1, false, 24); break; }
+    }
+    // racing line
+    if (this.raceT > 25 && kAt(70) > 0.004) say.say('tipDraft', 0.5, false, 60);
+    // the next knockout gate
+    const ko = R.nextKnockout();
+    if (ko && ko.d != null && ko.d < 1400 && R.position > ko.cut - 3) {
+      say.sayText('ko', R.position > ko.cut ? `The cut-off is top ${ko.cut} and we’re ${R.position}th. Push!` : `Cut-off is top ${ko.cut}. Stay ahead of the pack!`, 30);
+    }
   }
 
   // bits flying off something smashed

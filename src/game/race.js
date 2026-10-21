@@ -43,7 +43,7 @@ export const CIRCUIT_FIELD = 20;
 
 // fuel: metres a full tank lasts, and how much a can puts back
 const TANK = { circuit: 2 * 3200, run: 7000 };
-const CAN_FUEL = 0.36;
+const CAN_FUEL = 0.3;
 const VIEW = 420;
 
 export class Race {
@@ -84,8 +84,9 @@ export class Race {
       const md = g.fleet.md(d.model);
       return {
         ...d, i, G: slotS(i), x: slotX(i), v: 0, vx: 0, out: false, done: false,
-        // on the Run the front-runners are a touch quicker than your car: you need nitro and clean lines
-        skill: (kind === 'run' ? 1.035 : 1.0) - i * (0.17 / n), bias: ((i * 7) % 5 - 2) * 0.32, dodge: null, dodgeT: 0,
+        // the leader is a hair under your top speed: nitro and clean lines win it. Most of the field runs near
+        // the front pace and only the back of the grid is easy, so positions come steadily, not in a rush
+        skill: (kind === 'run' ? 0.99 : 0.975) - (kind === 'run' ? 0.12 : 0.11) * Math.pow(i / n, 2), bias: ((i * 7) % 5 - 2) * 0.32, dodge: null, dodgeT: 0,
         w: md.wid / 2, l: md.len / 2,
         car: { model: d.model, md, track: null, s: 0, x: 0, yaw: 0, roll: 0, color: new THREE.Color(d.color), brake: false },
       };
@@ -130,7 +131,8 @@ export class Race {
     const rng = new RNG(4242);
     const lapLen = tr.lapLen;
     const pattern = [];
-    const special = [[0.3, 'fuel'], [0.52, 'nitro'], [0.78, 'fuel']];
+    // fuel and nitro come in rows across the whole road, three of each a lap: you can't miss them and never have to hug a side
+    const special = [[0.12, 'fuel'], [0.28, 'nitro'], [0.45, 'fuel'], [0.62, 'nitro'], [0.78, 'fuel'], [0.94, 'nitro']];
     for (let u = 70; u < lapLen - 60; u += rng.range(95, 150)) {
       if (special.some(([f]) => Math.abs(u - f * lapLen) < 60)) continue;
       if (rng.chance(0.62)) pattern.push({ u, kind: 'trail', a: rng.next(), b: rng.next() });
@@ -149,8 +151,8 @@ export class Race {
     const s1 = (tr.isFinal ? tr.goalS : tr.length) - 40;
     for (let s = s0; s < s1; s += rng.range(95, 150)) {
       const G = tr.base + s;
-      const fuel = Math.floor(G / 1800) !== Math.floor((G - 150) / 1800);
-      const nitro = Math.floor((G + 650) / 1300) !== Math.floor((G + 500) / 1300);
+      const fuel = Math.floor(G / 1100) !== Math.floor((G - 200) / 1100);
+      const nitro = Math.floor((G + 400) / 800) !== Math.floor((G + 200) / 800);
       if (fuel) this.place(tr, s, 'fuel', rng.next());
       else if (nitro) this.place(tr, s, 'nitro', rng.next());
       else if (rng.chance(0.62)) this.place(tr, s, 'trail', rng.next(), rng.next());
@@ -162,7 +164,10 @@ export class Race {
     const lanes = Math.max(1, Math.round(tr.lanesAt(s)));
     const hw = tr.halfWAt(s);
     const lx = (f) => -hw + LANE_W * (Math.min(lanes - 1, Math.floor(f * lanes)) + 0.5);
-    if (kind !== 'trail') { this.pickups.push({ tr, s, G: tr.base + s, x: lx(a), kind, taken: false }); return; }
+    if (kind !== 'trail') {
+      for (let l = 0; l < lanes; l++) this.pickups.push({ tr, s, G: tr.base + s, x: -hw + LANE_W * (l + 0.5), kind, taken: false });
+      return;
+    }
     // a trail of coins drifting across a lane or two
     const xa = lx(a), xb = clamp(xa + (b < 0.33 ? -LANE_W : b > 0.66 ? LANE_W : 0), -hw + LANE_W / 2, hw - LANE_W / 2);
     for (let k = 0; k < 7; k++) this.pickups.push({ tr, s: s + k * 5.5, G: tr.base + s + k * 5.5, x: xa + (xb - xa) * (k / 6), kind: 'coin', taken: false });
@@ -179,9 +184,9 @@ export class Race {
     };
     this.meshes = {
       coin: mk(new THREE.CylinderGeometry(0.55, 0.55, 0.14, 20).rotateX(Math.PI / 2), new THREE.Color(2.2, 1.5, 0.25), 200),
-      fuel: mk(new THREE.BoxGeometry(0.9, 1.1, 0.5), new THREE.Color(1.9, 0.18, 0.12), 16),
-      cap: mk(new THREE.CylinderGeometry(0.12, 0.12, 0.25, 8).translate(0.28, 0.66, 0), new THREE.Color(2.2, 1.9, 0.3), 16),
-      nitro: mk(new THREE.OctahedronGeometry(0.75), new THREE.Color(0.35, 1.6, 2.4), 16),
+      fuel: mk(new THREE.BoxGeometry(0.9, 1.1, 0.5), new THREE.Color(1.9, 0.18, 0.12), 64),
+      cap: mk(new THREE.CylinderGeometry(0.12, 0.12, 0.25, 8).translate(0.28, 0.66, 0), new THREE.Color(2.2, 1.9, 0.3), 64),
+      nitro: mk(new THREE.OctahedronGeometry(0.75), new THREE.Color(0.35, 1.6, 2.4), 64),
     };
     this._m = new THREE.Matrix4();
     this._q = new THREE.Quaternion();
@@ -264,10 +269,11 @@ export class Race {
       // pace
       let vT = vRef * r.skill;
       const kA = Math.max(Math.abs(this.kAt(r.G + 30)), Math.abs(this.kAt(r.G + 70)));
-      if (kA > 1e-4) vT = Math.min(vT, Math.sqrt((15 * 0.97) / (kA * CORNER_K)));
+      // take bends at a little under what the car's own grip can hold (the same grip you have)
+      if (kA > 1e-4) vT = Math.min(vT, Math.sqrt((P.steerGrip * 0.93) / (kA * CORNER_K)));
       // keep the pack in reach (gently)
       const gap = r.G - PG;
-      if (gap > 450) vT *= Math.max(0.93, 1 - (gap - 450) / 4000);
+      if (gap > 300) vT *= Math.max(0.86, 1 - (gap - 300) / 2500);
       else if (gap < -300) vT *= Math.min(1.07, 1 + (-gap - 300) / 3000);
       if (r.done) vT = Math.min(vT, 26);
       if (!go) vT = 0;
@@ -291,7 +297,7 @@ export class Race {
       xT = clamp(xT, -hw + 1.1, hw - 1.1);
       // move
       const t = r.v / Math.max(1, vRef);
-      const acc = vT > r.v ? (24 * (1 - t) + 5) * 0.95 : -18;
+      const acc = vT > r.v ? 26 * (1 - t) + 5 : -18; // the same launch as your car
       r.v = clamp(r.v + clamp(vT - r.v, -18 * dt, acc * dt), 0, vRef * 1.1);
       r.vx = damp(r.vx, clamp((xT - r.x) * 1.4, -9, 9), 5, dt);
       r.x += r.vx * dt;

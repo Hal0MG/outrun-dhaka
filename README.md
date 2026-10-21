@@ -20,7 +20,9 @@ Hold gas and steer. Corners push you to the outside, harder the faster you go, s
 
 Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan → Old Dhaka → Sadarghat → Motijheel → Mirpur → Airport Road → 300 Feet → CTG Highway → Savar → Padma Bridge
 
-On the road: Dhaka's traffic (rickshaws, CNGs, buses, cars, police and RAB pickups, the odd jam), pedestrians and roadside stalls. They only populate the road: nothing here slows a racer, and whatever you or a rival hits is flung off the road. Traffic thins out when many racers are close together. Tuntuni, your passenger, comments from a speech bubble above the car (overtakes, nitro, bumps, fuel).
+On the road: Dhaka's traffic (rickshaws, CNGs, buses, cars, police and RAB pickups, the odd jam), pedestrians and roadside stalls. They only populate the road: nothing here slows a racer, and whatever you or a rival hits is flung off the road. Traffic thins out when many racers are close together. Tuntuni, your passenger, comments from a speech bubble above the car: reactions (overtakes, nitro, bumps) and advice that helps you win (nitro ready on a straight, sharp bend ahead, low fuel, the knockout cut-off).
+
+Fuel and nitro come in rows across the whole road, a few a lap, so you never have to hug a side to catch them. The sky and skyline have their own life per district: the metro train on the viaduct, planes over the airport, flocks of birds, Bengali kites (some flown after dark), fireworks, fire-breathers, and people on balconies.
 
 Every car drives the same; pick the body you like.
 
@@ -36,7 +38,7 @@ Everything (buildings, signboards, rickshaw art, trees, cars, landmarks, music, 
 ## Code map
 
 - `src/world/` track geometry, districts and circuits (`stages.js`), chunk streaming, props, landmarks, textures, sky, road shader
-- `src/game/` driving model (`player.js`), races, rivals and pickups (`race.js`), traffic, pedestrians and stalls (`traffic.js`, `peds.js`, `stalls.js`), instanced car drawing (`fleet.js`), car models, camera, particles, weather
+- `src/game/` ambience (`ambience.js`: trains, planes, birds, kites, fireworks), driving model (`player.js`), races, rivals and pickups (`race.js`), traffic, pedestrians and stalls (`traffic.js`, `peds.js`, `stalls.js`), instanced car drawing (`fleet.js`), car models, camera, particles, weather
 - `src/audio/` synthesised engines and effects, the music sequencer and five tracks
 - `src/ui/` HUD, menus, the Dhaka map (`dhakamap.js`), Tuntuni (`dialogue.js`)
 

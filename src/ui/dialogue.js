@@ -24,6 +24,16 @@ export const LINES = {
   win: ['We won!', 'First! I can’t believe it.'],
   finish: ['We made it.', 'Not bad at all.'],
   out: ['Oh no. We’re out.', 'That’s it, we’re done.'],
+
+  // advice: things that help win. Said rarely, with long gaps between repeats
+  tipPickups: ['Fuel cans and nitro cover the whole road. Just drive through them.', 'Coins, fuel and nitro are in the lanes. Pick them up as you go.'],
+  tipNitro: ['Nitro’s ready. Burn it on the straight!', 'You’ve got nitro. Use it to pass!', 'Straight ahead: perfect time for nitro.'],
+  tipBend: ['Sharp bend coming. Ease off!', 'Bend ahead, don’t run wide!', 'Lift before the bend.'],
+  tipFuel: ['Fuel’s getting low. There’ll be cans ahead.', 'Grab the next fuel can!'],
+  tipGrass: ['The verge slows us down. Back on the road!', 'Off the tarmac, we’re losing speed!'],
+  tipOvertake: ['Pull out and go round him.', 'Pick a clear lane and pass.', 'Don’t sit behind him. Go around!'],
+  tipLastLap: ['Last lap. Spend all your nitro now!', 'Final lap: nothing to save it for.'],
+  tipDraft: ['Stay on the racing line. Hug the inside of the bends.', 'Take the inside of the bend, it’s shorter.'],
 };
 
 export class Dialogue {
@@ -35,15 +45,24 @@ export class Dialogue {
   reset() { this.cool = 0; this.last = {}; this.t = 0; }
 
   // id: a key of LINES; chance: how often she bothers; force skips the rate limits
-  say(id, chance = 1, force = false) {
+  // gap: the least time in seconds before she says this kind of thing again
+  say(id, chance = 1, force = false, gap = 7) {
     const set = LINES[id];
     if (!set) return;
     if (!force) {
-      if (this.cool > 0 || this.t - (this.last[id] ?? -99) < 7 || fx.next() > chance) return;
+      if (this.cool > 0 || this.t - (this.last[id] ?? -99) < gap || fx.next() > chance) return;
     }
     this.last[id] = this.t;
     this.cool = 2.6;
     this.hud.speak(fx.pick(set));
+  }
+
+  // a line made for the moment (the knockout cut-off, say)
+  sayText(key, text, gap = 25) {
+    if (this.cool > 0 || this.t - (this.last[key] ?? -99) < gap) return;
+    this.last[key] = this.t;
+    this.cool = 2.6;
+    this.hud.speak(text);
   }
 
   update(dt) {
