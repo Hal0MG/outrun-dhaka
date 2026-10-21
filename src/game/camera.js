@@ -36,11 +36,11 @@ export class CameraRig {
     const cam = this.cam;
     const v = player.v;
     const vr = v / player.vmax;
-    let back = 5.9, height = 2.0, ahead = 20, lookH = 1.15, xf = 0.9;
+    // fixed rig: close behind, high enough to see over traffic, looking well down the road
+    let back = 7.4, height = 2.8, ahead = 20, lookH = 0.8, xf = 0.92;
     if (this.mode === 'far') { back = 11.5; height = 3.9; ahead = 22; lookH = 0.6; xf = 0.65; }
     if (this.mode === 'hood') { back = -0.4; height = 1.18; ahead = 30; lookH = 1.0; xf = 1; }
     if (this.mode === 'low') { back = 5.0; height = 1.05; ahead = 18; lookH = 0.8; xf = 0.9; }
-    back -= vr * (this.mode === 'hood' ? 0 : 0.4);
 
     if (opts.cinematic) {
       // slow orbit around the car (title screen, endings)
@@ -87,15 +87,16 @@ export class CameraRig {
       this.look.copy(lookT);
       this.init = true;
     }
-    const k = this.mode === 'hood' ? 30 : 9;
-    this.pos.x = damp(this.pos.x, target.x, k, dt);
-    this.pos.z = damp(this.pos.z, target.z, k, dt);
-    this.pos.y = damp(this.pos.y, target.y, k * 0.7, dt);
-    this.look.x = damp(this.look.x, lookT.x, k * 1.2, dt);
-    this.look.y = damp(this.look.y, lookT.y, k, dt);
-    this.look.z = damp(this.look.z, lookT.z, k * 1.2, dt);
+    // locked to the car along the road (no lag, so it never drifts in and out with speed);
+    // only height is smoothed so crests and dips don't jolt
+    this.pos.x = target.x;
+    this.pos.z = target.z;
+    this.pos.y = damp(this.pos.y, target.y, 12, dt);
+    this.look.x = lookT.x;
+    this.look.z = lookT.z;
+    this.look.y = damp(this.look.y, lookT.y, 12, dt);
     // shake
-    const sh = this.shake + player.offroad * 0.06 * Math.min(1, v / 15) + (player.scrape ? 0.05 : 0) + vr * vr * 0.012;
+    const sh = this.shake + player.offroad * 0.06 * Math.min(1, v / 15) + (player.scrape ? 0.05 : 0) + vr * vr * 0.004;
     this.shake = damp(this.shake, 0, 4, dt);
     cam.position.set(this.pos.x + (fx.next() - 0.5) * sh, this.pos.y + (fx.next() - 0.5) * sh, this.pos.z + (fx.next() - 0.5) * sh * 0.5);
     cam.up.set(0, 1, 0);
@@ -105,8 +106,9 @@ export class CameraRig {
     this.roll = damp(this.roll, rollT, 4, dt);
     cam.rotateZ(this.roll);
     const portrait = cam.aspect < 1 ? (1 - cam.aspect) * 30 : 0;
-    const fovT = (this.mode === 'hood' ? 66 : 58) + vr * vr * 5 + (opts.boost || 0) * 0.35 + portrait;
-    cam.fov = damp(cam.fov, fovT, 3, dt);
+    // constant field of view: speed reads from the world rushing past, not from a stretched lens
+    const fovT = (this.mode === 'hood' ? 62 : 55) + portrait;
+    cam.fov = damp(cam.fov, fovT, 6, dt);
     cam.updateProjectionMatrix();
     this.camS = sc;
     this.camX = cx;

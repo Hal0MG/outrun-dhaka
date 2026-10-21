@@ -45,8 +45,7 @@ const AHEAD = 380, BEHIND = 130, MAX_LIVE = 3;
 export class Race {
   constructor(game) {
     this.game = game;
-    // pace is a fraction of your top speed; +0.07 keeps the field honest at full throttle
-    this.rivals = RIVALS.map((r, i) => ({ ...r, f: r.f + 0.07, i, prog: 0, v: 0, veh: null, cool: 0, wob: Math.random() * 10 }));
+    this.rivals = RIVALS.map((r, i) => ({ ...r, i, prog: 0, v: 0, veh: null, cool: 0, wob: Math.random() * 10 }));
     this.active = false;
     this.position = FIELD;
     this.routeBase = 0;

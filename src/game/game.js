@@ -287,7 +287,6 @@ export class Game {
     else if (cinematic === 'garage') this.cam.update(dt, P, { cinematic: true, orbitSpeed: 0.25, radius: 7.5, height: 1.9, fov: 42 });
     else if (cinematic === 'title') this.titleCam(dt);
     else if (cinematic === 'ending') this.endingCam(dt);
-    else if (P.air && P.air.slow && P.airU() > 0.04 && P.airU() < 0.97 && this.cam.mode !== 'hood') this.airCam(dtReal);
     else this.cam.update(dt, P, { boost: P.boosting ? 12 : 0 });
     shared.uCamS.value = this.cam.camS;
     shared.uCamX.value = this.cam.camX;
