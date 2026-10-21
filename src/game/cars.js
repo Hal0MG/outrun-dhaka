@@ -281,6 +281,12 @@ export function buildPlayerCar(def, colorHex, assets) {
     }
     const d = parts.dims;
     const rear = d.len / 2;
+    for (const [z, rot, txt] of [[parts.plates.rz + 0.012, 0, '১১-৪২০৪'], [parts.plates.fz - 0.012, Math.PI, '১১-৪২০৪']]) {
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), new THREE.MeshBasicMaterial({ map: plateTexture(txt) }));
+      pl.position.set(0, parts.plates.y, z);
+      pl.rotation.y = rot;
+      body.add(pl);
+    }
     for (const x of [-d.wid * 0.28, d.wid * 0.28]) out.exhaust.push(new THREE.Vector3(x, 0.25, rear + 0.1));
     const open = def.id === 'rosso' || def.id === 'miata';
     out.driver = headOf('#8a5a3a', '#110d0a', { shades: true });
@@ -543,7 +549,7 @@ export function buildPlayerCar(def, colorHex, assets) {
     out.atlasBased = true;
   }
 
-  if (!out.atlasBased) {
+  if (!out.atlasBased && !PACK[def.id]) {
     const W = out.dims.wid, L = out.dims.len;
     for (const sx of [-1, 1]) {
       const sk = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, L * 0.42), black);
@@ -593,14 +599,15 @@ function shadowTexture() {
   const cv = document.createElement('canvas');
   cv.width = 64; cv.height = 128;
   const ctx = cv.getContext('2d');
-  const g = ctx.createRadialGradient(32, 64, 4, 32, 64, 60);
-  g.addColorStop(0, 'rgba(0,0,0,0.85)');
-  g.addColorStop(0.6, 'rgba(0,0,0,0.45)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
+  // an ellipse that fades to nothing before it reaches the edge of the card (no hard rectangle)
   ctx.save();
-  ctx.scale(1, 1);
+  ctx.scale(1, 2);
+  const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 31);
+  g.addColorStop(0, 'rgba(0,0,0,0.8)');
+  g.addColorStop(0.55, 'rgba(0,0,0,0.4)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 64, 128);
+  ctx.fillRect(0, 0, 64, 64);
   ctx.restore();
   _shadowTex = new THREE.CanvasTexture(cv);
   return _shadowTex;

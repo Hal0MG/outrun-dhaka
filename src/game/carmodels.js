@@ -581,7 +581,7 @@ export function bossBus(A, variant = 0) {
 function fromPack(A, name, fit, opts = {}) {
   const B = new MeshBuilder(true);
   const Lt = lights();
-  const dims = emitTraffic(B, Lt, name, fit, A.get('white'), opts.tint || [1, 1, 1], opts);
+  const dims = emitTraffic(B, Lt, name, fit, A.get('white'), opts.tint || [1, 1, 1], { plateRegion: A.get('plate'), ...opts });
   opts.extra?.(B, Lt, A, dims);
   return finish({ B, Lt }, dims.len, dims.wid, dims.hgt, opts.finish);
 }

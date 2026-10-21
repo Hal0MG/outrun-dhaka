@@ -151,10 +151,25 @@ export function fitCar(name, fit) {
       }
     }
   }
+  // the pack ships an underbody floor and skirt slabs that show as black boards around the car: drop everything low and flat
+  for (let i = tris.length - 1; i >= 0; i--) {
+    const t = tris[i];
+    if (Math.max(t.p[1], t.p[4], t.p[7]) < 0.34) tris.splice(i, 1);
+  }
+  // low black bumpers, skirts and diffusers read as ugly frames: paint them body colour
+  for (const t of tris) if (t.k === 'black' && (t.p[1] + t.p[4] + t.p[7]) / 3 < 0.5) t.k = 'paint';
+  // where the number plates go: the rear and front faces at bumper height
+  let fz = 1e9, rz = -1e9;
+  for (const t of tris) {
+    if (t.k !== 'paint' && t.k !== 'black') continue;
+    const cy = (t.p[1] + t.p[4] + t.p[7]) / 3;
+    if (cy < 0.3 || cy > 0.7) continue;
+    for (let k = 0; k < 3; k++) { fz = Math.min(fz, t.p[k * 3 + 2]); rz = Math.max(rz, t.p[k * 3 + 2]); }
+  }
   smoothNormals(tris);
   for (const w of wheels) smoothNormals(w.tris);
   // wheels as part of the static mesh too (for instanced traffic): moved back to their places
-  const out = { tris, wheels, dims: { len: fit.L, wid: fit.W, hgt: fit.H || rawH * s }, rW };
+  const out = { tris, wheels, dims: { len: fit.L, wid: fit.W, hgt: fit.H || rawH * s }, rW, plates: { fz, rz, y: 0.46 } };
   CACHE[key] = out;
   return out;
 }
@@ -188,6 +203,12 @@ export function emitTraffic(B, Lt, name, fit, region, tint = [1, 1, 1], opts = {
     tgt.idx.push(i[0], i[1], i[2]);
   };
   for (const t of car.tris) add(t);
+  if (opts.plateRegion) {
+    const { fz, rz, y } = car.plates;
+    const hw = 0.26, hh = 0.07;
+    B.quad([-hw, y - hh, rz + 0.012], [hw, y - hh, rz + 0.012], [hw, y + hh, rz + 0.012], [-hw, y + hh, rz + 0.012], [0, 0, 1, 1], [1, 1, 1], opts.plateRegion);
+    B.quad([hw, y - hh, fz - 0.012], [-hw, y - hh, fz - 0.012], [-hw, y + hh, fz - 0.012], [hw, y + hh, fz - 0.012], [0, 0, 1, 1], [1, 1, 1], opts.plateRegion);
+  }
   for (const w of car.wheels) for (const t of w.tris) add(t, w.cx, w.cy, w.cz);
   return car.dims;
 }
@@ -219,6 +240,7 @@ export function playerParts(name, fit) {
     rest: geoFrom(car.tris, (k) => k !== 'paint' && k !== 'head' && k !== 'tail', W),
     head: geoFrom(car.tris, (k) => k === 'head', W, 0, 0, 0, false),
     tail: geoFrom(car.tris, (k) => k === 'tail', W, 0, 0, 0, false),
+    plates: car.plates,
     wheels: car.wheels.map((w) => ({ cx: w.cx, cy: w.cy, cz: w.cz, r: w.r, front: w.front, geo: geoFrom(w.tris, () => true, W) })),
     dims: car.dims,
   };
