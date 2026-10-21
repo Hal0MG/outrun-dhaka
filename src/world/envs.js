@@ -34,7 +34,7 @@ function rbox(ctx, B, s, x, h, w, ht, d, opts) {
 
 function lightStrip(ctx, a, b, x, h, col, B) {
   // tube lights: dimmed so bloom does not turn them into searchlights
-  const c = col.map((v) => v * 0.45);
+  const c = col.map((v) => Math.min(0.3, v * 0.12));
   ribbon(ctx, B || ctx.B.always, a, b, (s) => [x - 0.12, h], (s) => [x + 0.12, h], null, c, { facing: [0, -1, 0], ds: 6 });
 }
 

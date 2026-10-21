@@ -205,7 +205,7 @@ const ROAD_FS = /* glsl */ `
       tl += lc * g * c.z * 1.4;
       if (wet > 0.05) {
         float d = s - uCamS;
-        tl += lc * lampStreak(d, x, c.x, c.y, 0.9) * c.z * wet * 3.0;
+        tl += lc * lampStreak(d, x, c.x, c.y, 0.9) * c.z * wet * 1.0 * smoothstep(14.0, 30.0, c.x - uCamS);
       }
     }
     light += tl;

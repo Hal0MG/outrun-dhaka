@@ -38,10 +38,11 @@ class Pool {
         uniform float uScale;
         varying vec3 vCol; varying float vA; varying float vFog;
         void main(){
-          vCol = color; vA = alpha;
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          // fade out anything about to hit the lens so the camera never flies through a blob
+          vCol = color; vA = alpha * smoothstep(1.5, 6.0, -mv.z);
           vFog = -mv.z;
-          gl_PointSize = size * uScale / max(1.0, -mv.z);
+          gl_PointSize = min(size * uScale / max(1.0, -mv.z), 160.0);
           gl_Position = projectionMatrix * mv;
         }`,
       fragmentShader: additive ? /* glsl */ `
@@ -163,7 +164,7 @@ export class Particles {
     for (let i = 0; i < 1; i++) {
       this.soft.add(p.x + (fx.next() - 0.5) * 0.5, p.y + 0.1, p.z + (fx.next() - 0.5) * 0.5,
         v.x * 0.5 + (fx.next() - 0.5) * 3, 1 + fx.next() * 2.5, v.z * 0.5 + (fx.next() - 0.5) * 3,
-        0.75, 0.8, 0.88, 0.16 + fx.next() * 0.2, 0.35 + fx.next() * 0.3, { grow: 0.9, drag: 1.4, grav: 7, alpha: 0.16 * amt });
+        0.75, 0.8, 0.88, 0.16 + fx.next() * 0.2, 0.35 + fx.next() * 0.3, { grow: 0.9, drag: 1.4, grav: 7, alpha: 0.06 * amt });
     }
   }
 

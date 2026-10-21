@@ -239,7 +239,7 @@ export class Game {
 
     this.updateAtmosphere(dt);
     this.updateCarVisual(dt);
-    this.traffic.render(P, this.night, this.cam.camS);
+    this.traffic.render(P, this.night, this.cam.camS, this.cam.camX);
     this.breakables.update(st === 'paused' || st === 'photo' ? 0 : dt, P, this.cam.camS);
     this.handleBreakableEvents(dtReal);
     this.updateRoadUniforms();
@@ -251,7 +251,7 @@ export class Game {
     // post fx
     const vr = P.v / P.vmax;
     const F = this.R.final.uniforms;
-    F.uBlur.value = this.settings.blur === false ? 0 : (st === 'race' ? Math.max(0, vr - 0.45) * 1.6 + (P.boosting ? 0.6 : 0) : 0);
+    F.uBlur.value = this.settings.blur === false ? 0 : (st === 'race' ? Math.max(0, vr - 0.8) * 0.5 + (P.boosting ? 0.25 : 0) : 0);
     F.uScan.value = this.settings.crt ? 1 : 0;
     F.uFlash.value = Math.max(this.weather.flash * 0.35, this.flashT || 0);
     this.flashT = Math.max(0, (this.flashT || 0) - dtReal * 2);
@@ -598,7 +598,7 @@ export class Game {
         }
       } else if (e.type === 'teslas') {
         if (P.s > s && fire(key)) {
-          for (let k = 0; k < (e.n || 6); k++) { const ts = P.s + 150 + k * 28 + fx.next() * 10; if (T.spawnable(tr, ts)) T.spawn(tr, ts, { type: 'tesla' }); }
+          for (let k = 0; k < Math.ceil((e.n || 6) * 0.6); k++) { const ts = P.s + 150 + k * 45 + fx.next() * 10; if (T.spawnable(tr, ts)) T.spawn(tr, ts, { type: 'tesla' }); }
           this.hud.warn('TESLA SWARM!', 2.5);
           this.say.say('tesla', true);
         }
@@ -1022,11 +1022,15 @@ export class Game {
     this.sun.position.set(cp.x + S.sunDir.x * 500, cp.y + Math.max(30, S.sunDir.y * 500), cp.z + S.sunDir.z * 500);
     this.sun.target.position.copy(cp);
     shared.uAmb.value.copy(S.amb).multiplyScalar(S.ambI * (0.62 + this.night * 0.55));
+    // indoors (station, store, mall, cinema) is lit by tube lights, whatever the hour
+    const rk = this.roofK || 0;
+    if (rk > 0) shared.uAmb.value.lerp(this._inAmb || (this._inAmb = new THREE.Color(0.95, 0.93, 0.88)), rk * 0.8);
     shared.uSun.value.copy(S.sun).multiplyScalar(S.sunI * S.sunVis * clamp(S.sunDir.y + 0.35, 0, 1) * 0.55);
     shared.uLamps.value = S.lamps;
     shared.uGlow.value = S.glow;
     shared.uSignGlow.value = S.glow * 0.75 * (1 - (this.outage || 0) * 0.85) + 0.04;
     shared.uSpriteLight.value.copy(S.amb).multiplyScalar(S.ambI * 0.95).add(this._c1 = (this._c1 || new THREE.Color()).copy(S.sun).multiplyScalar(S.sunI * S.sunVis * 0.4));
+    if (rk > 0) shared.uSpriteLight.value.lerp(this._inAmb, rk * 0.8);
     shared.uLampAdd.value.copy(shared.uLampCol.value).multiplyScalar(S.lamps * 0.75);
     shared.uSkyRefl.value.copy(S.hor).multiplyScalar(0.75).add(this._c2 = (this._c2 || new THREE.Color()).copy(S.city).multiplyScalar(0.6));
     shared.uZenith.value.copy(S.zen);

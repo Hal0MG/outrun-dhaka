@@ -9,25 +9,25 @@ export const CARS = [
   {
     id: 'rosso', name: 'ROSSO 86', bn: 'রোসো ৮৬', tag: 'FLAT-12 · 1986 · RIGHT-HAND DRIVE',
     blurb: 'Flat-twelve wedge, right-hand drive, imported in 1989 by an uncle nobody talks about.',
-    top: 290, accel: 0.78, grip: 0.82, width: 1.98, length: 4.5,
+    top: 340, accel: 0.9, grip: 0.82, width: 1.98, length: 4.5,
     colors: ['#c8102e', '#f2f0ea', '#111318', '#ffb000', '#1d5fa8'],
   },
   {
     id: 'premio', name: 'UNCLE PREMIO', bn: 'আঙ্কেল প্রিমিও', tag: '1.8 VVT-i · TISSUE BOX INCLUDED',
     blurb: 'The official car of Dhaka uncles. Tissue box on the rear shelf. Indestructible.',
-    top: 245, accel: 0.66, grip: 0.95, width: 1.74, length: 4.6,
+    top: 300, accel: 0.8, grip: 0.95, width: 1.74, length: 4.6,
     colors: ['#f2f2ee', '#b9bcc0', '#1c1c1e', '#7a1d22', '#2b4a6b'],
   },
   {
     id: 'cng', name: 'CNG TURBO', bn: 'সিএনজি টার্বো', tag: 'THREE WHEELS · ONE CAGE · ZERO FEAR',
     blurb: 'Three wheels, one cage, zero fear. Squeezes through gaps that do not exist.',
-    top: 205, accel: 1.0, grip: 0.88, width: 1.4, length: 2.7,
+    top: 260, accel: 1.1, grip: 0.88, width: 1.4, length: 2.7,
     colors: ['#1f8a3c', '#ffb000', '#c8102e', '#1d5fa8', '#111318'],
   },
   {
     id: 'rickshaw', name: 'RICKSHAW 9000', bn: 'রিকশা ৯০০০', tag: 'HAND-PAINTED · JET-ASSISTED',
     blurb: 'Hand-painted, jet-assisted. The puller has not been told. Unlocks after your first goal.',
-    top: 320, accel: 0.9, grip: 0.7, width: 1.15, length: 2.6, locked: true,
+    top: 370, accel: 1.0, grip: 0.7, width: 1.15, length: 2.6, locked: true,
     colors: ['#c8102e', '#1d5fa8', '#118a4a', '#ffb000', '#7b2f9e'],
   },
 ];

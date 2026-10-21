@@ -150,13 +150,13 @@ export class Player {
     const thr = this.throttle;
     if (this.gear === 0) {
       const t = this.v / vLo;
-      a += thr * 13.5 * acc * clamp(1 - t * t, -0.3, 1);
+      a += thr * 20 * acc * clamp(1 - t * t, -0.3, 1);
       if (this.v > vLo && !boostOn) a -= 3.5; // limiter / engine braking
     } else {
       const t = this.v / vmax;
       // HI gear lugs below ~30% (punish staying in HI from standstill)
-      const curve = t < 0.3 ? 0.25 + t * 1.5 : 1 - Math.pow((t - 0.3) / 0.72, 2);
-      a += thr * 9.0 * acc * clamp(curve, -0.2, 1);
+      const curve = t < 0.3 ? 0.55 + t * 1.5 : 1 - Math.pow((t - 0.3) / 0.75, 2) * 0.85;
+      a += thr * 14 * acc * clamp(curve, -0.2, 1);
     }
     if (boostOn) a += 11 * (1 - clamp(this.v / vmax, 0, 1)) + 3;
     // rpm 0..1 for audio/HUD
@@ -192,7 +192,7 @@ export class Player {
     // steering
     const k = fr.k;
     const vr = this.v / this.vmax;
-    const steerRate = 14 * clamp(this.v / 12, 0, 1) * (1 - 0.32 * Math.min(vr, 1)) * def.grip;
+    const steerRate = 17 * clamp(this.v / 12, 0, 1) * (1 - 0.32 * Math.min(vr, 1)) * def.grip;
     let vxT = steer * steerRate * (1 + this.drift * 0.25);
     if (this.spin) vxT *= 0.2;
     // external shoves (rams) decay through vx damping
@@ -266,8 +266,8 @@ export class Player {
         this.crash = null;
         this.x = clamp(this.x, -lim.hw * 0.6, lim.hw * 0.6);
         if (Math.abs(this.x) > lim.hw * 0.5) this.x = 0;
-        this.v = 0;
-        this.gear = 0;
+        this.v = this.vmax * 0.35;
+        this.gear = 1;
         this.yawRel = 0;
         this.emit('recovered');
       }
@@ -296,7 +296,7 @@ export class Player {
 
   startCrash(kind = 'flip') {
     if (this.crash || this.air) return;
-    this.crash = { kind, t: 0, dur: kind === 'flip' ? 3.1 : 1.8, x0: this.x, v0: this.v };
+    this.crash = { kind, t: 0, dur: kind === 'flip' ? 1.7 : 1.2, x0: this.x, v0: this.v };
     this.spin = null;
     this.boosting = false;
     this.emit('crash', { kind, speed: this.v });
@@ -304,8 +304,8 @@ export class Player {
 
   startSpin(dir = 1) {
     if (this.crash || this.spin || this.air) return;
-    this.spin = { t: 0, dur: 1.15, dir };
-    this.v *= 0.55;
+    this.spin = { t: 0, dur: 0.8, dir };
+    this.v *= 0.75;
     this.boosting = false;
     this.emit('spin', {});
   }

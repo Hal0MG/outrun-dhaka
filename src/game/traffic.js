@@ -17,6 +17,9 @@ const CAR_COLORS = ['#f2f2ee', '#c9ccd0', '#1c1c1e', '#8a1d22', '#2b4a6b', '#e8e
 const DARK_COLORS = ['#141416', '#1c1c1e', '#f2f2ee', '#2a2a2e', '#d8d8d4', '#e8e4dc'];
 const RACER_COLORS = { supra: '#ff6a00', skyline: '#1d4fd8', celica: '#ffd200', chaser: '#f2f2ee', miata: '#c8102e' };
 
+// overall traffic volume: sparse enough to weave through at full speed
+const TRAFFIC_SCALE = 0.45;
+
 export const TRAFFIC_TYPES = {
   ...BASE_TYPES,
   car: { models: ['axio', 'premio', 'allion', 'corolla'], speed: [15, 24], lanes: 'any', weave: 0.3, honkDodge: 0.4, colors: true },
@@ -176,7 +179,7 @@ export class Traffic {
   }
 
   populate(tr, s0, s1, density) {
-    const n = Math.floor(((s1 - s0) / 1000) * density);
+    const n = Math.floor(((s1 - s0) / 1000) * density * TRAFFIC_SCALE);
     for (let i = 0; i < n; i++) {
       const s = this.rng.range(s0, s1);
       if (this.spawnable(tr, s)) this.spawn(tr, s);
@@ -251,7 +254,7 @@ export class Traffic {
     this.time += dt;
     const tr = player.track;
     const ps = player.s;
-    const density = (tr.stage.traffic?.density || 15) * this.densityMul * (opts.densityMul || 1);
+    const density = (tr.stage.traffic?.density || 15) * TRAFFIC_SCALE * this.densityMul * (opts.densityMul || 1);
     // maintain population ahead
     let ahead = 0;
     for (const v of this.list) if (v.track === tr && v.s > ps && v.s < ps + 950 && !v.oncoming && !v.enemy && v.special !== 'jam') ahead++;
@@ -661,11 +664,12 @@ export class Traffic {
         if (gapX < 1.6 && gapX > -0.05) this.nearMisses.push({ gap: gapX, type: v.type, oncoming: true });
       }
       if (ox <= 0 || os <= 0) continue;
+      if (v.ghost && this.time < v.ghost) continue;
       if (v.wreck) {
         if (v.wreck.t < 0.4) continue;
-        if (player.v > 22 && !boost) { player.startCrash('flip'); return; }
-        player.v *= 0.5;
-        player.s = ds > 0 ? v.s - v.l - pl - 0.05 : player.s;
+        player.v *= boost ? 0.85 : 0.6;
+        v.x += Math.sign(dx || 1) * 1.5;
+        v.ghost = this.time + 0.6;
         player.emit('hit', { type: v.type, hard: true });
         continue;
       }
@@ -699,8 +703,15 @@ export class Traffic {
           player.emit('hit', { type: v.type, hard: true });
           continue;
         }
-        if (rel > (big ? 42 : 62)) { player.startCrash('flip'); v.v += 4; return; }
-        if (rel > 14) { player.startSpin(dx > 0 ? -1 : 1); v.v += 3; v.x += Math.sign(dx || 1) * 0.5; player.emit('hit', { type: v.type, hard: true }); }
+        if (rel > 14) {
+          // arcade bump: lose a chunk of speed, shove them aside, keep racing
+          player.v = Math.max(v.v + 4, player.v * (big ? 0.55 : 0.68));
+          player.vx = -Math.sign(dx || 1) * 3;
+          v.v += 5;
+          v.x += Math.sign(dx || 1) * 1.6;
+          v.ghost = this.time + 0.6;
+          player.emit('hit', { type: v.type, hard: true });
+        }
         else {
           player.v = Math.min(player.v, v.v * 0.9);
           player.s = v.s - v.l - pl - 0.05;
@@ -808,18 +819,21 @@ export class Traffic {
   }
 
   // ------------------------------------------------------------ rendering
-  render(player, night, camS) {
+  render(player, night, camS, camX = player.x) {
     const counts = {};
     for (const key in this.meshes) counts[key] = 0;
     const m = this._m, q = this._q, e = this._e, p = this._p, sc = this._s;
     const c = this._c;
     const tailK = 0.35 + night * 0.65;
     const headK = night * 1.1;
+    const bodyK = 1 + night * 1.6;
     const flash = Math.sin(this.time * 9) > 0;
     const lights = [];
     const put = (veh, track, s, x, yaw) => {
       const M = this.meshes[veh.model];
       if (!M) return;
+      // never let a vehicle swallow the chase camera: hide anything between the lens and the car
+      if (track === player.track && s > camS - veh.l - 1.5 && s < player.s - player.halfL && Math.abs(x - camX) < veh.w + 1.3) return;
       const i = counts[veh.model];
       if (i >= MAX_PER_MODEL) return;
       counts[veh.model]++;
@@ -832,7 +846,8 @@ export class Traffic {
       m.compose(p, q, sc);
       M.body.setMatrixAt(i, m);
       const hurt = veh.enemy && this.time - veh.enemy.lastHit < 0.12;
-      M.body.setColorAt(i, hurt ? c.setRGB(3, 3, 3) : veh.wreck ? c.copy(veh.color || c.set(1, 1, 1)).multiplyScalar(0.45) : (veh.color || c.set(1, 1, 1)));
+      // at night the shared world lighting leaves vehicles as black slabs; lift them so they read
+      M.body.setColorAt(i, hurt ? c.setRGB(3, 3, 3) : c.copy(veh.color || c.set(1, 1, 1)).multiplyScalar((veh.wreck ? 0.45 : 1) * bodyK));
       const bk = veh.brake > 0.5 ? 2.2 : tailK;
       if (M.tail) { M.tail.setMatrixAt(i, m); M.tail.setColorAt(i, c.setScalar(veh.wreck ? 0.05 : bk)); }
       if (M.head) { M.head.setMatrixAt(i, m); M.head.setColorAt(i, c.setScalar(veh.wreck ? 0 : Math.max(headK, veh.enemy || veh.contra ? 0.6 : 0))); }

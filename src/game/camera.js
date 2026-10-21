@@ -36,7 +36,7 @@ export class CameraRig {
     const cam = this.cam;
     const v = player.v;
     const vr = v / player.vmax;
-    let back = 6.1, height = 2.1, ahead = 14, lookH = 1.05, xf = 0.8;
+    let back = 5.4, height = 1.85, ahead = 16, lookH = 1.05, xf = 0.8;
     if (this.mode === 'far') { back = 11.5; height = 3.9; ahead = 22; lookH = 0.6; xf = 0.65; }
     if (this.mode === 'hood') { back = -0.4; height = 1.18; ahead = 30; lookH = 1.0; xf = 1; }
     if (this.mode === 'low') { back = 5.0; height = 1.05; ahead = 18; lookH = 0.8; xf = 0.9; }
@@ -105,7 +105,7 @@ export class CameraRig {
     this.roll = damp(this.roll, rollT, 4, dt);
     cam.rotateZ(this.roll);
     const portrait = cam.aspect < 1 ? (1 - cam.aspect) * 30 : 0;
-    const fovT = (this.mode === 'hood' ? 66 : 60) + vr * vr * 16 + (opts.boost || 0) + portrait;
+    const fovT = (this.mode === 'hood' ? 66 : 56) + vr * vr * 19 + (opts.boost || 0) + portrait;
     cam.fov = damp(cam.fov, fovT, 3, dt);
     cam.updateProjectionMatrix();
     this.camS = sc;
