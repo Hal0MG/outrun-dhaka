@@ -28,6 +28,25 @@ export const STAGE_SCALE = 0.5;
 const isPlain = (sec) => !sec.hardK;
 const KEEP_BEHIND = 160;
 
+// A road that bends the same way more than the other way swings right round and crosses itself (and laps laid end
+// to end spiral back through the first lap). Level the heading so a stage turns net zero: the stronger direction
+// of bends is eased and the weaker one strengthened by the same factor, so the total amount of bend is kept.
+export function levelHeading(secs) {
+  const eff = (s) => (s.hardK || s.closed || s.env || s.surface ? 1 : (s.kMul ?? CURVE_MUL_W));
+  const bends = secs.filter((s) => !s.hardK && s.k);
+  let pos = 0, neg = 0;
+  for (const s of bends) { const c = s.k * eff(s) * s.len; if (c > 0) pos += c; else neg -= c; }
+  if (!pos && !neg) return;
+  if (!pos || !neg) {
+    // all one way: turn every other bend around
+    bends.forEach((s, i) => { if (i % 2) s.k = -s.k; });
+    return levelHeading(secs);
+  }
+  const f = Math.sqrt(Math.min(pos, neg) / Math.max(pos, neg));
+  const hi = pos > neg ? 1 : -1;
+  for (const s of bends) s.k *= Math.sign(s.k) === hi ? f : 1 / f;
+}
+
 export class World {
   constructor(scene, renderer) {
     this.scene = scene;
@@ -127,6 +146,7 @@ export class World {
       aCur += s0.len; bCur += sc.len;
       secs.push(sc);
     }
+    levelHeading(secs);
     const isFinal = !!stage.final;
     if (!isFinal) {
       const lastL = stage.L === 'median' ? 'city' : stage.L;

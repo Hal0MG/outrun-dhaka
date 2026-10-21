@@ -15,18 +15,18 @@ Hold gas and steer. Corners push you to the outside, harder the faster you go, s
 
 ## Races
 
-- **Circuit:** any of the fifteen districts, three laps, sixty cars on a rolling start, you start last and the field is strung out up the road ahead, so you pass a few at a time instead of the whole pack at once. Each lap is the district's own road (its look, landmarks and time of night) laid end to end, so every lap has the same corners.
-- **The Run:** seventy-two cars on one road through every district, dusk to dawn, Dhanmondi to the Padma Bridge (about five minutes). Knockout gates at Shahbag (top 69 go through), Kawran Bazar (63), Gulshan (56), Sadarghat (48), Mirpur (41) and 300 Feet (33), so the back of the field is thinned at each gate.
+- **Circuit:** any of the fifteen districts, three laps, twenty-four cars on a rolling start, you start last and the field is strung out up the road ahead, so you pass a few at a time instead of the whole pack at once. Each lap is the district's own road (its look, landmarks and time of night) laid end to end, so every lap has the same corners.
+- **The Run:** forty-eight cars on one road through every district, dusk to dawn, Dhanmondi to the Padma Bridge (about five minutes). Knockout gates at Shahbag (top 46 go through), Kawran Bazar (39), Gulshan (32), Sadarghat (28), Mirpur (26) and 300 Feet (23), so the back of the field is thinned at each gate.
 
 Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan → Old Dhaka → Sadarghat → Motijheel → Mirpur → Airport Road → 300 Feet → CTG Highway → Savar → Padma Bridge
 
-On the road: Dhaka's traffic (rickshaws, CNGs, buses, cars, police and RAB pickups, the odd jam), pedestrians and roadside stalls. They only populate the road: nothing here slows a racer, and whatever you or a rival hits is flung off the road. Traffic thins out when many racers are close together. Tuntuni, your passenger, comments from a speech bubble above the car: reactions (overtakes, nitro, bumps) and advice that helps you win (nitro ready on a straight, sharp bend ahead, low fuel, the knockout cut-off).
+On the road: Dhaka's traffic (rickshaws, CNGs, buses, cars, police and RAB pickups), pedestrians and roadside stalls. They only populate the road: nothing here slows a racer, and whatever you or a rival hits is flung off the road. Traffic thins out when many racers are close together. Tuntuni, your passenger, comments from a speech bubble above the car: reactions (overtakes, nitro, bumps) and advice that helps you win (nitro ready on a straight, sharp bend ahead, low fuel, the knockout cut-off).
 
 Fuel and nitro come in rows across the whole road, a few a lap, so you never have to hug a side to catch them. The sky and skyline have their own life per district: the metro train on the viaduct, planes over the airport, flocks of birds, Bengali kites (some flown after dark), fireworks, fire-breathers, and people on balconies.
 
 Every car drives the same; pick the body you like.
 
-The clock is what counts: a circuit has gold, silver and bronze times, and your best time and medal are saved per race and shown on the map. Every car you pass tops up the tank (and every fifth gives a nitro charge), so a tank that burns about a lap's worth means you have to keep overtaking. On divided roads, stretches of ROAD WORKS close our carriageway and push everyone onto the opposite one, against oncoming traffic; driving the wrong way pays in nitro and fuel.
+The clock is what counts: a circuit has gold, silver and bronze times, and your best time and medal are saved per race and shown on the map. The tank is about 70% of a circuit, and nitro burns fuel two and a half times as fast, so fuel is something you manage: there is one fuel row per race, every car you pass adds a little (and every eighth gives a nitro charge), and the wrong way pays fuel too. On divided roads, stretches of ROAD WORKS close our carriageway and push everyone onto the opposite one, against oncoming traffic; driving the wrong way pays in nitro and fuel.
 
 Music is five original tracks on Bengali scales (Yaman, Kafi, Bhairav, Khamaj, Bilawal) with tabla, bansuri and ektara, changing with each district. Music and sound effects have separate volume, reverb and compression. Winning any race unlocks the Rickshaw 9000 in the garage.
 

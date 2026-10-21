@@ -387,8 +387,8 @@ export function childrenOf(id) {
 // ------------------------------------------------------------------ the Run: a knockout across the city
 // Everyone starts in Dhanmondi. Entering these districts is a knockout gate:
 // anyone below the cut-off is out, so the back of the field is thinned at every gate.
-export const RUN_FIELD = 72;
-export const KNOCKOUTS = { shahbag: 69, kawranBazar: 63, gulshan: 56, sadarghat: 48, mirpur: 41, purbachal: 33 };
+export const RUN_FIELD = 48;
+export const KNOCKOUTS = { shahbag: 46, kawranBazar: 39, gulshan: 32, sadarghat: 28, mirpur: 26, purbachal: 23 };
 
 // ------------------------------------------------------------------ district circuits
 // A district raced as laps: its own sections scaled to about LAP_LEN, long
@@ -408,13 +408,23 @@ export function circuitStage(id) {
   const total = base.sections.reduce((a, s) => a + s.len, 0);
   const f = LAP_LEN / total;
   let flip = 1, hill = 1;
-  const lap = base.sections.map((s0, i) => {
+  const lap = [];
+  base.sections.forEach((s0, i) => {
     const s = { ...s0, len: Math.round(s0.len * f) };
     const water = WATER.includes(s.L || base.L) || WATER.includes(s.R || base.R);
     const ends = i === 0 || i === base.sections.length - 1;
-    if (!s.k && !ends && !water && s.len > 90) { s.k = 0.0036 * flip; flip = -flip; }
     if (!s.dy && !ends && !water && s.elev == null && !base.flat) { s.dy = 10 * hill; hill = -hill; }
-    return s;
+    if (!ends && !water && s.len >= 200) {
+      // a bend and then the bend back, so the road weaves instead of swinging round: heading never strays more than
+      // about 70 degrees from the road's line, and a lap (or three laid end to end) cannot loop into itself
+      const K = Math.min(0.0042, Math.abs(s.k || 0) || 0.0034) * flip;
+      flip = -flip;
+      const h1 = Math.round(s.len / 2);
+      lap.push({ ...s, len: h1, k: K, dy: (s.dy || 0) / 2 }, { ...s, len: s.len - h1, k: -K, dy: (s.dy || 0) / 2 });
+    } else {
+      if (!s.k && !ends && !water && s.len > 90) { s.k = 0.0036 * flip; flip = -flip; }
+      lap.push(s);
+    }
   });
   // close the lap's hills so every lap starts at the same height
   const rise = lap.reduce((a, s) => a + (s.dy || 0), 0);
