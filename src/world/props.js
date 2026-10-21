@@ -73,17 +73,17 @@ export function sidewalk(ctx, s0, s1, side, xIn, width, h = 0.18) {
 
 export function median(ctx, s0, s1, xIn, width) {
   // raised median: curbs both sides + soil top with hedges
-  curb(ctx, s0, s1, 1, xIn, 0.25, 0.22);
+  curb(ctx, s0, s1, 1, xIn, 0.25, 0.12);
   const reg = ctx.misc.get('curb');
   ribbon(ctx, ctx.B.misc, s0, s1,
-    (s) => [xIn(s) + width, -0.05], (s) => [xIn(s) + width, 0.22],
+    (s) => [xIn(s) + width, -0.05], (s) => [xIn(s) + width, 0.12],
     reg, [1, 1, 1], { facing: (s) => sideDir(ctx, s, 1), tileS: 2 });
   ribbon(ctx, ctx.B.misc, s0, s1,
-    (s) => [xIn(s) + width - 0.25, 0.22], (s) => [xIn(s) + width, 0.22],
+    (s) => [xIn(s) + width - 0.25, 0.12], (s) => [xIn(s) + width, 0.12],
     reg, [0.9, 0.9, 0.9], { tileS: 2 });
   // soil
   ribbon(ctx, ctx.B.misc, s0, s1,
-    (s) => [xIn(s) + 0.25, 0.26], (s) => [xIn(s) + width - 0.25, 0.26],
+    (s) => [xIn(s) + 0.25, 0.14], (s) => [xIn(s) + width - 0.25, 0.14],
     ctx.misc.get('concrete'), [0.36, 0.32, 0.24], { tileS: 3 });
 }
 

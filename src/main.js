@@ -176,4 +176,18 @@ async function boot() {
   requestAnimationFrame(frame);
 }
 
-boot();
+// if anything throws at startup, say so on screen instead of hanging on the loading screen
+function showFatal(msg) {
+  let el = document.getElementById("fatal");
+  if (!el) {
+    el = document.createElement("pre");
+    el.id = "fatal";
+    el.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;max-height:40vh;overflow:auto;margin:0;padding:10px 12px;background:#300;color:#fdd;font:12px/1.4 monospace;z-index:99;white-space:pre-wrap;border:2px solid #f55";
+    document.body.appendChild(el);
+  }
+  el.textContent = "ERROR: " + msg;
+}
+const trace = (e) => (e && e.stack ? e.stack.split(String.fromCharCode(10)).slice(0, 4).join(String.fromCharCode(10)) : String(e));
+window.addEventListener("error", (e) => showFatal(e.message + (e.error ? String.fromCharCode(10) + trace(e.error) : "")));
+window.addEventListener("unhandledrejection", (e) => showFatal(trace(e.reason)));
+boot().catch((e) => showFatal(trace(e)));

@@ -322,12 +322,12 @@ function medianPiece(ctx, a, b, xIn, mw, st) {
   const plant = st.medianPlants || { bush0: 3, bougain0: 2 };
   for (let s = a + rng.range(0, 3); s < b; s += rng.range(2.5, 5)) {
     const x = xIn(s) + mw / 2;
-    const p = ctx.P(s, x, 0.26);
+    const p = ctx.P(s, x, 0.15);
     ctx.sprites.add(rng.weighted(plant), p[0], p[1], p[2], rng.range(0.5, 0.8), { lamp: 0.8 });
   }
   if (st.medianPalms) {
     for (let s = Math.ceil(a / st.medianPalms) * st.medianPalms + 3; s < b; s += st.medianPalms) {
-      const p = ctx.P(s, xIn(s) + mw / 2, 0.26);
+      const p = ctx.P(s, xIn(s) + mw / 2, 0.15);
       ctx.sprites.add(rng.pick(['palm0', 'palm1', 'palm2']), p[0], p[1], p[2], rng.range(0.9, 1.1), { lamp: 0.6 });
     }
   }
@@ -501,7 +501,8 @@ const SIDES = {
     const st = ctx.stage;
     const mw = medianW(st);
     // gaps in the divider where a wrong-side run lets you back in
-    const gaps = (ctx.track.zones?.contra || []).map((z) => [z.g0, z.end]).filter(([g0, g1]) => g1 > a && g0 < b);
+    // the divider is a low kerb with hedges you can cross anywhere (no gaps needed, no lamps on it)
+    const gaps = [];
     const pieces = [[a, b]];
     for (const [g0, g1] of gaps) {
       for (let i = pieces.length - 1; i >= 0; i--) {
