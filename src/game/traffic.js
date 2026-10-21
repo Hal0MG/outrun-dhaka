@@ -113,7 +113,7 @@ export class Traffic {
 
   // the stretch where the jam ramp sits in the right-hand lane: keep it empty
   rampWindow(tr, s) {
-    for (const z of tr.zones?.contra || []) if (s > z.ramp - 240 && s < z.ramp + 70) return z;
+    for (const z of tr.zones?.contra || []) if (s > z.ramp - 720 && s < z.ramp + 70) return z;
     return null;
   }
 
@@ -495,7 +495,7 @@ export class Traffic {
     }
     // stay off the jam ramp so it is always a clean run-up
     const rw = this.rampWindow(tr, v.s + 40);
-    if (rw && v.s > rw.ramp - 60 && v.s < rw.ramp + 70 && en.role !== 'bossbus') xT = Math.min(xT, hw - LANE_W * 1.7);
+    if (rw && v.s > rw.ramp - 720 && v.s < rw.ramp + 70 && en.role !== 'bossbus') xT = Math.min(xT, hw - LANE_W * 1.7);
     // dodge slow traffic ahead
     for (const o of this.list) {
       if (o === v || o.track !== v.track || o.enemy || o.oncoming) continue;
