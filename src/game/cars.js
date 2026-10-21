@@ -5,7 +5,18 @@ import * as THREE from 'three';
 import { buildCNG, buildRickshaw } from './vehicles.js';
 import * as P from '../world/paint.js';
 import { loftCar, loftToGeometry, BODIES } from './carbody.js';
-import { sportsCar } from './carmodels.js';
+import { playerParts } from './carassets.js';
+
+// player cars are the refitted CC0 pack meshes
+const PACK = {
+  rosso: ['roadster', { L: 4.5, W: 1.96, H: 1.22 }],
+  premio: ['sedan', { L: 4.6, W: 1.76, H: 1.45 }],
+  supra: ['sports', { L: 4.5, W: 1.82, H: 1.3 }],
+  skyline: ['muscle_2', { L: 4.6, W: 1.8, H: 1.36 }],
+  celica: ['muscle', { L: 4.4, W: 1.78, H: 1.32 }],
+  chaser: ['sedan', { L: 4.75, W: 1.77, H: 1.4 }],
+  miata: ['roadster', { L: 3.95, W: 1.75, H: 1.25 }],
+};
 
 export const CARS = [
   {
@@ -250,7 +261,37 @@ export function buildPlayerCar(def, colorHex, assets) {
     return pivot;
   };
 
-  if (def.id === 'rosso') {
+  if (PACK[def.id]) {
+    const [model, fit] = PACK[def.id];
+    const parts = playerParts(model, fit);
+    skin.vertexColors = true;
+    if (parts.paint) body.add(new THREE.Mesh(parts.paint, skin));
+    if (parts.rest) body.add(new THREE.Mesh(parts.rest, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.1 })));
+    if (parts.head) body.add(new THREE.Mesh(parts.head, headMat));
+    if (parts.tail) body.add(new THREE.Mesh(parts.tail, tailMat));
+    const wmat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.2 });
+    for (const w of parts.wheels) {
+      const pivot = new THREE.Group();
+      pivot.position.set(w.cx, w.cy, w.cz);
+      const m = new THREE.Mesh(w.geo, wmat);
+      pivot.add(m);
+      body.add(pivot);
+      out.wheels.push(m);
+      if (w.front) out.front.push(pivot);
+    }
+    const d = parts.dims;
+    const rear = d.len / 2;
+    for (const x of [-d.wid * 0.28, d.wid * 0.28]) out.exhaust.push(new THREE.Vector3(x, 0.25, rear + 0.1));
+    const open = def.id === 'rosso' || def.id === 'miata';
+    out.driver = headOf('#8a5a3a', '#110d0a', { shades: true });
+    out.driver.position.set(0.38, open ? d.hgt * 0.92 : d.hgt * 0.72, d.len * 0.02);
+    body.add(out.driver);
+    out.passenger = headOf('#a06a45', '#140e0a', { long: true, flower: true });
+    out.passenger.position.set(-0.38, open ? d.hgt * 0.9 : d.hgt * 0.7, d.len * 0.02);
+    body.add(out.passenger);
+    out.headLocal = [new THREE.Vector3(-d.wid * 0.3, 0.6, -rear), new THREE.Vector3(d.wid * 0.3, 0.6, -rear)];
+    out.dims = { len: d.len, wid: d.wid, hgt: d.hgt };
+  } else if (def.id === 'rosso') {
     const W = 1.98;
     const lb = lofted('rosso');
     // seats (driver on the RIGHT: Bangladesh drives on the left)

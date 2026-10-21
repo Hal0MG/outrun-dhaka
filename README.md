@@ -40,3 +40,7 @@ Everything (buildings, signboards, rickshaw art, trees, cars, landmarks, music, 
 - `src/game/` player physics, traffic AI, cars, camera, particles, weather, race logic
 - `src/audio/` synthesised engines and effects, the music sequencer and five tracks
 - `src/ui/` HUD, menus, Tuntuni's dialogue
+
+## Credits
+
+Car meshes: "Free Low Poly Vehicles Pack" by Rgsdev (CC0), in `src/assets/cars`. They are refitted to real dimensions, recoloured and smooth-shaded at startup.

@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { MeshBuilder } from '../world/builder.js';
 import { loftCar, loftToBuilder, surfaceAt, BODIES } from './carbody.js';
+import { emitTraffic } from './carassets.js';
 
 const PAINT = [1, 1, 1];
 const DARK = [0.09, 0.09, 0.1];
@@ -576,22 +577,39 @@ export function bossBus(A, variant = 0) {
   return { body: B.build(), tail: Lt.tail.build(), head: Lt.head.build(), amber: Lt.amber.build(), len: L, wid: W, hgt: H + 0.8, atlas: 'fx', colorFixed: true };
 }
 
+// ------------------------------------------------------------ real car meshes (CC0 pack), refitted
+function fromPack(A, name, fit, opts = {}) {
+  const B = new MeshBuilder(true);
+  const Lt = lights();
+  const dims = emitTraffic(B, Lt, name, fit, A.get('white'), opts.tint || [1, 1, 1], opts);
+  opts.extra?.(B, Lt, A, dims);
+  return finish({ B, Lt }, dims.len, dims.wid, dims.hgt, opts.finish);
+}
+
 export function buildFxModels(A) {
   const T = {};
-  T.axio = sedan(A, 'axio');
-  T.premio = sedan(A, 'premio');
-  T.allion = sedan(A, 'allion');
-  T.corolla = sedan(A, 'corolla');
-  T.noah = noah(A);
-  T.hiace = hiace(A);
-  T.prado = pradoModel(A);
-  T.rab = rabSUV(A);
+  T.axio = fromPack(A, 'hatchback', { L: 4.2, W: 1.74, H: 1.45 });
+  T.premio = fromPack(A, 'sedan', { L: 4.6, W: 1.76, H: 1.45 });
+  T.allion = fromPack(A, 'sedan', { L: 4.65, W: 1.76, H: 1.47 });
+  T.corolla = fromPack(A, 'taxi', { L: 4.35, W: 1.74, H: 1.5 }, { paintFixed: [1, 0.78, 0.1], finish: { colorFixed: true } });
+  T.noah = fromPack(A, 'van', { L: 4.6, W: 1.75, H: 1.85 });
+  T.hiace = fromPack(A, 'van', { L: 4.9, W: 1.8, H: 2.05 });
+  T.prado = fromPack(A, 'suv', { L: 4.8, W: 1.9, H: 1.85 });
+  T.rab = fromPack(A, 'suv', { L: 4.8, W: 1.9, H: 1.85 }, {
+    paintFixed: [0.07, 0.07, 0.08], finish: { colorFixed: true },
+    extra: (B, Lt, A2, d) => {
+      sideDecal(B, A2.get('rab_side'), d.wid / 2 + 0.01, -d.len * 0.34, d.len * 0.3, 0.62, 1.16);
+      Lt.beacon.box(-0.35, d.hgt, 0.1, 0.55, 0.12, 0.26, 0, { color: [0.2, 0.4, 3] });
+      Lt.beacon.box(0.35, d.hgt, 0.1, 0.55, 0.12, 0.26, 0, { color: [3, 0.1, 0.1] });
+      B.quad([-0.6, 0.9, d.len / 2 + 0.02], [0.6, 0.9, d.len / 2 + 0.02], [0.6, 1.12, d.len / 2 + 0.02], [-0.6, 1.12, d.len / 2 + 0.02], [0, 0, 1, 1], [1, 1, 1], A2.get('rab_back'));
+    },
+  });
   T.policeHilux = policePickup(A);
-  T.supra = supra(A);
-  T.skyline = skyline(A);
-  T.celica = celica(A);
-  T.chaser = chaser(A);
-  T.miata = miata(A);
+  T.supra = fromPack(A, 'sports', { L: 4.5, W: 1.82, H: 1.3 });
+  T.skyline = fromPack(A, 'muscle_2', { L: 4.6, W: 1.8, H: 1.36 });
+  T.celica = fromPack(A, 'muscle', { L: 4.4, W: 1.78, H: 1.32 });
+  T.chaser = fromPack(A, 'sedan', { L: 4.75, W: 1.77, H: 1.4 });
+  T.miata = fromPack(A, 'roadster', { L: 3.95, W: 1.75, H: 1.25 });
   for (let v = 0; v < 4; v++) T['tesla' + v] = tesla(A, v);
   T.bossbus0 = bossBus(A, 0);
   T.bossbus1 = bossBus(A, 1);

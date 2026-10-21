@@ -20,6 +20,7 @@ import { SetPieces } from './dynamic.js';
 import { Breakables, debrisOf } from './breakables.js';
 import { Peds } from './peds.js';
 import { Bosses } from './bosses.js';
+import { loadCarAssets } from './carassets.js';
 import { Race, FIELD, RIVALS } from './race.js';
 import { CARS, buildPlayerCar, makeEnvMap, applyEnv, attachSaree, attachBags } from './cars.js';
 import { audio } from '../audio/audio.js';
@@ -48,6 +49,7 @@ export class Game {
   }
 
   async init(progress) {
+    await loadCarAssets();
     this.world.buildAssets(progress);
     progress?.('Hanging the sky');
     this.sky = new Sky(this.scene);
