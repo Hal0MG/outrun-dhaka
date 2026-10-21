@@ -107,7 +107,14 @@ export class Traffic {
     let lo = 0, hi = n - 1;
     const st = stallsAt(tr, s);
     if (st && n > 2) { if (st.side < 0) lo = 1; else hi = n - 2; }
+    if (n > 2 && this.rampWindow(tr, s)) hi = Math.min(hi, n - 2);
     return [lo, hi];
+  }
+
+  // the stretch where the jam ramp sits in the right-hand lane: keep it empty
+  rampWindow(tr, s) {
+    for (const z of tr.zones?.contra || []) if (s > z.ramp - 240 && s < z.ramp + 70) return z;
+    return null;
   }
 
   pickType(stage) {
@@ -293,6 +300,11 @@ export class Traffic {
     for (let i = list.length - 1; i >= 0; i--) {
       const v = list[i];
       v.life += dt;
+      // anything parked on the jam ramp itself goes away while it is still far off
+      if (!v.enemy && !v.contra && !v.oncoming && v.special !== 'jam' && v.track === tr && v.s - ps > 45) {
+        const rz = this.rampWindow(tr, v.s);
+        if (rz && v.s > rz.ramp - 25 && v.s < rz.ramp + 60 && v.x > tr.halfWAt(Math.min(v.s, tr.length)) - LANE_W * 1.2) { list.splice(i, 1); continue; }
+      }
       // remove far behind / far ahead / on abandoned branches
       if (v.track !== tr && v.track !== tr.chosen && !(tr.children && tr.children.includes(v.track)) && v.track !== tr.parent) { list.splice(i, 1); continue; }
       if (v.track.abandoned && player.track !== v.track) { list.splice(i, 1); continue; }
@@ -428,7 +440,7 @@ export class Traffic {
       if (v.cut.t <= 0) { v.cut = null; v.laneT = clamp(Math.round((v.x + v.track.halfWAt(Math.min(v.s, v.track.length))) / LANE_W - 0.5), 0, this.ourLanes(v.track, v.s) - 1); }
       return;
     }
-    if (player.track !== v.track || player.air || v.cutDone) return;
+    if (player.track !== v.track || player.air || v.cutDone || this.rampWindow(v.track, v.s)) return;
     const d = v.s - player.s;
     const dx = Math.abs(player.x - v.x);
     if (d > 16 && d < 44 && dx > 1.6 && dx < 7 && player.v > v.v + 10 && this.rng.chance(dt * 1.6)) {
@@ -481,6 +493,9 @@ export class Traffic {
       xT = px + en.side * (v.w + player.halfW + 0.9);
       if (en.ramT <= 0) { en.ramDur = 0.55; en.ramT = 1.6 + this.rng.next() * 2.2; }
     }
+    // stay off the jam ramp so it is always a clean run-up
+    const rw = this.rampWindow(tr, v.s + 40);
+    if (rw && v.s > rw.ramp - 60 && v.s < rw.ramp + 70 && en.role !== 'bossbus') xT = Math.min(xT, hw - LANE_W * 1.7);
     // dodge slow traffic ahead
     for (const o of this.list) {
       if (o === v || o.track !== v.track || o.enemy || o.oncoming) continue;
