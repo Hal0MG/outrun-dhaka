@@ -92,7 +92,7 @@ export class Race {
     });
     this.position = this.field;
     this.pickups = [];
-    if (kind === 'circuit') this.layCircuit(tr);
+    if (kind === 'circuit') { this.layCircuit(tr); g.stalls.stock(tr); }
   }
 
   stop() {
@@ -143,6 +143,7 @@ export class Race {
   // on the Run, each district's road is stocked when it first loads
   layTrack(tr) {
     tr.stocked = true;
+    this.game.stalls.stock(tr);
     const rng = new RNG(tr.base | 0);
     const s0 = tr.isFirst ? tr.gateS + 60 : 60;
     const s1 = (tr.isFinal ? tr.goalS : tr.length) - 40;

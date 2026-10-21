@@ -346,16 +346,21 @@ function medianPiece(ctx, a, b, xIn, mw, st) {
 }
 
 // split [s0, s1) by track section
+// the sections a [s0, s1] range crosses, clipped to it. Uses the sections' own bounds: the track's
+// sampled lookup is two metres coarse and returns the previous section for a boundary on an odd metre.
 export function sectionRuns(track, s0, s1) {
   const out = [];
+  const secs = track.sections;
   let a = s0;
-  while (a < s1 - 0.01) {
-    const sec = track.sectionAt(Math.min(a + 0.01, track.length));
-    const b = Math.min(s1, a >= track.length ? s1 : sec.s1);
-    out.push([a, Math.max(b, a + 0.01), sec]);
-    if (b <= a + 0.01) break;
+  for (const sec of secs) {
+    if (a >= s1 - 0.01) break;
+    if (sec.s1 <= a + 0.01) continue;
+    const b = Math.min(s1, sec.s1);
+    out.push([a, b, sec]);
     a = b;
   }
+  // the run-out past the end of the road belongs to the last section
+  if (a < s1 - 0.01) out.push([a, s1, secs[secs.length - 1]]);
   return out;
 }
 

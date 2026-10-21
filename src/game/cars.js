@@ -18,56 +18,20 @@ const PACK = {
   miata: ['roadster', { L: 3.95, W: 1.75, H: 1.25 }],
 };
 
+// Every car drives the same (same top speed, acceleration and grip): you pick a body you like,
+// not a stat line. Only the size and the engine note differ.
+const TOP = 275, ACCEL = 1.0, GRIP = 0.92;
+const car = (id, name, width, length, colors, extra = {}) => ({ id, name, top: TOP, accel: ACCEL, grip: GRIP, width, length, colors, ...extra });
 export const CARS = [
-  {
-    id: 'rosso', name: 'ROSSO 86', bn: 'রোসো ৮৬', tag: 'FLAT-12 · 1986 · RIGHT-HAND DRIVE',
-    blurb: 'Flat-twelve wedge, right-hand drive, imported in 1989 by an uncle nobody talks about.',
-    top: 290, accel: 1.05, grip: 0.82, width: 1.98, length: 4.5,
-    colors: ['#c8102e', '#f2f0ea', '#111318', '#ffb000', '#1d5fa8'],
-  },
-  {
-    id: 'premio', name: 'UNCLE PREMIO', bn: 'আঙ্কেল প্রিমিও', tag: '1.8 VVT-i · TISSUE BOX INCLUDED',
-    blurb: 'The official car of Dhaka uncles. Tissue box on the rear shelf. Indestructible.',
-    top: 190, accel: 0.92, grip: 0.95, width: 1.74, length: 4.6,
-    colors: ['#f2f2ee', '#b9bcc0', '#1c1c1e', '#7a1d22', '#2b4a6b'],
-  },
-  {
-    id: 'cng', name: 'CNG TURBO', bn: 'সিএনজি টার্বো', tag: 'THREE WHEELS · ONE CAGE · ZERO FEAR',
-    blurb: 'Three wheels, one cage, zero fear. Squeezes through gaps that do not exist.',
-    top: 95, accel: 1.2, grip: 0.88, width: 1.4, length: 2.7,
-    colors: ['#1f8a3c', '#ffb000', '#c8102e', '#1d5fa8', '#111318'],
-  },
-  {
-    id: 'supra', name: 'SUPRA MK4', tag: '', blurb: '', engine: 'i6',
-    top: 285, accel: 1.0, grip: 0.9, width: 1.81, length: 4.52,
-    colors: ['#ff6a00', '#e8e4da', '#111318', '#1d4fd8', '#c8102e'],
-  },
-  {
-    id: 'skyline', name: 'SKYLINE R34', tag: '', blurb: '', engine: 'rb',
-    top: 265, accel: 1.05, grip: 1.0, width: 1.79, length: 4.6,
-    colors: ['#1d4fd8', '#c0c4cc', '#111318', '#f2f2ee', '#6b6f78'],
-  },
-  {
-    id: 'celica', name: 'CELICA', tag: '', blurb: '', engine: 'i4t',
-    top: 225, accel: 0.95, grip: 0.92, width: 1.74, length: 4.34,
-    colors: ['#ffd200', '#c8102e', '#f2f2ee', '#111318', '#1d4fd8'],
-  },
-  {
-    id: 'chaser', name: 'CHASER', tag: '', blurb: '', engine: 'i6',
-    top: 245, accel: 0.9, grip: 0.86, width: 1.76, length: 4.72,
-    colors: ['#f2f2ee', '#111318', '#1d4fd8', '#6b6f78', '#2f8f4e'],
-  },
-  {
-    id: 'miata', name: 'MX-5', tag: '', blurb: '', engine: 'i4t',
-    top: 215, accel: 1.0, grip: 1.05, width: 1.73, length: 3.92,
-    colors: ['#c8102e', '#f2f2ee', '#111318', '#ffb000', '#22d3ee'],
-  },
-  {
-    id: 'rickshaw', name: 'RICKSHAW 9000', bn: 'রিকশা ৯০০০', tag: 'HAND-PAINTED · JET-ASSISTED',
-    blurb: 'Hand-painted, jet-assisted. The puller has not been told. Unlocks after your first win.',
-    top: 250, accel: 1.12, grip: 0.7, width: 1.15, length: 2.6, locked: true,
-    colors: ['#c8102e', '#1d5fa8', '#118a4a', '#ffb000', '#7b2f9e'],
-  },
+  car('rosso', 'ROADSTER', 1.98, 4.5, ['#c8102e', '#f2f0ea', '#111318', '#ffb000', '#1d5fa8']),
+  car('premio', 'SEDAN', 1.74, 4.6, ['#f2f2ee', '#b9bcc0', '#1c1c1e', '#7a1d22', '#2b4a6b']),
+  car('supra', 'SPORTS COUPE', 1.81, 4.52, ['#ff6a00', '#e8e4da', '#111318', '#1d4fd8', '#c8102e'], { engine: 'i6' }),
+  car('skyline', 'MUSCLE CAR', 1.79, 4.6, ['#1d4fd8', '#c0c4cc', '#111318', '#f2f2ee', '#6b6f78'], { engine: 'rb' }),
+  car('celica', 'MUSCLE COUPE', 1.74, 4.34, ['#ffd200', '#c8102e', '#f2f2ee', '#111318', '#1d4fd8'], { engine: 'i4t' }),
+  car('chaser', 'EXECUTIVE SEDAN', 1.76, 4.72, ['#f2f2ee', '#111318', '#1d4fd8', '#6b6f78', '#2f8f4e'], { engine: 'i6' }),
+  car('miata', 'COMPACT ROADSTER', 1.73, 3.92, ['#c8102e', '#f2f2ee', '#111318', '#ffb000', '#22d3ee'], { engine: 'i4t' }),
+  car('cng', 'AUTO', 1.4, 2.7, ['#1f8a3c', '#ffb000', '#c8102e', '#1d5fa8', '#111318']),
+  car('rickshaw', 'RICKSHAW', 1.15, 2.6, ['#c8102e', '#1d5fa8', '#118a4a', '#ffb000', '#7b2f9e'], { locked: true }),
 ];
 
 // ------------------------------------------------------------ environment map from the sky colours

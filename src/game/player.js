@@ -64,7 +64,8 @@ export class Player {
   }
 
   fireNitro() {
-    if (this.boosting || this.nitro < 1) return false;
+    if (this.boosting) return false;
+    if (this.nitro < 1) { this.emit('nitroEmpty'); return false; }
     this.nitro -= 1;
     this.boosting = true;
     this.nitroT = NITRO_DUR;

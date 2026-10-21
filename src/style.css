@@ -123,14 +123,10 @@ button { font: inherit; color: inherit; }
 .h-time.add { animation: addtime 0.7s ease-out; }
 @keyframes addtime { 0% { transform: rotate(-2deg) scale(1.35); } 100% { transform: rotate(-2deg) scale(1); } }
 
-.h-stage { position: absolute; left: 50%; top: calc(12px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); text-align: center; transition: all 0.8s cubic-bezier(.2,.8,.2,1); white-space: nowrap; }
-.h-stage .st-bn { font-family: var(--f-display); font-size: 26px; letter-spacing: 0.04em; color: var(--paper); -webkit-text-stroke: 1.5px #000; paint-order: stroke fill; text-shadow: 3px 3px 0 #000; line-height: 1; }
-.h-stage .st-en { font-family: var(--f-display); font-size: 12px; letter-spacing: 0.16em; color: var(--marigold); text-shadow: 2px 2px 0 #000; }
-.h-stage .st-sub { font-family: var(--f-body); font-size: 13px; font-weight: 600; color: var(--paper); text-shadow: 1px 1px 0 #000; opacity: 0; max-height: 0; transition: all 0.6s; }
-.h-stage.big { top: 26vh; }
-.h-stage.big .st-bn { font-size: clamp(40px, 7.4vw, 92px); color: var(--marigold); text-shadow: 5px 5px 0 #000; -webkit-text-stroke: 3px #000; }
-.h-stage.big .st-en { font-size: clamp(16px, 2.4vw, 26px); color: var(--paper); }
-.h-stage.big .st-sub { opacity: 1; max-height: 40px; margin-top: 6px; }
+.h-stage { position: absolute; left: 50%; top: calc(46px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); text-align: center; white-space: nowrap; opacity: 0; transition: opacity 0.6s; }
+.h-stage.show { opacity: 1; }
+.h-stage .st-bn { font-family: var(--f-display); font-size: 17px; letter-spacing: 0.06em; color: var(--paper); text-shadow: 2px 2px 0 #000; line-height: 1; }
+.h-stage .st-en { font-family: var(--f-display); font-size: 10px; letter-spacing: 0.16em; color: var(--marigold); text-shadow: 1px 1px 0 #000; }
 
 .h-score { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(14px + env(safe-area-inset-top, 0px)); text-align: right; font-family: var(--f-display); text-shadow: 2px 2px 0 #000; }
 .h-score .row { display: flex; gap: 10px; justify-content: flex-end; align-items: baseline; font-size: 24px; color: var(--paper); font-variant-numeric: tabular-nums; }
@@ -209,8 +205,6 @@ body.touch .h-radio, body.touch #hMap { display: none; }
   .h-time { transform: rotate(-2deg) scale(0.78); transform-origin: left top; }
   .h-time .big { font-size: 46px; }
   .h-score .row { font-size: 18px; }
-  .h-stage .st-bn { font-size: 22px; }
-  .h-stage.big { top: 30vh; }
   .h-progress { top: calc(100px + env(safe-area-inset-top, 0px)); width: 56vw; }
   .h-combo { right: 4vw; top: 34vh; }
   .garage-card { margin-left: 0; }
@@ -243,7 +237,6 @@ body.touch .h-radio, body.touch #hMap { display: none; }
 }
 @media (max-width: 640px) {
   /* phones: the position plate owns the top-left, so the stage name only shows as the big banner */
-  .h-stage:not(.big) { opacity: 0; }
   .h-progress { left: auto; right: 12px; transform: none; width: 38vw; top: calc(78px + env(safe-area-inset-top, 0px)); }
   .h-obj { top: calc(108px + env(safe-area-inset-top, 0px)); }
 }
@@ -283,3 +276,13 @@ body.touch .h-hct { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   .map-sub { min-height: 0; font-size: 13px; margin: 6px 0 8px; }
 }
 #map { background: radial-gradient(circle at 40% 45%, rgba(42, 22, 64, 0.55), rgba(11, 10, 26, 0.88)); }
+#carStats { display: block; text-align: center; font-family: var(--f-display); font-size: 12px; letter-spacing: 0.1em; color: #6a4a2a; }
+
+/* ---- Tuntuni's speech bubble, riding above the car (left/top set from the car's screen position) */
+.h-bubble { position: absolute; left: 50%; top: 60%; transform: translate(-22%, calc(-100% - 12px)); display: flex; align-items: flex-end; gap: 6px; max-width: min(320px, 70vw); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.h-bubble.show { opacity: 1; }
+#tuntuni { width: 56px; height: 56px; flex: none; border: 3px solid #000; border-radius: 50%; background: var(--magenta); box-shadow: 3px 3px 0 #000; }
+.bubble { position: relative; background: var(--paper); color: #1a0f08; border: 3px solid #000; box-shadow: 4px 4px 0 #000; padding: 7px 12px; border-radius: 14px 14px 14px 2px; font-family: var(--f-body); font-weight: 700; font-size: 18px; line-height: 1.25; }
+.bubble::after { content: ""; position: absolute; left: 22px; bottom: -14px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 13px solid #000; }
+body.touch .bubble { font-size: 14px; }
+body.touch #tuntuni { width: 40px; height: 40px; }

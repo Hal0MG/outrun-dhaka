@@ -20,6 +20,10 @@ Hold gas and steer. Corners push you to the outside, harder the faster you go, s
 
 Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan → Old Dhaka → Sadarghat → Motijheel → Mirpur → Airport Road → 300 Feet → CTG Highway → Savar → Padma Bridge
 
+On the road: Dhaka's traffic (rickshaws, CNGs, buses, cars, police and RAB pickups, the odd jam), pedestrians and roadside stalls. They only populate the road: nothing here slows a racer, and whatever you or a rival hits is flung off the road. Traffic thins out when many racers are close together. Tuntuni, your passenger, comments from a speech bubble above the car (overtakes, nitro, bumps, fuel).
+
+Every car drives the same; pick the body you like.
+
 Best finishes are saved per race and shown on the map. Winning any race unlocks the Rickshaw 9000 in the garage.
 
 ## Build
@@ -32,9 +36,9 @@ Everything (buildings, signboards, rickshaw art, trees, cars, landmarks, music, 
 ## Code map
 
 - `src/world/` track geometry, districts and circuits (`stages.js`), chunk streaming, props, landmarks, textures, sky, road shader
-- `src/game/` driving model (`player.js`), races, rivals and pickups (`race.js`), the field's instanced cars (`fleet.js`), car models, camera, particles, weather
+- `src/game/` driving model (`player.js`), races, rivals and pickups (`race.js`), traffic, pedestrians and stalls (`traffic.js`, `peds.js`, `stalls.js`), instanced car drawing (`fleet.js`), car models, camera, particles, weather
 - `src/audio/` synthesised engines and effects, the music sequencer and five tracks
-- `src/ui/` HUD, menus, the Dhaka map (`dhakamap.js`)
+- `src/ui/` HUD, menus, the Dhaka map (`dhakamap.js`), Tuntuni (`dialogue.js`)
 
 ## Credits
 

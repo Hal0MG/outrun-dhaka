@@ -12,6 +12,10 @@ import { STAGES, ROUTE, LEVEL_TIME, circuitStage } from '../world/stages.js';
 import { Player } from './player.js';
 import { CameraRig } from './camera.js';
 import { Fleet } from './fleet.js';
+import { Traffic } from './traffic.js';
+import { Peds } from './peds.js';
+import { Stalls, DEBRIS } from './stalls.js';
+import { Dialogue } from '../ui/dialogue.js';
 import { Particles } from './particles.js';
 import { Weather } from './weather.js';
 import { loadCarAssets } from './carassets.js';
@@ -49,6 +53,12 @@ export class Game {
     this.scene.add(this.sun.target);
     this.scene.fog = new THREE.FogExp2('#e8cfa6', 0.0012);
     this.fleet = new Fleet(this.scene, this.world.assets, this.world);
+    this.traffic = new Traffic(this);
+    this.peds = new Peds(this.scene, this.world);
+    this.stalls = new Stalls(this.scene, this.world);
+    this.say = new Dialogue(this.hud);
+    this._cars = [];
+    this._bv = new THREE.Vector3();
     this.particles = new Particles(this.scene);
     this.weather = new Weather(this.scene);
     this.race = new Race(this);
@@ -85,6 +95,9 @@ export class Game {
     this.player.reset(tr);
     this.player.s = tr.gateS - 18;
     this.race.stop();
+    this.traffic.clear();
+    this.peds.clear();
+    this.stalls.clear();
     this.sky.setSkyline(tr.stage.skyline || 'midrise', true);
     this.cam.init = false;
     this.applyStageAtmo(tr);
@@ -121,6 +134,8 @@ export class Game {
     this.countStep = -1;
     this.areaMusic(tr.stage, 1.5);
     this.hud.reset(kind);
+    this.say.reset();
+    this._lowFuel = false;
     this.hud.setStage(tr.stage, kind);
     this.hud.show(true);
     this.cam.mode = 'chase';
@@ -140,22 +155,25 @@ export class Game {
   onLap(n, laps) {
     this.hud.message(n === laps ? 'FINAL LAP' : `LAP ${n} / ${laps}`, 2);
     audio.checkpoint();
+    this.say.say(n === laps ? 'finalLap' : 'lap', 1, true);
   }
 
   onKnockout(cut, knocked) {
     this.hud.takedown('KNOCKOUT', `${knocked} OUT · TOP ${cut} GO ON`, 2.6);
     audio.checkpoint();
+    this.say.say('knockout', 1, true);
   }
 
   onPosition(pos, prev) {
     this.hud.position(pos, pos < prev);
-    if (pos < prev) audio.blip(1400);
+    if (pos < prev) { audio.blip(1400); this.say.say(pos === 1 ? 'lead' : 'pass', pos === 1 ? 1 : 0.7); }
+    else this.say.say('passed', 0.5);
   }
 
   onPickup(p) {
     if (p.kind === 'coin') audio.tone('square', 1500 + (this.race.coins % 5) * 120, 0.07, 0.05, { lp: 5000 });
-    else if (p.kind === 'fuel') { audio.checkpoint(); this.hud.combo('FUEL', '+TANK'); }
-    else if (p.kind === 'nitro') { audio.blip(1800); this.hud.combo('NITRO', '+1 CHARGE'); }
+    else if (p.kind === 'fuel') { audio.checkpoint(); this.hud.combo('FUEL', '+TANK'); this.say.say('fuel', 0.8); }
+    else if (p.kind === 'nitro') { audio.blip(1800); this.hud.combo('NITRO', '+1 CHARGE'); this.say.say('nitroPick', 0.7); }
   }
 
   onFinish(res) {
@@ -164,7 +182,7 @@ export class Game {
     if (res.out) {
       this.state = 'gameover';
       this.hud.message(res.out === 'fuel' ? 'OUT OF FUEL' : 'KNOCKED OUT', 3);
-      if (res.out === 'knockout') audio.crash();
+      this.say.say('out', 1, true);
       this.onRaceEnd?.(res, 2400);
       return;
     }
@@ -175,6 +193,7 @@ export class Game {
     this.particles.confetti(g.x, g.y, g.z);
     this.particles.confetti(g.x, g.y + 2, g.z);
     this.hud.message(res.pos === 1 ? 'WINNER!' : `FINISHED P${res.pos}`, 3.5);
+    this.say.say(res.pos === 1 ? 'win' : 'finish', 1, true);
     this.onRaceEnd?.(res, 3800);
   }
 
@@ -208,6 +227,7 @@ export class Game {
       this.handlePlayerEvents();
       this.handleFork();
       this.race.update(dt);
+      this.updateRoad(dt, st);
       this.world.stream(P.track, P.s, 2, cinematic === 'ending' ? 300 : 160);
       this.world.update(dt, this.time);
       this.updateFx(dt);
@@ -228,7 +248,11 @@ export class Game {
 
     this.updateAtmosphere(dt);
     this.updateCarVisual(dt);
-    this.fleet.render(this.race.cars, P, this.night, this.cam.camS, this.cam.camX);
+    const cars = this._cars;
+    cars.length = 0;
+    for (const c of this.race.cars) cars.push(c);
+    for (const c of this.traffic.cars) cars.push(c);
+    this.fleet.render(dt, cars, P, this.night, this.cam.camS, this.cam.camX);
     this.race.render(this.time);
     this.updateRoadUniforms();
     this.updateAudio(dt);
@@ -242,6 +266,59 @@ export class Game {
     F.uScan.value = this.settings.crt ? 1 : 0;
     F.uFlash.value = this.weather.flash * 0.35;
     F.uDim.value = 0;
+  }
+
+  // everything on the road that can hit things: you and the rivals near you
+  movers() {
+    const R = this.race, P = this.player;
+    const PG = R.playerG();
+    const out = [{ G: PG, x: P.x, v: P.v, hl: P.halfL * 0.9, hw: P.halfW * 0.9, player: true }];
+    for (const r of R.rivals) if (!r.out && Math.abs(r.G - PG) < 220) out.push({ G: r.G, x: r.x, v: r.v, hl: r.l, hw: r.w });
+    return out;
+  }
+
+  // traffic, pedestrians and stalls: they only populate the road, and get flung when a racer hits them
+  updateRoad(dt, st) {
+    const R = this.race;
+    if (!R.active) return;
+    const P = this.player;
+    const go = st === 'race';
+    const movers = this.movers();
+    this.traffic.update(dt, go, movers);
+    this.peds.update(dt, P, go, this.traffic.factor * 0.8, this.traffic.cars, movers);
+    this.stalls.update(dt, R.playerG(), movers);
+    this.say.update(dt);
+    for (const e of this.traffic.events) {
+      if (e.by !== 'player') continue;
+      audio.thud();
+      this.cam.kick(0.12);
+      this.say.say('hitTraffic', 0.6);
+    }
+    this.traffic.events.length = 0;
+    for (const e of this.peds.events) {
+      if (e.by !== 'player') continue;
+      audio.boing();
+      this.say.say('ped', 0.8);
+    }
+    this.peds.events.length = 0;
+    for (const e of this.stalls.events) {
+      const b = e.b;
+      const [cols, n] = DEBRIS[b.kind] || DEBRIS.crate;
+      this.burst(b.tr.point(b.s, b.x, 0.9, this._bv), cols, n);
+      audio.smash(b.kind.startsWith('stall'));
+      if (e.by === 'player') { this.cam.kick(0.08); this.say.say('smash', 0.7); }
+    }
+    this.stalls.events.length = 0;
+    if (P.scrape && P.v > 20) this.say.say('scrape', 0.02);
+  }
+
+  // bits flying off something smashed
+  burst(pos, cols, n) {
+    const PS = this.particles;
+    for (let i = 0; i < n; i++) {
+      const c = cols[(fx.next() * cols.length) | 0];
+      PS.soft.add(pos.x + (fx.next() - 0.5), pos.y + fx.next(), pos.z + (fx.next() - 0.5), (fx.next() - 0.5) * 9, 2 + fx.next() * 7, (fx.next() - 0.5) * 9, c[0], c[1], c[2], 0.12 + fx.next() * 0.12, 1.2 + fx.next(), { grav: 14, drag: 0.7, alpha: 1 });
+    }
   }
 
   // photo mode: frozen world, free orbit around the car
@@ -330,6 +407,7 @@ export class Game {
       audio.countBeep(true);
       this.state = 'race';
       this.hud.message('GO!', 1.2);
+      setTimeout(() => this.say.say('start', 1, true), 900);
       setTimeout(() => this.hud.signal(null), 1400);
     }
   }
@@ -340,7 +418,10 @@ export class Game {
     if (I.horn && !this.horning) { this.horning = true; audio.horn(audio.engineKind, true); }
     else if (!I.horn && this.horning) { this.horning = false; audio.horn(audio.engineKind, false); }
     if (P.boosting && !this._wasBoost) { audio.nitro(); this.backfire = 0.15; }
+    if (!P.boosting && this._wasBoost && P.nitro < 1) this.say.say('nitroOut', 1);
     this._wasBoost = P.boosting;
+    if (P.fuel < 0.2 && !this._lowFuel) { this._lowFuel = true; this.say.say('fuelLow', 1, true); }
+    else if (P.fuel > 0.4) this._lowFuel = false;
   }
 
   // the Run crosses into the next district at the end of each track
@@ -367,8 +448,11 @@ export class Game {
   handlePlayerEvents() {
     const P = this.player;
     for (const e of P.events) {
-      if (e.type === 'hit') {
+      if (e.type === 'nitro') this.say.say('nitro', 0.6);
+      else if (e.type === 'nitroEmpty') this.say.say('nitroOut', 1);
+      else if (e.type === 'hit') {
         audio.hit();
+        this.say.say('hitRival', 0.7);
         this.cam.kick(e.hard ? 0.3 : 0.15);
         if (e.side || e.hard) {
           const pose = P.pose({ pos: new THREE.Vector3() });
@@ -593,6 +677,11 @@ export class Game {
     const tr = P.track;
     const R = this.race;
     if (!R.active) return;
+    // Tuntuni's bubble rides above the car
+    const bv = this._bv.copy(this.car.group.position);
+    bv.y += this.car.dims.hgt + 0.5;
+    bv.project(this.R.camera);
+    this.hud.bubbleAt((bv.x * 0.5 + 0.5) * window.innerWidth, (-bv.y * 0.5 + 0.5) * window.innerHeight);
     let progress;
     if (this.kind === 'circuit') progress = (P.s - tr.gateS) / (tr.goalS - tr.gateS);
     else progress = (ROUTE.indexOf(tr.stageId) + clamp(P.s / tr.length, 0, 1)) / ROUTE.length;

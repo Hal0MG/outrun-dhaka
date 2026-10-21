@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { Renderer } from './core/renderer.js';
 import { Input } from './core/input.js';
 import { store } from './core/util.js';
@@ -52,6 +53,7 @@ async function boot() {
   await nextFrame();
   const menus = new Menus(game, input, settings, saveSettings);
   window.__game = game;
+  window.__THREE = THREE;
   window.__menus = menus;
   window.__audio = audio;
   window.__music = music;

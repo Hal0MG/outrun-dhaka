@@ -283,8 +283,7 @@ export class Menus {
       $('carName').innerHTML = def.name + (locked ? '<span class="lock">WIN A RACE</span>' : '');
       $('carBn').textContent = '';
       $('carBlurb').textContent = '';
-      const stat = (label, v) => `<span>${label}</span><div class="bar"><b style="width:${Math.round(v * 100)}%"></b></div>`;
-      $('carStats').innerHTML = stat('TOP SPEED', def.top / 300) + stat('ACCEL', def.accel / 1.2) + stat('GRIP', def.grip) + `<span>KM/H</span><span>${bn(def.top)}</span>`;
+      $('carStats').textContent = 'EVERY CAR DRIVES THE SAME';
       $('carColors').innerHTML = def.colors.map((c, i) => `<b data-i="${i}" style="background:${c}" class="${i === this.game.colorIndex ? 'sel' : ''}"></b>`).join('');
     } else if (s === 'settings') {
       $('setList').innerHTML = this.settingRows().map(([label, key, opts, fmt], i) => {
