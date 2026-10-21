@@ -126,6 +126,9 @@ export class Menus {
       if (I.pressed('pause') || I.pressed('back')) this.pauseAction('resume');
     } else if (s === 'ending') {
       if (ok && this.endingReady) this.afterResults();
+    } else if (s === 'gameover' && this.game.mode === 'circuit') {
+      if (ok && this.overReady) { audio.confirm(); this.hideAll(); this.game.startRun('circuit'); }
+      if (back && this.overReady) { audio.back(); this.toTitle(); }
     } else if (s === 'gameover') {
       if (ok && this.overReady) {
         if (this.game.eliminated) { audio.confirm(); this.hideAll(); this.game.retryStage(); }
@@ -155,7 +158,7 @@ export class Menus {
   // ------------------------------------------------------------ actions
   mainAction(a) {
     audio.confirm();
-    if (a === 'arcade' || a === 'cruise') {
+    if (a === 'arcade' || a === 'cruise' || a === 'circuit') {
       this.pendingMode = a;
       this.show('garage');
       this.game.state = 'garage';
@@ -323,6 +326,22 @@ export class Menus {
     this.show('gameover');
     this.overReady = false;
     setTimeout(() => (this.overReady = true), 1200);
+  }
+
+  // circuit results: where you finished, race time, laps, coins
+  showCircuitResult(res) {
+    const ord = (n) => n + (n % 10 === 1 && n !== 11 ? 'ST' : n % 10 === 2 && n !== 12 ? 'ND' : n % 10 === 3 && n !== 13 ? 'RD' : 'TH');
+    $('overBn').textContent = res.out ? 'OUT OF FUEL' : res.pos === 1 ? 'WINNER' : 'FINISHED';
+    $('overEn').textContent = res.out ? `RAN DRY IN ${ord(res.pos)}` : `${ord(res.pos)} OF 20`;
+    $('overSub').textContent = res.pos <= 3 && !res.out ? 'ON THE PODIUM' : '';
+    const laps = res.laps.map((t, i) => `<span>LAP ${i + 1}</span><span>${fmtTime(t)}</span>`).join('');
+    const best = res.laps.length ? Math.min(...res.laps) : 0;
+    $('overTally').innerHTML = `<span>RACE TIME</span><span>${fmtTime(res.time)}</span>${laps}` +
+      (best ? `<span>BEST LAP</span><span>${fmtTime(best)}</span>` : '') + `<span>COINS</span><span>${res.coins}</span>`;
+    $('overHint').textContent = 'ENTER race again · BACKSPACE menu';
+    this.show('gameover');
+    this.overReady = false;
+    setTimeout(() => (this.overReady = true), 900);
   }
 
   afterResults() {

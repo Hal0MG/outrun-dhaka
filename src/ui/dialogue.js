@@ -58,6 +58,7 @@ export class Dialogue {
   }
 
   say(id, force = false) {
+    if (this.quiet) return;
     const set = LINES[id];
     if (!set) return;
     if (!force && this.cool > 0) return;

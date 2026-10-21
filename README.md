@@ -9,6 +9,10 @@ An arcade racer through Dhaka. THE RUN: twenty-four drivers race from Dhanmondi 
 
 Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · SHIFT/Z rocket (helicopter fight) · H horn · R music on/off · V photo mode · ESC/P pause · F fullscreen. Gamepads and phone touch controls work too.
 
+## Circuit (Horizon Chase-style)
+
+CIRCUIT on the main menu: 20 cars, 3 laps of a Dhanmondi street circuit, you start last. Hold gas, steer against the corners (they push you wide, harder the faster you go), tap SPACE to fire one of up to three nitro charges. Contact and grass only cost speed; nothing wrecks you. Grab coins, fuel cans (run dry and you coast to a stop) and nitro pickups on the road. No traffic, police, pedestrians, bosses or story in this mode. Code: `src/game/circuit.js` (race, rivals, pickups) and `src/game/hctplayer.js` (driving model).
+
 ## What's on the road
 
 - Wide lanes, local traffic (Axio/Premio/Allion, Noah, Hiace, Prado, taxis), pedestrians, street stalls you can flatten, and e-rickshaw "teslas" that cut you off.

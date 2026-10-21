@@ -12,6 +12,8 @@ import { STAGES, PYRAMID, LEVEL_TIME, CHECKPOINT_BONUS, ENDINGS } from '../world
 import { contraAt, jamSpan } from '../world/zones.js';
 import { SAREE_CSS } from '../world/fxatlas.js';
 import { Player } from './player.js';
+import { HCTPlayer } from './hctplayer.js';
+import { Circuit, CIRCUIT_FIELD } from './circuit.js';
 import { CameraRig } from './camera.js';
 import { Traffic, ENEMY_TYPES } from './traffic.js';
 import { Particles } from './particles.js';
@@ -69,6 +71,7 @@ export class Game {
     this.bosses = new Bosses(this.scene, this.world, this.traffic, this.breakables, this.particles);
     this.world.onChunk = (ch) => this.pieces.addRides(ch);
     this.race = new Race(this);
+    this.circuit = new Circuit(this);
     this.cam = new CameraRig(this.R.camera);
     this.carIndex = this.settings.car ?? 0;
     this.colorIndex = this.settings.color ?? 0;
@@ -87,7 +90,7 @@ export class Game {
     this.scene.add(this.car.group);
     if (this.env) applyEnv(this.car, this.env.texture);
     const prev = this.player;
-    this.player = new Player(def);
+    this.player = this.mode === 'circuit' ? new HCTPlayer(def) : new Player(def);
     if (prev) {
       this.player.track = prev.track;
       this.player.s = prev.s;
@@ -143,7 +146,91 @@ export class Game {
   }
 
   // ------------------------------------------------------------ run lifecycle
+  // swap the driving model when the mode changes (circuit vs the Run)
+  usePlayer(mode) {
+    const want = mode === 'circuit' ? HCTPlayer : Player;
+    if (this.player.constructor === want) return;
+    const prev = this.player;
+    this.player = new want(CARS[this.carIndex]);
+    this.player.track = prev.track;
+  }
+
+  // the Horizon Chase-style race: grid, three laps, nineteen rivals, nothing else on the road
+  startCircuit() {
+    this.mode = 'circuit';
+    this.race.stop();
+    this.racing = false;
+    this.usePlayer('circuit');
+    this.resetWorld('circuit');
+    this.timeLeft = Infinity;
+    this.score = 0;
+    this.lap = 0;
+    this.totalTime = 0;
+    this.combo = 0;
+    this.nearMisses = 0;
+    this.crashes = 0;
+    this.say.reset();
+    this.say.quiet = true;
+    this.circuit.start();
+    for (let i = 0; i < 14; i++) this.world.stream(this.player.track, this.player.s, 4);
+    this.state = 'countdown';
+    this.countT = 0;
+    this.countStep = -1;
+    const st = this.player.track.stage;
+    this.areaMusic(st, 1.5);
+    this.hud.setStage(st, true);
+    this.hud.setCircuit(true);
+    this.hud.msg.classList.remove('show');
+    this.hud.msgT = 0;
+    this.hud.show(true);
+    this.cam.mode = 'chase';
+    this.cam.init = false;
+    this.goalReached = null;
+    this.eliminated = null;
+  }
+
+  leaveCircuit() {
+    if (this.circuit.active) this.circuit.stop();
+    this.say.quiet = false;
+    this.hud.setCircuit(false);
+  }
+
+  onCircuitLap(n, laps) {
+    this.hud.message(n === laps ? 'FINAL LAP' : `LAP ${n} / ${laps}`, 2);
+    audio.checkpoint();
+  }
+
+  onCircuitPickup(p) {
+    if (p.kind === 'coin') { audio.tone('square', 1500 + (this.circuit.coins % 5) * 120, 0.07, 0.05, { lp: 5000 }); this.score = this.circuit.coins; }
+    else if (p.kind === 'fuel') { audio.checkpoint(); this.hud.combo('FUEL', '+TANK'); }
+    else if (p.kind === 'nitro') { audio.blip(1800); this.hud.combo('NITRO', '+1 CHARGE'); }
+  }
+
+  onCircuitFinish(res) {
+    const P = this.player;
+    const tr = P.track;
+    this.circuitResult = res;
+    if (res.out) {
+      this.state = 'gameover';
+      this.overT = 0;
+      this.hud.message('OUT OF FUEL', 3);
+      this.onCircuitEnd?.(res, 2200);
+      return;
+    }
+    this.state = 'goal';
+    this.endT = 0; this._endInit = false; this._endLook = null;
+    audio.goal();
+    const g = tr.point(tr.goalS + 3, 0, 7, new THREE.Vector3());
+    this.particles.confetti(g.x, g.y, g.z);
+    this.particles.confetti(g.x, g.y + 2, g.z);
+    this.hud.message(res.pos === 1 ? 'WINNER!' : `FINISHED P${res.pos}`, 3.5);
+    this.onCircuitEnd?.(res, 3800);
+  }
+
   startRun(mode) {
+    if (mode === 'circuit') return this.startCircuit();
+    this.leaveCircuit();
+    this.usePlayer(mode);
     this.mode = mode;
     this.resetWorld('dhanmondi');
     const diff = this.settings.difficulty || 'normal';
@@ -272,7 +359,15 @@ export class Game {
       if (window.__auto) autopilot = this.autoDrive(window.__autoSpeed || 90, window.__autoSide);
     }
 
-    if (st !== 'paused' && st !== 'photo') {
+    if (this.mode === 'circuit' && this.circuit.active && st !== 'paused' && st !== 'photo') {
+      // the circuit: you, the field, the pickups and the scenery; every other system stays off
+      P.update(dt, input, this.world, { autopilot, wet: shared.uWet.value });
+      this.handlePlayerEvents();
+      this.circuit.update(dt);
+      this.world.stream(P.track, P.s, 2, cinematic === 'ending' ? 300 : 160);
+      this.world.update(dt, this.time);
+      this.updateFx(dt);
+    } else if (st !== 'paused' && st !== 'photo') {
       const wet = shared.uWet.value;
       P.update(dt, input, this.world, { auto: true, autopilot, wet });
       this.handlePlayerEvents();
@@ -307,6 +402,7 @@ export class Game {
     this.updateAtmosphere(dt);
     this.updateCarVisual(dt);
     this.traffic.render(P, this.night, this.cam.camS, this.cam.camX);
+    this.circuit.render(this.time);
     this.breakables.update(st === 'paused' || st === 'photo' ? 0 : dt, P, this.cam.camS);
     this.handleBreakableEvents(dtReal);
     this.updateRoadUniforms();
@@ -327,6 +423,7 @@ export class Game {
 
   // title / menu background: the car waits on the start line, nobody else on the road
   attract(dt) {
+    if (this.circuit.active || this.mode === 'circuit') { this.leaveCircuit(); this.mode = 'arcade'; this.usePlayer('arcade'); this.resetWorld('dhanmondi'); }
     const P = this.player;
     this.traffic.list.length = 0;
     this.peds.clear?.();
@@ -485,7 +582,7 @@ export class Game {
         this.state = 'race';
         this.hud.message('GO!', 1.2);
         setTimeout(() => this.hud.signal(null), 1400);
-        setTimeout(() => this.say.say('start', true), 900);
+        if (this.mode !== 'circuit') setTimeout(() => this.say.say('start', true), 900);
       }
     }
   }
@@ -1066,6 +1163,7 @@ export class Game {
     if (st === 'title' || st === 'menu' || st === 'garage' || st === 'radio' || st === 'settings' || st === 'scores' || st === 'howto') return this.settings.titleHour ?? 17.75;
     const P = this.player;
     const tr = P.track;
+    if (tr.stage.circuit) return 17.55; // golden hour, the whole race
     const [h0, h1] = LEVEL_TIME[tr.level];
     const f = clamp(P.s / (tr.length + (tr.isFinal ? -700 : 0)), 0, 1);
     return lerp(h0, h1, f);
@@ -1344,6 +1442,7 @@ export class Game {
   }
 
   nearestRival() {
+    if (this.circuit.active) return this.circuit.nearest();
     if (!this.racing) return null;
     const P = this.player;
     let best = null;
@@ -1360,6 +1459,18 @@ export class Game {
   updateHUD(dt) {
     const P = this.player;
     const tr = P.track;
+    if (this.circuit.active) {
+      const C = this.circuit;
+      this.hud.update(dt, {
+        time: 99, running: this.state === 'race', score: C.coins, lap: C.lapT,
+        speed: P.kmh, rpm: audio.rpmNorm ?? P.rpm, gear: 1, gearN: audio.vg ? audio.vg.gear : 0,
+        progress: clamp((P.s - tr.gateS) / (tr.goalS - tr.gateS), 0, 1), stageIndex: 0,
+        race: true, pos: C.position, need: C.position, field: CIRCUIT_FIELD, near: C.neighbours(),
+      });
+      this.hud.circuitPanel({ lap: Math.min(C.lap, tr.laps), laps: tr.laps, fuel: P.fuel, nitro: P.nitro, boosting: P.boosting });
+      this.hud.tags(this.state === 'race' || this.state === 'countdown' ? C.tags(this.R.camera) : []);
+      return;
+    }
     const prog = tr.isFinal ? P.s / tr.goalS : P.s / tr.length;
     this.hud.update(dt, {
       time: this.timeLeft === Infinity ? 99 : this.timeLeft,

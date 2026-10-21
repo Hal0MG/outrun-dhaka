@@ -68,6 +68,30 @@ export class HUD {
     this.mapT = 0;
   }
 
+  // circuit mode: lap counter in the objective slot, fuel gauge and nitro charges at the bottom
+  setCircuit(on) {
+    this.circuitOn = on;
+    document.body.classList.toggle('circuit', on);
+    this.score.previousElementSibling.textContent = on ? 'COINS' : 'SCORE';
+    this.last = {};
+  }
+
+  circuitPanel(d) {
+    const L = this.last;
+    const lapTxt = d.lap >= d.laps ? `FINAL LAP ${d.lap}/${d.laps}` : `LAP ${d.lap}/${d.laps}`;
+    if (L.hctLap !== lapTxt) { this.needEl.textContent = lapTxt; this.needEl.classList.toggle('ok', d.lap >= d.laps); L.hctLap = lapTxt; }
+    const f = Math.round(clamp(d.fuel, 0, 1) * 100);
+    if (L.fuel !== f) { $('hFuelBar').style.width = f + '%'; $('hFuel').classList.toggle('low', f < 20); L.fuel = f; }
+    const n = Math.floor(d.nitro) + (d.boosting ? 1 : 0);
+    const key = n + ':' + d.boosting;
+    if (L.charges !== key) {
+      const el = $('hCharges');
+      [...el.querySelectorAll('i')].forEach((i, k) => i.classList.toggle('on', k < n));
+      el.classList.toggle('burn', !!d.boosting);
+      L.charges = key;
+    }
+  }
+
   show(on) {
     this.el.classList.toggle('show', on);
     document.body.classList.toggle('racing', on);
@@ -149,7 +173,7 @@ export class HUD {
 
   setStage(stage, big = true) {
     this.stageBn.textContent = stage.name.toUpperCase();
-    this.stageEn.textContent = `STAGE ${stage.level + 1} / ${ROUTE.length}`;
+    this.stageEn.textContent = stage.circuit ? `${stage.laps} LAPS · 20 CARS` : `STAGE ${stage.level + 1} / ${ROUTE.length}`;
     this.stageSub.textContent = '';
     if (big) {
       this.stage.classList.add('big');
@@ -403,7 +427,7 @@ export class HUD {
     if (d.race) {
       const ok = d.pos <= d.need;
       const needTxt = d.need === 1 ? 'FINISH FIRST' : `TARGET P${d.need}`;
-      if (L.need !== needTxt + ok) { this.needEl.textContent = needTxt; this.needEl.classList.toggle('ok', ok); L.need = needTxt + ok; }
+      if (!this.circuitOn && L.need !== needTxt + ok) { this.needEl.textContent = needTxt; this.needEl.classList.toggle('ok', ok); L.need = needTxt + ok; }
       if (this.t - (L.gapT || 0) > 0.2) {
         L.gapT = this.t;
         const n = d.near || {};

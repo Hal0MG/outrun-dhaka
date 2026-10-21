@@ -112,7 +112,7 @@ export class World {
     let aCur = 0, bCur = 0, flip = (hashStr(stageId) + (["padma","savar","sadarghat","oldDhaka"].includes(stageId) ? 1 : 0)) % 2 ? 1 : -1;
     for (const s0 of stage.sections) {
       const sc = defaults(s0);
-      const plain = isPlain(sc);
+      const plain = isPlain(sc) && !stage.circuit;
       if (plain) {
         sc.len = Math.max(60, Math.round(sc.len * STAGE_SCALE));
         const water = sc.L === 'lake' || sc.L === 'river' || sc.R === 'lake' || sc.R === 'river' || sc.L === 'bridge' || sc.R === 'bridge' || stage.L === 'bridge';
@@ -164,6 +164,14 @@ export class World {
     };
     tr.goalS = isFinal ? tr.length - 700 : null;
     tr.gateS = isFirst ? 40 : GATE_S;
+    if (stage.circuit) {
+      // the grid sits behind the line; lap n starts at lapS(n), the flag drops after the last one
+      tr.gateS = 110;
+      tr.laps = stage.laps;
+      tr.lapLen = stage.lapLen;
+      tr.lapS = (i) => tr.gateS + i * tr.lapLen;
+      tr.goalS = tr.lapS(tr.laps);
+    }
     // mean heading (for the sun)
     let ym = 0;
     for (let i = 0; i < tr.n; i += 10) ym += tr.yaw[i];
@@ -184,6 +192,7 @@ export class World {
       for (const [a, b] of alp) if (s >= a && s <= b) al = smoothstep(a, a + 40, s) * (1 - smoothstep(b - 40, b, s));
       for (const [a, b] of pud) if (s >= a && s <= b) p = 0.75;
       if (Math.abs(s - tr.gateS - 0.5) < 1.6) ch = 1;
+      if (tr.lapS) for (let i = 1; i < tr.laps; i++) if (Math.abs(s - tr.lapS(i) - 0.5) < 1.6) ch = 1;
       if (isFinal && Math.abs(s - tr.goalS) < 2) ch = 1;
       return [z, p, al, ch];
     });
@@ -450,7 +459,7 @@ export class World {
       const s = tr.gateS;
       const R = ctx.sideType(s, 1);
       const hwR = R === 'median' ? tr.halfWAt(s) + (st.medianW || 2.6) + st.lanes * LANE_W : tr.halfWAt(s);
-      const lines = tr.isFirst && tr.stageId === 'dhanmondi' ? ['আউটরান ঢাকা', 'START · DHANMONDI'] : ['চেকপয়েন্ট', 'CHECKPOINT · ' + st.name.toUpperCase()];
+      const lines = st.circuit ? ['আউটরান ঢাকা', 'START · ' + st.name.toUpperCase()] : tr.isFirst && tr.stageId === 'dhanmondi' ?['আউটরান ঢাকা', 'START · DHANMONDI'] : ['চেকপয়েন্ট', 'CHECKPOINT · ' + st.name.toUpperCase()];
       if (tr.sectionAt(s).env) { /* set pieces have their own entrance */ }
       PR.festiveGate(ctx, s, tr.halfWAt(s), hwR, bannerMaterial(lines, tr.isFirst ? { c1: '#c8102e', c2: '#5c0716' } : { c1: '#0f7a43', c2: '#04301a' }));
       if (tr.isFirst) {
@@ -464,6 +473,15 @@ export class World {
         const pp = ctx.P(s - 8, -(tr.halfWAt(s) - 1.2), 0);
         ctx.sprites.add('police', pp[0], pp[1], pp[2], 1.05, { lamp: 1 });
         ctx.obstacle(s - 8, -(tr.halfWAt(s) - 1.2), 0.4, 0.4, 'soft');
+      }
+    }
+    // lap banners on the circuit
+    if (tr.lapS) {
+      for (let i = 1; i < tr.laps; i++) {
+        const s = tr.lapS(i);
+        if (!inChunk(s)) continue;
+        const last = i === tr.laps - 1;
+        PR.festiveGate(ctx, s, tr.halfWAt(s), tr.halfWAt(s), bannerMaterial([last ? 'শেষ ল্যাপ' : 'ল্যাপ ' + (i + 1), last ? 'FINAL LAP' : `LAP ${i + 1} / ${tr.laps}`], { c1: '#1d4fd8', c2: '#0a1f5c' }));
       }
     }
     if (tr.isFinal && inChunk(tr.goalS)) {

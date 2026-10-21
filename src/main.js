@@ -87,6 +87,9 @@ async function boot() {
       music.play(TRACKS.findIndex((t) => t.id === 'sarobar'));
     }, 4200);
   };
+  game.onCircuitEnd = (res, delay) => {
+    setTimeout(() => { game.hud.show(false); game.hud.tags([]); menus.showCircuitResult(res); }, delay);
+  };
   game.onTimeUp = () => {
     setTimeout(() => { game.hud.show(false); menus.showGameOver(); }, 2600);
   };

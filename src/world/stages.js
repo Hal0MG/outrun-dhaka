@@ -610,3 +610,46 @@ export function childrenOf(id) {
 export function columnOf(id) {
   return [Math.max(0, ROUTE.indexOf(id)), 0];
 }
+
+// ------------------------------------------------------------------ the circuit (Horizon Chase-style race)
+// One lap of Dhanmondi streets: big readable sweepers, crests, the lake on the
+// left. The lap is laid down CIRCUIT_LAPS times end to end, so every lap has
+// the same corners in the same order. Lengths and bends are used as written
+// (no stage scaling, no extra bends).
+export const CIRCUIT_LAPS = 3;
+const CIRCUIT_LAP = [
+  S(260, 0, 0),
+  S(280, 0.0032, 12),
+  S(220, 0, -12, { L: 'lake' }),
+  S(260, -0.0044, 0, { L: 'lake' }),
+  S(240, 0.0018, 10, { L: 'lake' }),
+  S(200, 0, -10, { L: 'park', R: 'park' }),
+  S(240, 0.0052, 0, { L: 'park', R: 'park' }),
+  S(200, -0.0016, 14, { L: 'park' }),
+  S(220, 0.0012, -14, { L: 'park' }),
+  S(180, -0.0028, 6),
+  S(220, -0.0046, -6),
+  S(200, 0.0024, 12),
+  S(260, 0, -12),
+  S(240, 0.0038, 0),
+  S(220, -0.0022, 8),
+  S(200, 0, -8),
+];
+export const CIRCUIT_LAP_LEN = CIRCUIT_LAP.reduce((a, s) => a + s.len, 0);
+const perLap = (list, fn) => Array.from({ length: CIRCUIT_LAPS }, (_, i) => list.map((v) => fn(v, i * CIRCUIT_LAP_LEN))).flat();
+
+STAGES.circuit = {
+  ...STAGES.dhanmondi,
+  id: 'circuit', name: 'Dhanmondi Circuit', short: 'DHANMONDI', bn: 'ধানমন্ডি সার্কিট', sub: 'Satmasjid Road · Lake Road · 3 laps',
+  circuit: true, laps: CIRCUIT_LAPS, lapLen: CIRCUIT_LAP_LEN, final: true, level: 0, music: 'monsoon',
+  lanes: 3, L: 'city', R: 'city',
+  sections: perLap(CIRCUIT_LAP, (s) => ({ ...s })),
+  landmarks: perLap([
+    { type: 'satmasjid', s: 420, side: 1, dist: 52, clear: [340, 520] },
+    { type: 'sarobar', s: 900, side: -1, dist: 28 },
+  ], (l, o) => ({ ...l, s: l.s + o, clear: l.clear && [l.clear[0] + o, l.clear[1] + o] })),
+  footbridges: perLap([640, 1620, 2420], (s, o) => s + o),
+  zebras: perLap([560, 2200], (s, o) => s + o),
+  stalls: [], events: [], lines: [], puddles: [], ramps: [],
+  traffic: { density: 0, mix: { car: 1 } }, peds: 0,
+};
