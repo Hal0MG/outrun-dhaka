@@ -367,6 +367,22 @@ export class World {
         PR.roadSign(ctx, s, -1, tr.halfWAt(s) + (L === 'field' || L === 'kash' ? 1.6 : 1.2), ctx.rng.pick(['speed40', 'speed60', 'speed80', 'slow', 'bump', 'nohorn']));
       }
     }
+    // roadside delineator posts: close, regular, fast-moving reference points that make speed readable
+    {
+      const white = ctx.misc.get('concrete_smooth');
+      for (let s = Math.ceil(ctx.s0 / 8) * 8; s < ctx.s1; s += 8) {
+        const sec = tr.sectionAt(Math.min(s, tr.length));
+        if (sec.env || sec.surface || sec.closed || sec.fork || sec.diverge || sec.gap || tr.elevAt(s) > 14) continue;
+        const hw = tr.halfWAt(s);
+        const yaw = tr.yawAt(s);
+        for (const sd of [-1, 1]) {
+          if (sd > 0 && ctx.sideType(s, 1) === 'median') continue;
+          const p = ctx.P(s, sd * (hw + 0.25), 0);
+          ctx.B.misc.box(p[0], p[1], p[2], 0.24, 1.2, 0.24, yaw, { color: [0.95, 0.95, 0.93], region: white });
+          ctx.B.misc.box(p[0], p[1] + 0.7, p[2], 0.27, 0.3, 0.27, yaw, { color: sd < 0 ? [0.9, 0.12, 0.1] : [0.95, 0.75, 0.1], region: white });
+        }
+      }
+    }
     // wrong-side runs: the ramp before the jam, barrels closing the far side
     for (const z of tr.zones?.contra || []) {
       if (inChunk(z.ramp)) {

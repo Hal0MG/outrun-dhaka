@@ -892,7 +892,7 @@ export class Traffic {
       M.body.setColorAt(i, hurt ? c.setRGB(3, 3, 3) : c.copy(veh.color || c.set(1, 1, 1)).multiplyScalar((veh.wreck ? 0.45 : 1) * bodyK));
       const bk = veh.brake > 0.5 ? 2.2 : tailK;
       if (M.tail) { M.tail.setMatrixAt(i, m); M.tail.setColorAt(i, c.setScalar(veh.wreck ? 0.05 : bk)); }
-      if (M.head) { M.head.setMatrixAt(i, m); M.head.setColorAt(i, c.setScalar(veh.wreck ? 0 : Math.max(headK, veh.enemy || veh.contra ? 0.6 : 0))); }
+      if (M.head) { M.head.setMatrixAt(i, m); M.head.setColorAt(i, c.setScalar(veh.wreck ? 0 : Math.max(headK, veh.enemy || veh.contra ? 0.6 : 0.4))); }
       if (M.amber) {
         M.amber.setMatrixAt(i, m);
         const hz = veh.state === 'stop' || veh.state === 'toStop' ? (flash ? 1.2 : 0.05) : 0.25 + night * 0.6;

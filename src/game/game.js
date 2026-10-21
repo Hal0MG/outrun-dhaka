@@ -92,7 +92,7 @@ export class Game {
       this.player.x = prev.x;
     }
     this.updateExtras();
-    audio.setEngineKind(def.id === 'rosso' ? 'v12' : def.id === 'premio' ? 'i4' : def.id === 'cng' ? 'cng' : 'jet');
+    audio.setEngineKind(def.engine || (def.id === 'rosso' ? 'v12' : def.id === 'premio' ? 'i4' : def.id === 'cng' ? 'cng' : 'jet'));
   }
 
   resetWorld(stageId) {
@@ -1311,7 +1311,7 @@ export class Game {
     const quiet = this.state === 'paused' || this.state === 'photo';
     audio.update({
       rpm: P.rpm, throttle: P.throttle, speed: P.v, vmax: P.vmax, slip: P.slip, offroad: P.offroad, scrape: P.scrape,
-      engineOn: !quiet, convertible: P.def.id === 'rosso',
+      engineOn: !quiet, convertible: P.def.id === 'rosso' || P.def.id === 'miata',
       rain: this.weather.rain, city: L('river') ? 0.5 : 1 - this.night * 0.3, river: L('river') || st.farWater ? 1 : 0,
       siren: quiet ? 0 : this.siren || 0, rotor: quiet ? 0 : heli, boost: P.boosting && this.state === 'race',
       crowd: quiet ? 0 : clamp(0.25 + (st.peds ?? 0.5) * 0.6, 0, 1) * (tr.sectionAt(Math.min(P.s, tr.length)).closed ? 1.4 : 1),

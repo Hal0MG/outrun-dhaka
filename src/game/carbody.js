@@ -154,21 +154,20 @@ function emit(body, quad, capTri) {
       }
     }
   }
-  // caps: the nose and tail faces
+  // caps: the nose and tail faces, triangulated from the true outline (so concave noses stay clean)
   for (const [i, dir] of [[0, -1], [rows.length - 1, 1]]) {
     const r = rows[i];
-    const cy = r.pts.reduce((a, p) => a + p[1], 0) / M;
-    const c = [0, cy, r.z];
-    for (const s of [1, -1]) {
-      for (let j = 0; j < M - 1; j++) {
-        const a = [s * r.pts[j][0], r.pts[j][1], r.z], b = [s * r.pts[j + 1][0], r.pts[j + 1][1], r.z];
-        const col = j <= 3 ? C.trim : C.paint;
-        // facing dir along z
-        const ux = a[0] - c[0], uy = a[1] - c[1], vx = b[0] - c[0], vy = b[1] - c[1];
-        const fz = ux * vy - uy * vx;
-        if (fz * dir >= 0) capTri(c, a, b, [0, 0, dir], col);
-        else capTri(c, b, a, [0, 0, dir], col);
-      }
+    const right = r.pts.map((p) => [p[0], p[1]]);
+    const ring = right.concat(right.slice(1, -1).reverse().map((p) => [-p[0], p[1]]));
+    const contour = ring.map(([x, y]) => new THREE.Vector2(x, y));
+    const tris = THREE.ShapeUtils.triangulateShape(contour, []);
+    for (const [ia, ib, ic] of tris) {
+      const A3 = [ring[ia][0], ring[ia][1], r.z], B3 = [ring[ib][0], ring[ib][1], r.z], C3 = [ring[ic][0], ring[ic][1], r.z];
+      const cy = (A3[1] + B3[1] + C3[1]) / 3;
+      const col = cy < (spec.clear ?? 0.17) + 0.28 ? C.trim : C.paint;
+      const cr = (B3[0] - A3[0]) * (C3[1] - A3[1]) - (B3[1] - A3[1]) * (C3[0] - A3[0]);
+      if (cr * dir >= 0) capTri(A3, B3, C3, [0, 0, dir], col);
+      else capTri(A3, C3, B3, [0, 0, dir], col);
     }
   }
 }
@@ -259,6 +258,30 @@ export const BODIES = {
     L: 3.92, W: 1.73, r: 0.3, wheels: [0.18, 0.8], clear: 0.13, open: true, cockpit: [0.42, 0.7],
     top: [[0, 0.5], [0.03, 0.64], [0.12, 0.74], [0.38, 0.84], [0.5, 0.84], [0.72, 0.84], [0.85, 0.82], [0.96, 0.78], [1, 0.6]],
     plan: [[0, 0.6], [0.04, 0.86], [0.15, 1], [0.45, 0.94], [0.8, 1], [0.95, 0.94], [1, 0.74]],
+  },
+  // Noah / Voxy: the family people-mover
+  noah: {
+    L: 4.6, W: 1.72, r: 0.31, wheels: [0.17, 0.82], clear: 0.18, tumble: 0.9, crown: 0.01,
+    top: [[0, 0.6], [0.03, 0.9], [0.1, 1.06], [0.18, 1.3], [0.28, 1.8], [0.4, 1.86], [0.9, 1.86], [0.97, 1.72], [1, 1.35]],
+    belt: [[0, 0.6], [0.1, 1.06], [0.28, 1.12], [1, 1.14]],
+    plan: [[0, 0.78], [0.02, 0.92], [0.08, 0.99], [0.2, 1], [0.9, 1], [0.97, 0.97], [1, 0.84]],
+    glass: [0.3, 0.9], windscreen: [0.2, 0.3], rearWindow: [0.9, 0.97], pillars: [0.42, 0.56, 0.7],
+  },
+  // Hiace: the flat-faced microbus
+  hiace: {
+    L: 4.7, W: 1.74, r: 0.31, wheels: [0.14, 0.8], clear: 0.2, tumble: 0.92, crown: 0.008,
+    top: [[0, 0.62], [0.02, 1.0], [0.08, 1.12], [0.13, 1.7], [0.2, 2.0], [0.93, 2.02], [0.98, 1.9], [1, 1.5]],
+    belt: [[0, 0.62], [0.08, 1.12], [0.2, 1.16], [1, 1.18]],
+    plan: [[0, 0.82], [0.02, 0.94], [0.08, 1], [0.9, 1], [0.97, 0.97], [1, 0.88]],
+    glass: [0.22, 0.92], windscreen: [0.12, 0.22], rearWindow: [0.92, 0.98], pillars: [0.38, 0.52, 0.66, 0.8],
+  },
+  // Land Cruiser Prado
+  prado: {
+    L: 4.8, W: 1.9, r: 0.38, wheels: [0.2, 0.8], clear: 0.24, tumble: 0.88, crown: 0.012,
+    top: [[0, 0.72], [0.03, 1.06], [0.15, 1.2], [0.3, 1.24], [0.35, 1.42], [0.42, 1.84], [0.62, 1.86], [0.95, 1.84], [1, 1.6]],
+    belt: [[0, 0.72], [0.3, 1.2], [1, 1.24]],
+    plan: [[0, 0.82], [0.02, 0.94], [0.08, 0.99], [0.2, 1], [0.9, 1], [0.98, 0.96], [1, 0.9]],
+    glass: [0.45, 0.94], windscreen: [0.35, 0.45], rearWindow: [0.94, 0.99], pillars: [0.58, 0.74],
   },
   // the Premio/Allion family saloon
   premio: {

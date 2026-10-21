@@ -209,96 +209,11 @@ function finish(m, len, wid, hgt, extra = {}) {
 }
 
 // ------------------------------------------------------------ the uncles' sedans
-export function sedan(A, kind = 'premio') {
-  const long = kind === 'premio' || kind === 'allion';
-  const L = kind === 'axio' ? 4.4 : kind === 'corolla' ? 4.3 : 4.6;
-  const r = L / 2;
-  const trunk = long ? 0.98 : 0.86;
-  const sp = {
-    L, W: 1.72, r: 0.31, belt: 0.92, roofY: 1.46, bumperH: 0.5,
-    body: [
-      [r, 0.3], [r + 0.03, 0.56], [r - 0.02, 0.84], [r - 0.12, trunk], [r - (long ? 0.85 : 0.7), 0.97],
-      [-r + 1.05, 0.96], [-r + 0.35, 0.86], [-r + 0.05, 0.76], [-r - 0.02, 0.5], [-r + 0.05, 0.3],
-    ],
-    cabin: [[r - (long ? 0.86 : 0.72), 0.96], [r - (long ? 1.32 : 1.15), 1.44], [-r + 1.95, 1.46], [-r + 1.1, 0.96]],
-    pillars: [-r + 1.55, 0.25 - (long ? 0.05 : 0)],
-    wheelZ: [-r + 0.85, r - 0.9], grilleY: 0.62,
-    tailY: 0.86, tailW: kind === 'allion' ? 0.5 : 0.36, tailH: 0.14, headY: 0.74, headW: 0.42, headH: 0.12, plateY: 0.52,
-    tailBar: kind === 'allion',
-  };
-  const m = carFromSpec(A, sp);
-  if (kind === 'premio') m.B.box(0, 0.62, 0, 1.74, 0.03, L - 0.6, 0, { color: CHROME, region: A.get('white') }); // chrome waistline
-  if (kind === 'corolla') {
-    // the yellow cab: roof sign
-    m.B.box(0, 1.47, 0.1, 0.6, 0.14, 0.22, 0, { color: [1, 1, 1], region: A.get('taxi_sign') });
-  }
-  return finish(m, L, 1.72, 1.47);
-}
 
-export function noah(A) {
-  // the people-mover every family in Dhaka owns
-  const L = 4.6, r = L / 2;
-  const sp = {
-    L, W: 1.72, r: 0.31, belt: 1.12, roofY: 1.86, bumperH: 0.48, tumble: 0.05,
-    body: [[r, 0.32], [r + 0.02, 1.12], [-r + 1.2, 1.14], [-r + 0.3, 0.98], [-r, 0.82], [-r - 0.02, 0.4], [-r + 0.05, 0.3]],
-    cabin: [[r - 0.02, 1.12], [r - 0.08, 1.84], [-r + 1.55, 1.86], [-r + 1.2, 1.14]],
-    pillars: [-r + 1.75, -0.1, 1.0, r - 0.15],
-    wheelZ: [-r + 0.8, r - 0.7], grilleY: 0.7,
-    tailY: 1.32, tailW: 0.18, tailH: 0.5, headY: 0.92, headW: 0.42, headH: 0.13, plateY: 0.7,
-  };
-  const m = carFromSpec(A, sp);
-  // sliding-door rail + roof rack
-  m.B.box(0, 1.05, 0.5, 1.735, 0.03, 1.2, 0, { color: TRIM, region: A.get('white') });
-  return finish(m, L, 1.72, 1.9);
-}
 
-export function hiace(A) {
-  const L = 4.7, r = L / 2;
-  const sp = {
-    L, W: 1.74, r: 0.31, belt: 1.15, roofY: 2.02, bumperH: 0.45, tumble: 0.04,
-    body: [[r, 0.3], [r + 0.02, 1.15], [-r + 0.12, 1.15], [-r, 0.95], [-r - 0.02, 0.38], [-r + 0.05, 0.3]],
-    cabin: [[r - 0.02, 1.15], [r - 0.05, 2.0], [-r + 0.45, 2.02], [-r + 0.12, 1.15]],
-    pillars: [-r + 0.7, -0.6, 0.4, 1.4],
-    wheelZ: [-r + 0.55, r - 0.75], grilleY: 0.72,
-    tailY: 1.0, tailW: 0.16, tailH: 0.4, headY: 0.9, headW: 0.36, headH: 0.16, plateY: 0.6,
-  };
-  const m = carFromSpec(A, sp);
-  return finish(m, L, 1.74, 2.05);
-}
 
-export function prado(A, opts = {}) {
-  const L = 4.8, r = L / 2;
-  const sp = {
-    L, W: 1.9, r: 0.38, tyreW: 0.28, belt: 1.18, roofY: 1.84, bumperH: 0.58, tumble: 0.1,
-    color: opts.color, roofColor: opts.roofColor,
-    body: [[r, 0.42], [r + 0.04, 1.18], [-r + 1.3, 1.2], [-r + 0.25, 1.08], [-r - 0.03, 0.96], [-r - 0.05, 0.5], [-r + 0.1, 0.4]],
-    cabin: [[r - 0.04, 1.18], [r - 0.18, 1.82], [-r + 1.95, 1.84], [-r + 1.3, 1.2]],
-    pillars: [-r + 1.75, 0.0, 1.35],
-    wheelZ: [-r + 0.95, r - 0.95], grilleY: 0.86,
-    tailY: 1.12, tailW: 0.2, tailH: 0.34, headY: 1.02, headW: 0.46, headH: 0.15, plateY: 0.72,
-    sideRegion: opts.sideRegion, sideColor: opts.sideColor,
-  };
-  const m = carFromSpec(A, sp);
-  // spare wheel on the tailgate, roof rails, side steps
-  m.B.wheel(0, 0.98, r + 0.18, 0.36, 0.22, 12, [1, 1, 1], A.get('tyre'), A.get('rim'));
-  for (const x of [-0.72, 0.72]) m.B.box(x, 1.85, 0.15, 0.05, 0.06, 2.2, 0, { color: TRIM, region: A.get('white') });
-  for (const x of [-0.97, 0.97]) m.B.box(x, 0.36, 0, 0.12, 0.05, 2.4, 0, { color: TRIM, region: A.get('white') });
-  return { m, L, sp };
-}
 
-export function pradoModel(A) {
-  const { m, L } = prado(A);
-  return finish(m, L, 1.9, 1.9);
-}
 
-export function rabSUV(A) {
-  // black Land Cruiser in RAB livery with a light bar
-  const { m, L } = prado(A, { color: [0.07, 0.07, 0.08], roofColor: [0.06, 0.06, 0.07], sideRegion: 'rab_side', sideColor: [1, 1, 1] });
-  m.Lt.beacon.box(-0.35, 1.86, 0.1, 0.55, 0.12, 0.26, 0, { color: [0.2, 0.4, 3] });
-  m.Lt.beacon.box(0.35, 1.86, 0.1, 0.55, 0.12, 0.26, 0, { color: [3, 0.1, 0.1] });
-  m.B.quad([-0.6, 0.9, L / 2 + 0.25], [0.6, 0.9, L / 2 + 0.25], [0.6, 1.12, L / 2 + 0.25], [-0.6, 1.12, L / 2 + 0.25], [0, 0, 1, 1], [1, 1, 1], A.get('rab_back'));
-  return finish(m, L, 1.9, 1.95, { colorFixed: true });
-}
 
 export function policePickup(A) {
   // Bangladesh Police double-cab: blue, white stripe, light bar, open bed
@@ -352,12 +267,12 @@ function rowNear(body, u) {
 }
 
 function sportsCar(A, key, opts = {}) {
-  const sp = BODIES[key];
+  const sp = { ...BODIES[key], ...(opts.spec || {}) };
   const body = loftCar(sp);
   const B = new MeshBuilder(true);
   const Lt = lights();
   const white = A.get('white');
-  loftToBuilder(B, body, white);
+  loftToBuilder(B, body, white, opts.tint || PAINT);
   const L = sp.L, hw = sp.W / 2;
   // wheels sit in the arches, tyres flush with the body side
   const tw = opts.tyreW || 0.25;
@@ -399,8 +314,67 @@ function sportsCar(A, key, opts = {}) {
       B.box(sd * (r.pts[7][0] + 0.13), y + 0.03, r.z, 0.14, 0.09, 0.07, 0, { color: PAINT, region: white });
     }
   }
-  opts.extra?.(B, body, white);
-  return finish({ B, Lt }, L, sp.W, Math.max(...sp.top.map((k) => k[1])) + 0.02);
+  opts.extra?.(B, body, white, Lt);
+  return finish({ B, Lt }, L, sp.W, Math.max(...sp.top.map((k) => k[1])) + 0.02, opts.finish);
+}
+
+// side livery decal: a quad hugging each flank, UVs matching the old side-panel mapping
+function sideDecal(B, region, hw, z0, z1, y0, y1) {
+  B.quad([hw + 0.006, y0, z1], [hw + 0.006, y0, z0], [hw + 0.006, y1, z0], [hw + 0.006, y1, z1], [0, 0, 1, 1], [1, 1, 1], region);
+  B.quad([-hw - 0.006, y0, z0], [-hw - 0.006, y0, z1], [-hw - 0.006, y1, z1], [-hw - 0.006, y1, z0], [0, 0, 1, 1], [1, 1, 1], region);
+}
+
+// ------------------------------------------------------------ the uncles' sedans and everyone's vans
+export function sedan(A, kind = 'premio') {
+  const L = kind === 'axio' ? 4.4 : kind === 'corolla' ? 4.3 : 4.6;
+  return sportsCar(A, 'premio', {
+    spec: { L },
+    tyreW: 0.22, tailW: kind === 'allion' ? 0.56 : 0.4, tailBar: kind === 'allion', headW: 0.42,
+    extra: (B, body, white) => {
+      if (kind === 'corolla') B.box(0, 1.4, 0.1, 0.6, 0.14, 0.22, 0, { color: [1, 1, 1], region: A.get('taxi_sign') });
+    },
+  });
+}
+
+export function noah(A) {
+  return sportsCar(A, 'noah', { tyreW: 0.22, tailW: 0.2, headW: 0.4, pipes: [0.5] });
+}
+
+export function hiace(A) {
+  return sportsCar(A, 'hiace', { tyreW: 0.22, tailW: 0.2, headW: 0.36, pipes: [0.5] });
+}
+
+function pradoLike(A, extraOpts = {}) {
+  return sportsCar(A, 'prado', {
+    tyreW: 0.28, tailW: 0.24, headW: 0.46,
+    ...extraOpts,
+    extra: (B, body, white, Lt) => {
+      const r = 4.8 / 2;
+      B.wheel(0, 0.98, r + 0.18, 0.36, 0.22, 16, [1, 1, 1], A.get('tyre'), A.get('rim'));
+      for (const x of [-0.72, 0.72]) B.box(x, 1.86, 0.1, 0.05, 0.06, 2.1, 0, { color: TRIM, region: white });
+      for (const x of [-0.99, 0.99]) B.box(x, 0.38, 0, 0.1, 0.05, 2.4, 0, { color: TRIM, region: white });
+      extraOpts.more?.(B, body, white, Lt);
+    },
+  });
+}
+
+export function pradoModel(A) {
+  return pradoLike(A);
+}
+
+export function rabSUV(A) {
+  // black Land Cruiser in RAB livery with a light bar
+  return pradoLike(A, {
+    tint: [0.07, 0.07, 0.08],
+    finish: { colorFixed: true },
+    more: (B, body, white, Lt) => {
+      const L = 4.8;
+      sideDecal(B, A.get('rab_side'), 0.95, -L * 0.34, L * 0.3, 0.62, 1.16);
+      Lt.beacon.box(-0.35, 1.86, 0.1, 0.55, 0.12, 0.26, 0, { color: [0.2, 0.4, 3] });
+      Lt.beacon.box(0.35, 1.86, 0.1, 0.55, 0.12, 0.26, 0, { color: [3, 0.1, 0.1] });
+      B.quad([-0.6, 0.9, L / 2 + 0.25], [0.6, 0.9, L / 2 + 0.25], [0.6, 1.12, L / 2 + 0.25], [-0.6, 1.12, L / 2 + 0.25], [0, 0, 1, 1], [1, 1, 1], A.get('rab_back'));
+    },
+  });
 }
 
 export function supra(A) {

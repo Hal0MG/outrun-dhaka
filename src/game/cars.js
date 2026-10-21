@@ -26,6 +26,31 @@ export const CARS = [
     colors: ['#1f8a3c', '#ffb000', '#c8102e', '#1d5fa8', '#111318'],
   },
   {
+    id: 'supra', name: 'SUPRA MK4', tag: '', blurb: '', engine: 'i6',
+    top: 380, accel: 1.0, grip: 0.9, width: 1.81, length: 4.52,
+    colors: ['#ff6a00', '#e8e4da', '#111318', '#1d4fd8', '#c8102e'],
+  },
+  {
+    id: 'skyline', name: 'SKYLINE R34', tag: '', blurb: '', engine: 'rb',
+    top: 370, accel: 1.05, grip: 1.0, width: 1.79, length: 4.6,
+    colors: ['#1d4fd8', '#c0c4cc', '#111318', '#f2f2ee', '#6b6f78'],
+  },
+  {
+    id: 'celica', name: 'CELICA', tag: '', blurb: '', engine: 'i4t',
+    top: 340, accel: 0.95, grip: 0.92, width: 1.74, length: 4.34,
+    colors: ['#ffd200', '#c8102e', '#f2f2ee', '#111318', '#1d4fd8'],
+  },
+  {
+    id: 'chaser', name: 'CHASER', tag: '', blurb: '', engine: 'i6',
+    top: 350, accel: 0.9, grip: 0.86, width: 1.76, length: 4.72,
+    colors: ['#f2f2ee', '#111318', '#1d4fd8', '#6b6f78', '#2f8f4e'],
+  },
+  {
+    id: 'miata', name: 'MX-5', tag: '', blurb: '', engine: 'i4t',
+    top: 320, accel: 1.0, grip: 1.05, width: 1.73, length: 3.92,
+    colors: ['#c8102e', '#f2f2ee', '#111318', '#ffb000', '#22d3ee'],
+  },
+  {
     id: 'rickshaw', name: 'RICKSHAW 9000', bn: 'রিকশা ৯০০০', tag: 'HAND-PAINTED · JET-ASSISTED',
     blurb: 'Hand-painted, jet-assisted. The puller has not been told. Unlocks after your first goal.',
     top: 420, accel: 1.12, grip: 0.7, width: 1.15, length: 2.6, locked: true,
@@ -392,6 +417,77 @@ export function buildPlayerCar(def, colorHex, assets) {
     out.exhaust.push(new THREE.Vector3(-0.55, 0.3, 2.35));
     out.headLocal = [new THREE.Vector3(-0.6, 0.62, -2.35), new THREE.Vector3(0.6, 0.62, -2.35)];
     out.dims = { len: 4.6, wid: 1.74, hgt: 1.4 };
+  } else if (BODIES[def.id]) {
+    // the sports cars: smooth lofted body, same builder as the rivals
+    const sp = BODIES[def.id];
+    const L = sp.L, W = sp.W, hw = W / 2, z0 = -L / 2;
+    const lb = lofted(def.id);
+    const rowAt = (u) => { let best = lb.rows[0]; for (const r of lb.rows) if (Math.abs(r.u - u) < Math.abs(best.u - u)) best = r; return best; };
+    const tw = 0.27;
+    sp.wheels.forEach((u, k) => {
+      const z = z0 + u * L;
+      for (const x of [-hw + tw / 2 + 0.05, hw - tw / 2 - 0.05]) addWheel(x, sp.r, z, sp.r, tw, k === 0);
+    });
+    // lights on the nose and tail faces
+    const nose = lb.rows[0], tail = lb.rows[lb.rows.length - 1];
+    const ny = Math.min(nose.pts[15][1], rowAt(0.04).pts[15][1]) + 0.02;
+    for (const sd of [-1, 1]) {
+      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.05), headMat);
+      hl.position.set(sd * nose.pts[7][0] * 0.62, ny - 0.1, nose.z - 0.01);
+      body.add(hl);
+      const am = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.05), amberMat);
+      am.position.set(sd * nose.pts[7][0] * 0.8, ny - 0.2, nose.z - 0.01);
+      body.add(am);
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.1, 0.05), tailMat);
+      tl.position.set(sd * tail.pts[7][0] * 0.6, tail.pts[15][1] - 0.15, tail.z + 0.01);
+      body.add(tl);
+    }
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), new THREE.MeshBasicMaterial({ map: plateTexture('ঢাকা-১১') }));
+    plate.position.set(0, sp.clear + 0.28, tail.z + 0.015);
+    body.add(plate);
+    for (const x of [-hw * 0.55, hw * 0.55]) {
+      const ex = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.14, 10), chrome);
+      ex.rotation.x = Math.PI / 2;
+      ex.position.set(x, sp.clear + 0.08, tail.z + 0.02);
+      body.add(ex);
+      out.exhaust.push(new THREE.Vector3(x, sp.clear + 0.08, tail.z + 0.15));
+    }
+    // mirrors
+    const mw = sp.windscreen ? rowAt(sp.windscreen[1] - 0.02) : null;
+    if (mw) for (const sd of [-1, 1]) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.07), paint);
+      m.position.set(sd * (mw.pts[7][0] + 0.12), mw.pts[7][1] + 0.05, mw.z);
+      body.add(m);
+    }
+    // wings
+    const wing = (z, y, w, up) => {
+      for (const x of up) { const u = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.12), paint); u.position.set(x, y - 0.1, z); body.add(u); }
+      const bl = new THREE.Mesh(new THREE.BoxGeometry(w, 0.045, 0.3), paint);
+      bl.position.set(0, y, z);
+      body.add(bl);
+    };
+    if (def.id === 'supra') wing(L / 2 - 0.26, 1.1, 1.62, [-0.68, 0.68]);
+    if (def.id === 'skyline') wing(L / 2 - 0.3, 1.15, 1.5, [-0.6, 0.6]);
+    if (def.id === 'celica') wing(L / 2 - 0.12, 1.0, 1.44, [-0.5, 0.5]);
+    // occupants sit in the cabin (visible only in the roadster)
+    const cabU = sp.open ? (sp.cockpit[0] + sp.cockpit[1]) / 2 : (sp.glass[0] + sp.glass[1]) / 2;
+    const cz = z0 + cabU * L;
+    const seatY = (sp.open ? rowAt(cabU).pts[15][1] : (sp.belt ? sp.belt[1][1] : 0.9)) + 0.34;
+    out.driver = headOf('#8a5a3a', '#110d0a', { shades: true });
+    out.driver.position.set(0.4, sp.open ? seatY + 0.2 : seatY - 0.16, cz);
+    body.add(out.driver);
+    out.passenger = headOf('#a06a45', '#140e0a', { long: true, flower: true });
+    out.passenger.position.set(-0.4, sp.open ? seatY + 0.16 : seatY - 0.2, cz);
+    body.add(out.passenger);
+    if (sp.open) {
+      for (const [x, c, y] of [[0.4, '#f4f2ec', seatY - 0.3], [-0.4, '#ff2e88', seatY - 0.34]]) {
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.42, 0.24), new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
+        torso.position.set(x, y, cz + 0.08);
+        body.add(torso);
+      }
+    }
+    out.headLocal = [new THREE.Vector3(-0.6, ny - 0.1, nose.z - 0.1), new THREE.Vector3(0.6, ny - 0.1, nose.z - 0.1)];
+    out.dims = { len: L, wid: W, hgt: Math.max(...sp.top.map((k) => k[1])) + 0.05 };
   } else {
     // CNG TURBO / RICKSHAW 9000 use the traffic geometry (atlas material) + extras
     const misc = assets.misc;

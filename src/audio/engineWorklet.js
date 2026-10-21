@@ -135,6 +135,12 @@ export const ENGINES = {
   i4: { idle: 750, red: 6800, gears: 5, cfg: { imbalance: 0.12, cyl: 4, stroke: 4, header: 0.95, muffler: 2.9, fb1: 0.48, fb2: 0.5, pulse: 0.0018, grit: 0.18, bright: 0.15, intake: 0.2, whine: 0.003, crackle: 0.12, drive: 1.3 } },
   // single-cylinder two-stroke three-wheeler: rattly, nasal, ring-ding-ding
   cng: { idle: 1700, red: 7600, gears: 4, cfg: { cyl: 1, stroke: 2, header: 0.5, muffler: 1.4, fb1: 0.58, fb2: 0.4, pulse: 0.0022, grit: 0.35, bright: 0.35, intake: 0.15, whine: 0.002, crackle: 0.5, drive: 1.7 } },
+  // inline-six: smooth, even firing, a deep hum (2JZ)
+  i6: { idle: 800, red: 7400, gears: 6, cfg: { imbalance: 0.1, cyl: 6, stroke: 4, header: 0.9, muffler: 2.7, fb1: 0.5, fb2: 0.5, pulse: 0.0022, grit: 0.14, bright: 0.2, intake: 0.16, whine: 0.003, crackle: 0.4, drive: 1.2 } },
+  // RB26: six with a hard, raspy edge
+  rb: { idle: 850, red: 8000, gears: 6, cfg: { imbalance: 0.14, cyl: 6, stroke: 4, header: 0.8, muffler: 2.4, fb1: 0.52, fb2: 0.48, pulse: 0.0018, grit: 0.2, bright: 0.3, intake: 0.2, whine: 0.004, crackle: 0.5, drive: 1.35 } },
+  // small turbo four
+  i4t: { idle: 800, red: 7200, gears: 6, cfg: { imbalance: 0.14, cyl: 4, stroke: 4, header: 0.9, muffler: 2.7, fb1: 0.48, fb2: 0.5, pulse: 0.0018, grit: 0.18, bright: 0.2, intake: 0.22, whine: 0.004, crackle: 0.45, drive: 1.3 } },
   // Rickshaw 9000: cross-plane V8 burble under the jet
   jet: { idle: 800, red: 7200, gears: 6, cfg: { cyl: 8, stroke: 4, offs: [0, 0.09, 0.25, 0.34, 0.5, 0.59, 0.75, 0.84], imbalance: 0.28, header: 0.85, muffler: 2.6, fb1: 0.5, fb2: 0.5, pulse: 0.0018, grit: 0.15, bright: 0.2, intake: 0.15, whine: 0.003, crackle: 0.45, drive: 1.2 } },
 };
