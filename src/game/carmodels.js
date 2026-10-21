@@ -209,57 +209,6 @@ function finish(m, len, wid, hgt, extra = {}) {
   };
 }
 
-// ------------------------------------------------------------ the uncles' sedans
-
-
-
-
-
-
-export function policePickup(A) {
-  // Bangladesh Police double-cab: blue, white stripe, light bar, open bed
-  const L = 5.3, r = L / 2;
-  const B = new MeshBuilder(true);
-  const Lt = lights();
-  const W = 1.86, hw = W / 2;
-  const white = A.get('white');
-  const blue = [0.12, 0.2, 0.5];
-  // cab
-  extrude(B, [[0.1, 0.42], [0.1, 1.1], [-r + 1.3, 1.12], [-r + 0.25, 1.0], [-r - 0.03, 0.88], [-r - 0.05, 0.5], [-r + 0.1, 0.42]], hw, white, blue, { sideRegion: A.get('police_side'), sideColor: [1, 1, 1] });
-  extrude(B, [[0.08, 1.1], [0.0, 1.78], [-r + 1.95, 1.8], [-r + 1.3, 1.12]], (z, y) => hw - 0.08 - (y - 1.1) * 0.1, A.get('glass'), [1, 1, 1], {
-    edgeRegion: ([z0, y0], [z1, y1]) => (Math.abs(y0 - y1) < 0.04 && y0 > 1.5 ? white : A.get('glass')),
-    edgeColor: ([z0, y0], [z1, y1]) => (Math.abs(y0 - y1) < 0.04 && y0 > 1.5 ? [0.95, 0.95, 0.95] : [1, 1, 1]),
-  });
-  for (const pz of [-r + 1.7, -0.8]) for (const x of [-1, 1]) B.box(x * (hw - 0.1), 1.1, pz, 0.03, 0.68, 0.09, 0, { color: DARK, region: white });
-  // bed
-  B.box(0, 0.42, 1.3, W, 0.12, 2.3, 0, { color: TRIM, region: white });
-  for (const x of [-1, 1]) B.box(x * (hw - 0.04), 0.54, 1.3, 0.08, 0.5, 2.3, 0, { color: blue, region: white });
-  B.box(0, 0.54, r - 0.03, W, 0.5, 0.06, 0, { color: blue, region: A.get('police_back') });
-  // roll bar + officers in the bed
-  B.box(0, 1.04, 0.35, W - 0.1, 0.08, 0.08, 0, { color: TRIM, region: white });
-  for (const x of [-0.55, 0.55]) B.box(x, 0.54, 0.35, 0.07, 0.55, 0.07, 0, { color: TRIM, region: white });
-  for (const [x, z] of [[-0.45, 1.0], [0.45, 1.6], [-0.4, 2.0]]) {
-    B.box(x, 0.54, z, 0.42, 0.62, 0.3, 0, { color: [0.85, 0.82, 0.75], region: white });
-    B.box(x, 1.16, z, 0.24, 0.26, 0.24, 0, { color: [0.55, 0.36, 0.24], region: white });
-    B.box(x, 1.36, z, 0.3, 0.1, 0.3, 0, { color: [0.12, 0.2, 0.45], region: white });
-  }
-  wheels(B, A, W, -r + 0.95, r - 1.1, 0.38, 0.28);
-  B.quad([hw - 0.25, 0.7, -r - 0.07], [-hw + 0.25, 0.7, -r - 0.07], [-hw + 0.25, 0.9, -r - 0.07], [hw - 0.25, 0.9, -r - 0.07], [0, 0, 1, 1], [1, 1, 1], A.get('grille'));
-  Lt.beacon.box(-0.4, 1.8, -0.9, 0.62, 0.13, 0.26, 0, { color: [0.2, 0.4, 3] });
-  Lt.beacon.box(0.4, 1.8, -0.9, 0.62, 0.13, 0.26, 0, { color: [3, 0.1, 0.1] });
-  for (const s of [-1, 1]) {
-    Lt.tail.box(s * (hw - 0.1), 0.65, r + 0.01, 0.14, 0.3, 0.03, 0, { color: [2.5, 0.08, 0.04] });
-    Lt.head.box(s * (hw - 0.3), 0.85, -r - 0.06, 0.42, 0.14, 0.03, 0, { color: [2.7, 2.6, 2.3] });
-  }
-  return { body: B.build(), tail: Lt.tail.build(), head: Lt.head.build(), beacon: Lt.beacon.build(), len: L, wid: W, hgt: 1.85, atlas: 'fx', colorFixed: true };
-}
-
-// ------------------------------------------------------------ the rivals
-
-
-
-
-
 // ------------------------------------------------------------ the rival racers: lofted, smooth-shaded bodies
 function rowNear(body, u) {
   let best = body.rows[0];
@@ -505,78 +454,6 @@ export function miata(A) {
   });
 }
 
-// ------------------------------------------------------------ battery rickshaw ("Tesla")
-export function tesla(A, variant = 0) {
-  const B = new MeshBuilder(true);
-  const Lt = lights();
-  const white = A.get('white');
-  const L = 2.9, W = 1.18;
-  const bodyCol = [[0.1, 0.5, 0.3], [0.15, 0.35, 0.7], [0.75, 0.15, 0.2], [0.9, 0.7, 0.1]][variant % 4];
-  // wheels: two rear, one front
-  B.wheel(-0.52, 0.27, 0.82, 0.27, 0.12, 10, [1, 1, 1], A.get('tyre'), A.get('rim'));
-  B.wheel(0.52, 0.27, 0.82, 0.27, 0.12, 10, [1, 1, 1], A.get('tyre'), A.get('rim'));
-  B.wheel(0, 0.27, -1.05, 0.27, 0.12, 10, [1, 1, 1], A.get('tyre'), A.get('rim'));
-  // floor pan + rear body (sheet metal sides with a painted panel)
-  B.box(0, 0.36, 0.35, W, 0.1, 1.9, 0, { color: TRIM, region: white });
-  B.box(0, 0.46, 0.65, W, 0.42, 1.2, 0, { regions: { side: A.get('tesla_side'), front: A.get('tesla_back'), back: white, top: white }, color: bodyCol });
-  // front nose + windscreen + driver
-  B.box(0, 0.36, -0.75, 0.82, 0.62, 0.55, 0, { color: bodyCol, region: white });
-  B.quad([0.38, 0.98, -0.85], [-0.38, 0.98, -0.85], [-0.4, 1.55, -0.7], [0.4, 1.55, -0.7], [0, 0, 1, 1], [1, 1, 1], A.get('glass'));
-  // roof canopy on thin posts
-  B.box(0, 1.78, 0.05, W + 0.08, 0.06, 2.3, 0, { color: [0.95, 0.95, 0.92], region: white });
-  for (const [x, z] of [[-0.55, -0.75], [0.55, -0.75], [-0.55, 1.15], [0.55, 1.15]]) B.box(x, 0.4, z, 0.04, 1.4, 0.04, 0, { color: TRIM, region: white });
-  // benches + people (back-to-back seating, of course)
-  B.box(0, 0.9, 0.3, 1.0, 0.1, 0.4, 0, { color: [0.6, 0.15, 0.15], region: white });
-  B.box(0, 0.9, 0.95, 1.0, 0.1, 0.4, 0, { color: [0.6, 0.15, 0.15], region: white });
-  const people = [[-0.25, 0.3, [0.9, 0.3, 0.5]], [0.25, 0.3, [0.95, 0.9, 0.85]], [-0.25, 0.98, [0.2, 0.4, 0.8]], [0.22, 0.98, [0.95, 0.7, 0.2]], [0, -0.55, [0.92, 0.92, 0.88]]];
-  for (const [x, z, c] of people.slice(0, 3 + (variant % 3))) {
-    B.box(x, 0.98, z, 0.34, 0.46, 0.24, 0, { color: c, region: white });
-    B.box(x, 1.44, z, 0.2, 0.22, 0.2, 0, { color: [0.55, 0.36, 0.24], region: white });
-    B.box(x, 1.62, z, 0.21, 0.07, 0.21, 0, { color: [0.08, 0.06, 0.05], region: white });
-  }
-  // a handlebar, a mirror, a sound system that is louder than the motor
-  B.box(0, 1.0, -0.65, 0.6, 0.03, 0.03, 0, { color: CHROME, region: white });
-  Lt.tail.box(-0.45, 0.62, 1.26, 0.12, 0.08, 0.02, 0, { color: [2.2, 0.1, 0.05] });
-  Lt.tail.box(0.45, 0.62, 1.26, 0.12, 0.08, 0.02, 0, { color: [2.2, 0.1, 0.05] });
-  Lt.head.box(0, 0.8, -1.04, 0.16, 0.12, 0.02, 0, { color: [2.6, 2.5, 2.2] });
-  // the LED strip under the roof (every Tesla in Dhaka has one)
-  const ledC = [[0.3, 2.6, 0.6], [2.6, 0.3, 2.0], [0.4, 1.2, 3], [3, 1.8, 0.2]][variant % 4];
-  Lt.amber.box(0, 1.75, 0.05, W, 0.03, 2.2, 0, { color: ledC });
-  return { body: B.build(), tail: Lt.tail.build(), head: Lt.head.build(), amber: Lt.amber.build(), len: L, wid: W, hgt: 1.85, atlas: 'fx', colorFixed: true };
-}
-
-// the boss buses: a double-decker-ish local bus with a parody company livery
-export function bossBus(A, variant = 0) {
-  const B = new MeshBuilder(true);
-  const Lt = lights();
-  const white = A.get('white');
-  const L = 11, W = 2.55, H = 3.25;
-  for (const z of [-L / 2 + 2.3, L / 2 - 2.1]) for (const x of [-W / 2 + 0.2, W / 2 - 0.2]) B.wheel(x, 0.52, z, 0.52, 0.34, 12, [1, 1, 1], A.get('tyre'), A.get('rim'));
-  B.box(0, 0.38, 0, W, H - 0.38, L, 0, { regions: { side: A.get('bossbus_side' + variant), front: A.get('bossbus_back' + variant), back: A.get('bossbus_front'), top: white }, color: [1, 1, 1] });
-  B.box(0, H, 0, W - 0.2, 0.15, L - 1, 0, { color: [0.4, 0.4, 0.42], region: white });
-  // dents & a roof full of luggage and passengers
-  for (let i = 0; i < 5; i++) B.box(-0.6 + (i % 3) * 0.6, H + 0.15, -3 + i * 1.4, 0.6, 0.4, 0.8, 0.3 * i, { color: [[0.7, 0.2, 0.2], [0.2, 0.4, 0.7], [0.8, 0.7, 0.3]][i % 3], region: white });
-  for (const [x, z] of [[-0.6, 1.5], [0.5, 2.4], [0, 3.6], [0.7, -1]]) {
-    B.box(x, H + 0.15, z, 0.4, 0.55, 0.3, 0, { color: [0.92, 0.9, 0.85], region: white });
-    B.box(x, H + 0.7, z, 0.22, 0.24, 0.22, 0, { color: [0.55, 0.36, 0.24], region: white });
-  }
-  // the driver with a bottle (visible through the windscreen)
-  B.box(W / 2 - 0.6, 1.2, -L / 2 + 0.7, 0.45, 0.6, 0.3, 0, { color: [0.95, 0.95, 0.9], region: white });
-  B.box(W / 2 - 0.6, 1.8, -L / 2 + 0.7, 0.26, 0.28, 0.26, 0, { color: [0.55, 0.36, 0.24], region: white });
-  B.box(W / 2 - 0.3, 1.7, -L / 2 + 0.6, 0.08, 0.3, 0.08, 0, { color: [0.1, 0.5, 0.2], region: white });
-  for (const s of [-1, 1]) {
-    Lt.tail.box(s * (W / 2 - 0.25), 0.9, L / 2 + 0.01, 0.3, 0.3, 0.02, 0, { color: [2.4, 0.1, 0.05] });
-    Lt.head.box(s * (W / 2 - 0.3), 0.85, -L / 2 - 0.01, 0.35, 0.22, 0.02, 0, { color: [2.6, 2.5, 2.2] });
-  }
-  // disco lights inside (the music never stops)
-  const cols = [[2.6, 0.2, 1.8], [0.3, 2.4, 0.5], [0.3, 0.8, 3], [3, 1.6, 0.2]];
-  for (let i = 0; i < 8; i++) Lt.amber.box(0, 1.55, -L / 2 + 1.2 + i * 1.15, W + 0.04, 0.55, 0.95, 0, { color: cols[(i + variant) % 4].map((c) => c * 0.6) });
-  // a lit route board and marker lights so you can see it coming at night
-  Lt.head.box(0, H - 0.5, -L / 2 - 0.03, W - 0.4, 0.3, 0.02, 0, { color: [2.4, 0.9, 0.3] });
-  for (let i = 0; i < 6; i++) Lt.tail.box(-W / 2 + 0.2 + i * (W - 0.4) / 5, H + 0.05, L / 2 + 0.02, 0.1, 0.1, 0.02, 0, { color: [2.6, 1.2, 0.2] });
-  return { body: B.build(), tail: Lt.tail.build(), head: Lt.head.build(), amber: Lt.amber.build(), len: L, wid: W, hgt: H + 0.8, atlas: 'fx', colorFixed: true };
-}
-
 // ------------------------------------------------------------ real car meshes (CC0 pack), refitted
 function fromPack(A, name, fit, opts = {}) {
   const B = new MeshBuilder(true);
@@ -586,32 +463,15 @@ function fromPack(A, name, fit, opts = {}) {
   return finish({ B, Lt }, dims.len, dims.wid, dims.hgt, opts.finish);
 }
 
-export function buildFxModels(A) {
-  const T = {};
-  T.axio = fromPack(A, 'hatchback', { L: 4.2, W: 1.74, H: 1.45 });
-  T.premio = fromPack(A, 'sedan', { L: 4.6, W: 1.76, H: 1.45 });
-  T.allion = fromPack(A, 'sedan', { L: 4.65, W: 1.76, H: 1.47 });
-  T.corolla = fromPack(A, 'taxi', { L: 4.35, W: 1.74, H: 1.5 }, { paintFixed: [1, 0.78, 0.1], finish: { colorFixed: true } });
-  T.noah = fromPack(A, 'van', { L: 4.6, W: 1.75, H: 1.85 });
-  T.hiace = fromPack(A, 'van', { L: 4.9, W: 1.8, H: 2.05 });
-  T.prado = fromPack(A, 'suv', { L: 4.8, W: 1.9, H: 1.85 });
-  T.rab = fromPack(A, 'suv', { L: 4.8, W: 1.9, H: 1.85 }, {
-    paintFixed: [0.07, 0.07, 0.08], finish: { colorFixed: true },
-    extra: (B, Lt, A2, d) => {
-      sideDecal(B, A2.get('rab_side'), d.wid / 2 + 0.01, -d.len * 0.34, d.len * 0.3, 0.62, 1.16);
-      Lt.beacon.box(-0.35, d.hgt, 0.1, 0.55, 0.12, 0.26, 0, { color: [0.2, 0.4, 3] });
-      Lt.beacon.box(0.35, d.hgt, 0.1, 0.55, 0.12, 0.26, 0, { color: [3, 0.1, 0.1] });
-      B.quad([-0.6, 0.9, d.len / 2 + 0.02], [0.6, 0.9, d.len / 2 + 0.02], [0.6, 1.12, d.len / 2 + 0.02], [-0.6, 1.12, d.len / 2 + 0.02], [0, 0, 1, 1], [1, 1, 1], A2.get('rab_back'));
-    },
-  });
-  T.policeHilux = policePickup(A);
-  T.supra = fromPack(A, 'sports', { L: 4.5, W: 1.82, H: 1.3 });
-  T.skyline = fromPack(A, 'muscle_2', { L: 4.6, W: 1.8, H: 1.36 });
-  T.celica = fromPack(A, 'muscle', { L: 4.4, W: 1.78, H: 1.32 });
-  T.chaser = fromPack(A, 'sedan', { L: 4.75, W: 1.77, H: 1.4 });
-  T.miata = fromPack(A, 'roadster', { L: 3.95, W: 1.75, H: 1.25 });
-  for (let v = 0; v < 4; v++) T['tesla' + v] = tesla(A, v);
-  T.bossbus0 = bossBus(A, 0);
-  T.bossbus1 = bossBus(A, 1);
-  return T;
+// the race field's cars, refitted to real dimensions
+export function buildRacerModels(A) {
+  return {
+    premio: fromPack(A, 'sedan', { L: 4.6, W: 1.76, H: 1.45 }),
+    prado: fromPack(A, 'suv', { L: 4.8, W: 1.9, H: 1.85 }),
+    supra: fromPack(A, 'sports', { L: 4.5, W: 1.82, H: 1.3 }),
+    skyline: fromPack(A, 'muscle_2', { L: 4.6, W: 1.8, H: 1.36 }),
+    celica: fromPack(A, 'muscle', { L: 4.4, W: 1.78, H: 1.32 }),
+    chaser: fromPack(A, 'sedan', { L: 4.75, W: 1.77, H: 1.4 }),
+    miata: fromPack(A, 'roadster', { L: 3.95, W: 1.75, H: 1.25 }),
+  };
 }

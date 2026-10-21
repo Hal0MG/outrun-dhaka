@@ -2,11 +2,10 @@ import { Renderer } from './core/renderer.js';
 import { Input } from './core/input.js';
 import { store } from './core/util.js';
 import { HUD } from './ui/hud.js';
-import { Dialogue } from './ui/dialogue.js';
 import { Menus } from './ui/menus.js';
 import { Game } from './game/game.js';
 import { audio } from './audio/audio.js';
-import { music, TRACKS } from './audio/music.js';
+import { music } from './audio/music.js';
 
 const DEFAULTS = {
   quality: 'high', qualityAuto: false, difficulty: 'normal', manual: false, musicVol: 0.6, sfxVol: 0.8,
@@ -46,8 +45,7 @@ async function boot() {
   }
   const input = new Input();
   const hud = new HUD();
-  const dialogue = new Dialogue(hud);
-  const game = new Game(R, input, hud, dialogue, settings);
+  const game = new Game(R, input, hud, settings);
   let si = 0;
   await game.init(async () => { si++; });
   progress('');
@@ -57,15 +55,6 @@ async function boot() {
   window.__menus = menus;
   window.__audio = audio;
   window.__music = music;
-  // debug: jump to any stage (e.g. __goto('motijheel', 1200))
-  window.__goto = (id, s = 100) => {
-    game.resetWorld(id);
-    game.player.s = s;
-    game.player.v = 60;
-    game.traffic.clear();
-    for (let i = 0; i < 16; i++) game.world.stream(game.player.track, game.player.s, 4);
-  };
-
   // debug: advance n frames manually (the browser pane throttles rAF when hidden)
   window.__step = (n = 1, dt = 1 / 60) => {
     for (let i = 0; i < n; i++) { game.update(dt); input.edges.clear(); }
@@ -79,20 +68,7 @@ async function boot() {
   audio.vol.music = settings.musicVol;
   audio.vol.sfx = settings.sfxVol;
 
-  game.onGoal = (id) => {
-    setTimeout(() => {
-      game.state = 'ending';
-      game.hud.show(false);
-      menus.showEnding(id);
-      music.play(TRACKS.findIndex((t) => t.id === 'sarobar'));
-    }, 4200);
-  };
-  game.onCircuitEnd = (res, delay) => {
-    setTimeout(() => { game.hud.show(false); game.hud.tags([]); menus.showCircuitResult(res); }, delay);
-  };
-  game.onTimeUp = () => {
-    setTimeout(() => { game.hud.show(false); menus.showGameOver(); }, 2600);
-  };
+  game.onRaceEnd = (res, delay) => setTimeout(() => menus.showResults(res), delay);
 
   // touch controls
   const touchEl = document.getElementById('touch');
@@ -108,7 +84,6 @@ async function boot() {
     const set = (v) => {
       b.classList.toggle('on', v);
       if (k === 'pause') { if (v) menus.pause(); return; }
-      if (k === 'fire') { if (v) input.tap('fire'); return; }
       input.touch[k] = v;
     };
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); audio.init(); b.setPointerCapture(e.pointerId); set(true); });

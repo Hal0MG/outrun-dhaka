@@ -5,7 +5,7 @@
 <title>Outrun Dhaka</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="An OutRun-style arcade racer through Dhaka: start in Dhanmondi at golden hour, fork your way across the city through the night, and escape at sunrise.">
+<meta name="description" content="An arcade racer through Dhaka after Horizon Chase: race any district as a lap circuit, or take on the Run, a knockout race across the whole city.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Galada&family=Hind+Siliguri:wght@400;500;600;700&family=Tiro+Bangla&display=swap">
@@ -60,16 +60,29 @@
     </div>
     <div class="press" id="pressStart">CLICK OR PRESS ENTER</div>
     <nav class="menu" id="mainMenu" hidden>
-      <button data-act="circuit"><span>CIRCUIT</span><i>20 CARS · 3 LAPS · DHANMONDI</i></button>
-      <button data-act="arcade"><span>THE RUN</span><i>24 DRIVERS · FINISH FIRST</i></button>
+      <button data-act="race"><span>RACE</span><i>PICK A DISTRICT · OR THE RUN</i></button>
       <button data-act="garage"><span>GARAGE</span><i>PICK A RIDE</i></button>
-      <button data-act="scores"><span>HIGH SCORES</span><i>HALL OF FAME</i></button>
       <button data-act="settings"><span>SETTINGS</span><i>TWEAK</i></button>
       <button data-act="howto"><span>HOW TO DRIVE</span><i>CONTROLS</i></button>
     </nav>
     <div class="title-foot">
-      <span id="endingsFound"></span>
       <span class="keys">↑ gas · ↓ brake · ←→ steer · SPACE nitro · H horn · R music on/off · V photo · ESC / P pause</span>
+    </div>
+  </section>
+
+  <!-- ======================== MAP -->
+  <section id="map" class="screen">
+    <div class="map-wrap">
+      <canvas id="mapCv" width="960" height="720"></canvas>
+      <div class="panel map-card">
+        <div class="plate-head"><span id="mapKind">CIRCUIT</span><i id="mapMeta"></i></div>
+        <div class="map-bn" id="mapBn"></div>
+        <div class="map-name" id="mapName"></div>
+        <div class="map-sub" id="mapSub"></div>
+        <div class="map-best" id="mapBest"></div>
+        <button class="go" data-act="go">RACE</button>
+        <div class="hint">arrows pick · ENTER race · BACKSPACE back</div>
+      </div>
     </div>
   </section>
 
@@ -91,20 +104,6 @@
     </div>
   </section>
 
-  <!-- ======================== RADIO SELECT -->
-  <section id="radio" class="screen">
-    <div class="transistor">
-      <div class="tr-top"><span>NATIONAL</span><i>TRANSISTOR</i></div>
-      <div class="tr-dial">
-        <div class="tr-scale"><span>88</span><span>92</span><span>96</span><span>100</span><span>104</span><span>108</span></div>
-        <div class="tr-needle" id="needle"></div>
-      </div>
-      <ul class="tr-list" id="stationList"></ul>
-      <div class="tr-grille"></div>
-      <div class="hint">↑↓ tune · ENTER drive · the radio keeps playing in the car (R to switch)</div>
-    </div>
-  </section>
-
   <!-- ======================== SETTINGS -->
   <section id="settings" class="screen">
     <div class="panel set-card">
@@ -114,26 +113,16 @@
     </div>
   </section>
 
-  <!-- ======================== SCORES -->
-  <section id="scores" class="screen">
-    <div class="panel score-card">
-      <div class="plate-head"><span>HIGH SCORES</span></div>
-      <ol class="score-list" id="scoreList"></ol>
-      <div class="endings-grid" id="endingsGrid"></div>
-      <div class="hint">BACKSPACE back</div>
-    </div>
-  </section>
-
   <!-- ======================== HOW TO -->
   <section id="howto" class="screen">
     <div class="panel how-card">
       <div class="plate-head"><span>HOW TO DRIVE</span></div>
       <div class="how-grid">
         <div><b>↑ / W</b> gas &nbsp; <b>↓ / S</b> brake &nbsp; <b>← →</b> steer &nbsp; <b>SPACE</b> nitro</div>
-        <div><b>H</b> horn (slow traffic sometimes moves over)</div>
-        <div><b>R</b> music on/off &nbsp; <b>V</b> photo mode &nbsp; <b>ESC / P</b> pause &nbsp; <b>F</b> fullscreen</div>
-        <p>THE RUN: twenty-four drivers race across Dhaka in one night, and you start last. Each stage has a target position you must reach before it ends, or you are out. Win the final stage at the Padma Bridge.</p>
-        <p>Rivals block and shove. Police and RAB will try to run you off the road. Shove any of them into traffic, walls and each other for a <b>TAKEDOWN</b>: a wrecked rival drops way back. Near misses, drifts, big air and smashed stalls fill the <b>NITRO</b> bar. Jammed? Hit the ramp and take the wrong side.</p>
+        <div><b>H</b> horn &nbsp; <b>R</b> music on/off &nbsp; <b>V</b> photo mode &nbsp; <b>ESC / P</b> pause &nbsp; <b>F</b> fullscreen</div>
+        <p>Hold the gas and steer. Corners push you to the outside, harder the faster you go: lean into them early. Bumping cars and running onto the verge only cost speed.</p>
+        <p>Grab <b>coins</b>, <b>fuel cans</b> (run dry and you roll to a stop) and <b>nitro</b>. Tap SPACE to burn one nitro charge; you can hold three. Nitro in a tight bend will throw you wide.</p>
+        <p><b>CIRCUIT</b>: any district, three laps, twenty cars, you start last. <b>THE RUN</b>: twenty-four cars across the whole city. At each knockout gate everyone below the cut-off is out, and the last four race over the Padma.</p>
         <p>Gamepad works (RT gas, LT brake, B nitro, RB horn). On a phone, use the on-screen pedals.</p>
       </div>
       <div class="hint">BACKSPACE back</div>
@@ -143,36 +132,26 @@
   <!-- ======================== HUD -->
   <section id="hud" class="hud">
     <div class="h-time plate" id="hTimeBox">
-      <div class="lbl" id="hTimeLbl">POS</div>
-      <div class="big" id="hTime">24</div>
-      <div class="of" id="hOf">/24</div>
+      <div class="lbl">POS</div>
+      <div class="big" id="hTime">20</div>
+      <div class="of" id="hOf">/20</div>
     </div>
-    <div class="h-obj" id="hObj"><div class="need" id="hNeed">TARGET P16</div><div class="gap" id="hGapA"></div><div class="gap behind" id="hGapB"></div></div>
+    <div class="h-obj" id="hObj"><div class="need" id="hNeed">LAP 1/3</div><div class="gap" id="hGapA"></div><div class="gap behind" id="hGapB"></div></div>
     <div class="h-tags" id="hTags"></div>
     <div class="h-stage" id="hStage">
-      <div class="st-bn" id="hStageBn">DHANMONDI</div>
-      <div class="st-en" id="hStageEn">STAGE 1</div>
-      <div class="st-sub" id="hStageSub"></div>
+      <div class="st-bn" id="hStageBn"></div>
+      <div class="st-en" id="hStageEn"></div>
     </div>
     <div class="h-score">
-      <div class="row"><span class="lbl">SCORE</span><span id="hScore">0</span></div>
-      <div class="row small"><span class="lbl">LAP</span><span id="hLap">0'00"00</span></div>
-      <div class="pips" id="hPips"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="row"><span class="lbl">COINS</span><span id="hScore">0</span></div>
+      <div class="row small"><span class="lbl" id="hLapLbl">LAP</span><span id="hLap">0'00"00</span></div>
     </div>
     <div class="h-progress"><div class="bar" id="hProg"></div><div class="flag"></div></div>
-
-    <div class="h-boss" id="hBoss">
-      <canvas id="hVillain" width="96" height="96"></canvas>
-      <div class="bs-name" id="hBossName"></div>
-      <div class="bs-bar"><b id="hBossBar"></b></div>
-      <div class="bs-sub" id="hBossSub"></div>
-    </div>
 
     <div class="h-speed">
       <svg id="tacho" viewBox="-110 -110 220 130"></svg>
       <div class="kmh"><span id="hSpeed">0</span><i>KM/H</i></div>
-      <div class="gear" id="hGear"><b class="lo on">LO</b><b class="hi">HI</b></div>
-      <div class="nitro" id="hNitro"><span>NITRO</span><div class="nb"><b id="hNitroBar"></b></div></div>
+      <div class="gear" id="hGear"></div>
     </div>
 
     <div class="h-hct" id="hHct">
@@ -184,20 +163,13 @@
       <div class="vfd"><span id="hStation">JHALMURI FM</span><b id="hFreq">88.0</b></div>
       <div class="eq" id="hEq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     </div>
-    <canvas id="hMap" width="180" height="120"></canvas>
-    <div class="h-rear" id="hRear"></div>
+    <canvas id="hMap" width="180" height="135"></canvas>
 
     <div class="h-msg" id="hMsg"></div>
     <div class="h-combo" id="hCombo"></div>
-    <div class="h-warn" id="hWarn"></div>
     <div class="h-takedown" id="hTake"></div>
-    <div class="h-bubble" id="hBubble">
-      <canvas id="tuntuni" width="96" height="96"></canvas>
-      <div class="bubble"><div class="b-bn" id="hSayBn"></div><div class="b-en" id="hSayEn"></div></div>
-    </div>
     <div class="signal" id="signal"><i class="r"></i><i class="y"></i><i class="g"></i></div>
     <div class="h-cam" id="hCam"></div>
-    <div class="h-saree" id="hSaree"></div>
     <button class="h-pause" id="hPause" title="Pause (Esc / P)">II</button>
   </section>
   <div class="photo-hint" id="photoHint" hidden>PHOTO MODE &nbsp;·&nbsp; ←→ orbit · ↑↓ height · SPACE / H zoom · V exit</div>
@@ -210,7 +182,6 @@
     <button class="t-gas" data-t="gas">GAS</button>
     <button class="t-horn" data-t="horn">HORN</button>
     <button class="t-nitro" data-t="boost">NITRO</button>
-    <button class="t-fire" data-t="fire">FIRE</button>
     <button class="t-pause" data-t="pause">II</button>
   </div>
 
@@ -222,50 +193,19 @@
         <button data-act="resume"><span>RESUME</span></button>
         <button data-act="restart"><span>RESTART</span></button>
         <button data-act="settings"><span>SETTINGS</span></button>
-        <button data-act="quit"><span>QUIT TO TITLE</span></button>
+        <button data-act="quit"><span>QUIT TO MAP</span></button>
       </nav>
     </div>
   </section>
 
-  <!-- ======================== RESULTS / ENDING -->
-  <section id="ending" class="screen">
-    <div class="postcard" id="postcard">
-      <div class="pc-stamp" id="pcStamp">5</div>
-      <div class="pc-bn" id="pcBn"></div>
-      <div class="pc-title" id="pcTitle"></div>
-      <div class="pc-lines" id="pcLines"></div>
-      <div class="pc-tally" id="pcTally"></div>
-      <canvas id="pcMap" width="360" height="200"></canvas>
-      <div class="hint" id="pcHint">ENTER continue</div>
-    </div>
-  </section>
-
-  <section id="gameover" class="screen dim">
+  <!-- ======================== RESULTS -->
+  <section id="results" class="screen dim">
     <div class="over">
-      <div class="over-bn" id="overBn">ELIMINATED</div>
-      <div class="over-en" id="overEn">THE RUN IS OVER</div>
+      <div class="over-bn" id="overBn">FINISHED</div>
+      <div class="over-en" id="overEn"></div>
       <div class="over-sub" id="overSub"></div>
       <div class="pc-tally" id="overTally"></div>
-      <div class="hint" id="overHint">ENTER continue</div>
-    </div>
-  </section>
-
-  <section id="story" class="screen dim">
-    <div class="story-card">
-      <div class="story-kicker">TONIGHT · DHANMONDI TO THE CITY LIMITS</div>
-      <div class="story-title">THE DHAKA RUN</div>
-      <div class="story-lines" id="storyLines"></div>
-      <div class="story-grid" id="storyGrid"></div>
-      <div class="hint">ENTER race</div>
-    </div>
-  </section>
-
-  <section id="nameentry" class="screen dim">
-    <div class="panel name-card">
-      <div class="plate-head"><span>YOUR NAME</span><i>HALL OF FAME</i></div>
-      <div class="name-score" id="nameScore"></div>
-      <div class="letters" id="letters"><b>A</b><b>A</b><b>A</b></div>
-      <div class="hint">↑↓ letter · ←→ move · ENTER save</div>
+      <div class="hint" id="overHint">ENTER race again · BACKSPACE map</div>
     </div>
   </section>
 </div>

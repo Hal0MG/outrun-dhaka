@@ -9,7 +9,6 @@ import { LANE_W, STEP } from './track.js';
 import { RNG, hashStr, clamp } from '../core/util.js';
 import * as PR from './props.js';
 import { LANDMARKS } from './landmarks.js';
-import { ENVS, SURFACES } from './envs.js';
 import { oppLayout } from './zones.js';
 
 export const CHUNK = 100;
@@ -57,7 +56,6 @@ export class ChunkCtx {
       fx: new MeshBuilder(true),
       fx2: new MeshBuilder(true),
     };
-    this.breakables = [];
     this.sprites = new SpriteBatch(world.assets.sprites);
     this.W = new LineBuilder();
     this.water = [];
@@ -83,13 +81,6 @@ export class ChunkCtx {
     const o = { s, x, hw, hl, kind, ...(extra || {}) };
     this.obstacles.push(o);
     return o;
-  }
-
-  // something you can drive through and send flying (see game/breakables.js)
-  breakable(kind, s, x, opts = {}) {
-    const b = { kind, s, x, h: opts.h ?? 0, yaw: opts.yaw ?? 0, scale: opts.scale ?? 1, tint: opts.tint || null, hw: opts.hw ?? 0.8, hl: opts.hl ?? 0.6, mass: opts.mass ?? 0.04, ht: opts.ht ?? 1.6, score: opts.score ?? 250 };
-    this.breakables.push(b);
-    return b;
   }
 
   // landmark breathing room: nothing tall gets placed in a reserved zone
@@ -589,16 +580,12 @@ export function buildChunk(world, track, ci) {
   if (s1 <= s0) return null;
   const st = ctx.stage;
 
-  // main road surface (set pieces swap in their own floors)
+  // main road surface
   const secRuns = sectionRuns(track, s0, s1);
-  for (const [a, b, sec] of secRuns) {
-    const surf = sec.surface || 'asphalt';
-    if (surf === 'asphalt') {
-      ctx.roadGeos.push(buildRoadStrip(track, a, b,
-        (s) => -track.halfWAt(s) - 0.35, (s) => track.halfWAt(s) + 0.35,
-        () => 0, (s) => track.halfWAt(s), (s) => track.lanesAt(s)));
-    } else if (SURFACES[surf]) SURFACES[surf](ctx, a, b, sec);
-    if (sec.env && ENVS[sec.env]) ENVS[sec.env](ctx, a, b, sec);
+  for (const [a, b] of secRuns) {
+    ctx.roadGeos.push(buildRoadStrip(track, a, b,
+      (s) => -track.halfWAt(s) - 0.35, (s) => track.halfWAt(s) + 0.35,
+      () => 0, (s) => track.halfWAt(s), (s) => track.lanesAt(s)));
   }
 
   // split range into runs of constant side types
@@ -710,7 +697,7 @@ function finalize(world, ctx) {
     if (geo) group.add(new THREE.Mesh(geo, track.waterMat || M.water));
   }
   for (const e of ctx.extra) group.add(e);
-  return { group, obstacles: ctx.obstacles, s0: ctx.s0, s1: ctx.s1, dynamic: ctx.dynamic || [], breakables: ctx.breakables, emitters: ctx.emitters || [], peds: ctx.peds || [], rides: ctx.rides || [] };
+  return { group, obstacles: ctx.obstacles, s0: ctx.s0, s1: ctx.s1, dynamic: ctx.dynamic || [], emitters: ctx.emitters || [] };
 }
 
 function waterStrip(ctx, w) {

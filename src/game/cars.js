@@ -64,7 +64,7 @@ export const CARS = [
   },
   {
     id: 'rickshaw', name: 'RICKSHAW 9000', bn: 'রিকশা ৯০০০', tag: 'HAND-PAINTED · JET-ASSISTED',
-    blurb: 'Hand-painted, jet-assisted. The puller has not been told. Unlocks after your first goal.',
+    blurb: 'Hand-painted, jet-assisted. The puller has not been told. Unlocks after your first win.',
     top: 250, accel: 1.12, grip: 0.7, width: 1.15, length: 2.6, locked: true,
     colors: ['#c8102e', '#1d5fa8', '#118a4a', '#ffb000', '#7b2f9e'],
   },
@@ -611,63 +611,6 @@ function shadowTexture() {
   ctx.restore();
   _shadowTex = new THREE.CanvasTexture(cv);
   return _shadowTex;
-}
-
-// a saree caught on the back of the car, streaming in the wind
-let _sareeTex = null;
-function sareeTexture() {
-  if (_sareeTex) return _sareeTex;
-  const cv = document.createElement('canvas');
-  cv.width = 64; cv.height = 256;
-  const c = cv.getContext('2d');
-  c.fillStyle = '#c8102e'; c.fillRect(0, 0, 64, 256);
-  for (let y = 0; y < 256; y += 3) { c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(0, y, 64, 1); }
-  c.fillStyle = '#ffd23a';
-  for (let y = 8; y < 256; y += 14) for (let x = 6 + (y % 28 ? 6 : 0); x < 52; x += 12) { c.beginPath(); c.arc(x, y, 2, 0, Math.PI * 2); c.fill(); }
-  c.fillStyle = '#ffb000'; c.fillRect(0, 0, 10, 256); c.fillRect(54, 0, 10, 256);
-  c.fillStyle = '#1a7a3c'; c.fillRect(3, 0, 3, 256); c.fillRect(58, 0, 3, 256);
-  _sareeTex = new THREE.CanvasTexture(cv);
-  _sareeTex.colorSpace = THREE.SRGBColorSpace;
-  return _sareeTex;
-}
-
-export function attachSaree(car) {
-  const len = 2.6;
-  const geo = new THREE.PlaneGeometry(0.55, len, 1, 14);
-  geo.translate(0, -len / 2, 0);
-  geo.rotateX(-Math.PI / 2);
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: sareeTexture(), side: THREE.DoubleSide, roughness: 0.85 }));
-  const d = car.dims;
-  mesh.position.set(0.25, d.hgt * 0.85, d.len * 0.45);
-  mesh.visible = false;
-  car.body.add(mesh);
-  car.saree = mesh;
-  car.sareeBase = Float32Array.from(geo.getAttribute('position').array);
-}
-
-export function attachBags(car) {
-  // shopping bags in Tuntuni's lap (and one on her head, there was no room)
-  const g = new THREE.Group();
-  const cols = ['#c8102e', '#f2ead6', '#0f7a43', '#ffb000'];
-  const x = car.passenger ? car.passenger.position.x : -0.4;
-  const y = car.passenger ? car.passenger.position.y - 0.35 : 1.0;
-  const z = car.passenger ? car.passenger.position.z - 0.25 : 0;
-  cols.forEach((c, i) => {
-    const bag = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.32, 0.12), new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
-    bag.position.set(x + (i % 2 ? 0.16 : -0.16), y + Math.floor(i / 2) * 0.12, z - i * 0.04);
-    bag.rotation.set(0.1 * i, 0.3 * (i - 1.5), 0.15 * (i % 2 ? 1 : -1));
-    g.add(bag);
-    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.01, 4, 8, Math.PI), new THREE.MeshStandardMaterial({ color: '#111' }));
-    handle.position.copy(bag.position).add(new THREE.Vector3(0, 0.16, 0));
-    g.add(handle);
-  });
-  const hat = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.26, 0.14), new THREE.MeshStandardMaterial({ color: '#c8102e', roughness: 0.8 }));
-  hat.position.set(x, y + 0.72, z + 0.25);
-  hat.rotation.z = 0.25;
-  g.add(hat);
-  g.visible = false;
-  car.body.add(g);
-  car.bags = g;
 }
 
 export function applyEnv(car, envTex) {

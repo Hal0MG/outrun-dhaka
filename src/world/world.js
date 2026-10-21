@@ -7,14 +7,12 @@ import { buildChunk, CHUNK, sideLimits, ChunkCtx } from './chunk.js';
 import { buildFacadeAtlas, buildMiscAtlas } from './textures.js';
 import { buildSignAtlas, makeGantryTexture } from './signs.js';
 import { buildFxAtlas } from './fxatlas.js';
-import { buildZones, contraAt, oppLayout, jamSpan } from './zones.js';
 import { buildSpriteAtlas, makeSpriteMaterial } from './sprites.js';
 import { shared, makeAtlasMaterial, makeGlowMaterial, makeWaterMaterial } from './materials.js';
 import { makeRoadMaterial, buildFeatureTexture } from './road.js';
-import { STAGES, childrenOf, CHECKPOINT_BONUS } from './stages.js';
+import { STAGES, childrenOf, KNOCKOUTS } from './stages.js';
 import { LANDMARKS, bannerMaterial, gantryMaterial } from './landmarks.js';
 import * as PR from './props.js';
-import { rampAt, futurePark } from './envs.js';
 import { RNG, hashStr, clamp, smoothstep, lerp } from '../core/util.js';
 
 export const DIVERGE = 340;
@@ -25,7 +23,7 @@ export const FORK_OFF = (FORK_LANES * LANE_W) / 2;
 const VIEW_AHEAD = 1150;
 // ordinary road is authored long; play it shorter so stages fly by (set pieces keep their size)
 export const STAGE_SCALE = 0.5;
-const isPlain = (sec) => !(sec.closed || sec.env || sec.surface || sec.hardK || sec.gap || sec.jump || sec.rides || sec.crests || sec.endRamp || sec.lift);
+const isPlain = (sec) => !sec.hardK;
 const KEEP_BEHIND = 160;
 
 export class World {
@@ -40,8 +38,6 @@ export class World {
     scene.add(this.root);
     this.dynamic = [];
     this.emitters = [];
-    this.breakables = [];
-    this.onChunk = null;
   }
 
   buildAssets(progress) {
@@ -151,6 +147,8 @@ export class World {
     const id = stageId + (parent ? '<' + parent.id : '');
     const tr = new Track({ id, stage, sections: secs, start, parent, side });
     tr.stageId = stageId;
+    // distance along the whole route to this track's s = 0 (the Run spans many tracks)
+    tr.base = parent ? parent.base + parent.length : 0;
     tr.contentOffset = contentOffset;
     tr.isFinal = isFinal;
     tr.isFirst = isFirst;
@@ -163,10 +161,10 @@ export class World {
       return contentOffset + (last ? last[3] + (a - last[1]) : a);
     };
     tr.goalS = isFinal ? tr.length - 700 : null;
-    tr.gateS = isFirst ? 40 : GATE_S;
+    // the first track's line has room behind it for the grid
+    tr.gateS = isFirst ? 130 : GATE_S;
     if (stage.circuit) {
-      // the grid sits behind the line; lap n starts at lapS(n), the flag drops after the last one
-      tr.gateS = 110;
+      // lap n starts at lapS(n); the flag drops after the last one
       tr.laps = stage.laps;
       tr.lapLen = stage.lapLen;
       tr.lapS = (i) => tr.gateS + i * tr.lapLen;
@@ -178,7 +176,6 @@ export class World {
     tr.meanYaw = ym / Math.ceil(tr.n / 10);
     // reserved zones for landmarks
     tr.clear = (stage.landmarks || []).filter((l) => l.clear).map((l) => ({ s0: tr.mapS(l.clear[0]), s1: tr.mapS(l.clear[1]), side: l.side }));
-    tr.zones = buildZones(tr, stage, tr.mapS);
     // features
     const zebras = (stage.zebras || []).map((z) => tr.mapS(z));
     const alp = (stage.alpana || []).map(([a, b]) => [tr.mapS(a), tr.mapS(b)]);
@@ -236,7 +233,6 @@ export class World {
     });
     this.dynamic = this.dynamic.filter((d) => d.chunk !== ch);
     this.emitters = this.emitters.filter((e) => e.chunk !== ch);
-    this.breakables = this.breakables.filter((b) => b.chunk !== ch || b.flying);
     this.chunks.delete(key);
   }
 
@@ -253,8 +249,6 @@ export class World {
     this.chunks.set(key, ch);
     for (const d of ch.dynamic) { d.chunk = ch; this.dynamic.push(d); }
     for (const e of ch.emitters || []) { e.chunk = ch; this.emitters.push(e); }
-    for (const b of ch.breakables || []) { b.chunk = ch; b.track = tr; this.breakables.push(b); }
-    this.onChunk?.(ch);
     return ch;
   }
 
@@ -339,7 +333,6 @@ export class World {
     for (const l of st.landmarks || []) {
       const s = M(l.s);
       if (!inChunk(s)) continue;
-      if (l.type === 'futurePark') { futurePark(ctx, s, l.side, l.dist); continue; }
       const fn = LANDMARKS[l.type];
       if (!fn) continue;
       if (l.type === 'ledArch') fn(ctx, s, tr.halfWAt(s) + 10, l.opts);
@@ -399,69 +392,16 @@ export class World {
         }
       }
     }
-    // the checkpoint at the head of every jam: barriers across our carriageway and a taper of cones
-    for (const e of st.events || []) {
-      if (e.type !== 'jam') continue;
-      const { s1 } = jamSpan(tr, e);
-      if (!inChunk(s1) && !inChunk(s1 - 30)) continue;
-      const hw = tr.halfWAt(Math.min(s1, tr.length));
-      const n = Math.max(1, Math.round(hw * 2 / LANE_W));
-      for (let l = 0; l < n; l++) {
-        const x = -hw + LANE_W * (l + 0.5);
-        if (inChunk(s1)) ctx.breakable('barrier', s1, x, { hw: 1.3, hl: 0.4, ht: 0.9, mass: 0.02, score: 100, yaw: tr.yawAt(s1) * 0 });
-        for (let k = 1; k <= 4; k++) {
-          const sc = s1 - 8 * k;
-          if (inChunk(sc) && (l + k) % 2 === 0) ctx.breakable('cone', sc, x + (k - 2.5) * 0.9, { hw: 0.3, hl: 0.3, ht: 0.8, mass: 0.01, score: 50 });
-        }
-      }
-    }
-    // wrong-side runs: the ramp before the jam, barrels closing the far side
-    for (const z of []) {
-      if (inChunk(z.ramp)) {
-        const s = z.ramp, hw = tr.halfWAt(s);
-        const o = oppLayout(tr, s, st);
-        rampAt(ctx, s, hw - LANE_W * 0.5, LANE_W - 0.5, 7, 1.3, { len: 52, h: 4.4, x1: o.near + LANE_W * 0.6, kind: 'contra', slow: 0.55 });
-        // a van full of planks is how the ramp got here
-        const vp = ctx.P(s + 5, hw - LANE_W * 0.5, 0);
-        ctx.B.misc.box(vp[0], vp[1], vp[2], 1.4, 0.6, 2.4, tr.yawAt(s), { color: [0.5, 0.32, 0.18], region: ctx.misc.get('wood') });
-        PR.roadSign(ctx, s - 40, 1, hw + 1.2, 'slow');
-      }
-      for (let s = Math.ceil(Math.max(ctx.s0, z.g1) / 6) * 6; s < Math.min(ctx.s1, z.end + 6); s += 6) {
-        const o = oppLayout(tr, s, st);
-        const t = clamp((s - z.g1) / (z.end - z.g1), 0, 1);
-        const x = lerp(o.far + 0.3, o.near + 0.6, t) + 0.4;
-        ctx.breakable('barrier', s, x, { hw: 1.2, hl: 0.3, ht: 0.9, mass: 0.02, score: 100, yaw: Math.atan2(o.far - o.near, z.end - z.g1) * 0.0 });
-      }
-    }
-    // street stalls taking over the outer lane
-    for (const z of tr.zones?.stalls || []) {
-      for (let s = Math.max(ctx.s0, z.s0); s < Math.min(ctx.s1, z.s1); s += ctx.rng.range(6, 11)) {
-        const hw = tr.halfWAt(s);
-        const x = z.side * (hw - LANE_W * 0.5 + ctx.rng.range(-0.3, 0.4));
-        const k = ctx.rng.weighted({ stall_tea: 3, stall_fruit: 2.5, stall_fuchka: 2, crate: 1.2, kiosk: 0.6 });
-        ctx.breakable(k, s, x, { hw: 0.95, hl: 0.6, ht: 1.6, mass: 0.05, score: 300, yaw: z.side < 0 ? 0 : Math.PI });
-        if (ctx.rng.chance(0.6)) {
-          const p = ctx.P(s + ctx.rng.range(-1, 1), z.side * (hw + 0.8), 0.18);
-          ctx.sprites.add(ctx.rng.pick(['p_vendor', 'p_lungi', 'crowd0']), p[0], p[1], p[2], 1, { lamp: 1, flip: z.side > 0 });
-        }
-      }
-    }
-    // ramps for the helicopter fight
-    for (const r of st.ramps || []) {
-      const s = M(r.s);
-      if (!inChunk(s)) continue;
-      const hw = tr.halfWAt(s);
-      const x = r.x != null ? r.x * hw : 0;
-      rampAt(ctx, s, x, 5.2, 7.5, 1.6, { len: r.len || 46, h: r.h || 6.8, kind: 'heliRamp', slow: 0.45 });
-    }
     // start / checkpoint / goal gates
     if (inChunk(tr.gateS)) {
       const s = tr.gateS;
       const R = ctx.sideType(s, 1);
       const hwR = R === 'median' ? tr.halfWAt(s) + (st.medianW || 2.6) + st.lanes * LANE_W : tr.halfWAt(s);
-      const lines = st.circuit ? ['আউটরান ঢাকা', 'START · ' + st.name.toUpperCase()] : tr.isFirst && tr.stageId === 'dhanmondi' ?['আউটরান ঢাকা', 'START · DHANMONDI'] : ['চেকপয়েন্ট', 'CHECKPOINT · ' + st.name.toUpperCase()];
-      if (tr.sectionAt(s).env) { /* set pieces have their own entrance */ }
-      PR.festiveGate(ctx, s, tr.halfWAt(s), hwR, bannerMaterial(lines, tr.isFirst ? { c1: '#c8102e', c2: '#5c0716' } : { c1: '#0f7a43', c2: '#04301a' }));
+      // start line, a knockout gate on the Run, or just the district's welcome arch
+      const ko = !tr.isFirst && KNOCKOUTS[tr.stageId];
+      const lines = tr.isFirst ? ['আউটরান ঢাকা', 'START · ' + st.name.toUpperCase()] : ko ? ['নকআউট', `KNOCKOUT · TOP ${ko} GO THROUGH`] : [st.bn, st.name.toUpperCase()];
+      const cols = tr.isFirst ? { c1: '#c8102e', c2: '#5c0716' } : ko ? { c1: '#e4252b', c2: '#1a0508' } : { c1: '#0f7a43', c2: '#04301a' };
+      PR.festiveGate(ctx, s, tr.halfWAt(s), hwR, bannerMaterial(lines, cols));
       if (tr.isFirst) {
         // the crowd at the start line + traffic police with white gloves
         for (let i = 0; i < 16; i++) {
@@ -488,7 +428,7 @@ export class World {
       const s = tr.goalS;
       const R = ctx.sideType(s, 1);
       const hwR = R === 'median' ? tr.halfWAt(s) + (st.medianW || 2.6) + st.lanes * LANE_W : tr.halfWAt(s);
-      PR.festiveGate(ctx, s, tr.halfWAt(s), hwR, bannerMaterial(['গোল!', 'GOAL · ' + st.name.toUpperCase()], { c1: '#f2b81f', c2: '#a86d00', tc: '#7a0716' }));
+      PR.festiveGate(ctx, s, tr.halfWAt(s), hwR, bannerMaterial(['ফিনিশ', 'FINISH · ' + st.name.toUpperCase()], { c1: '#f2b81f', c2: '#a86d00', tc: '#7a0716' }));
     }
     // fork gantry and gore barrier
     if (!tr.isFinal) {
@@ -530,31 +470,7 @@ export class World {
     const L = sideLimits(this.sideTypeAt(tr, s, -1), tr.stage, sec);
     const R = sideLimits(this.sideTypeAt(tr, s, 1), tr.stage, sec);
     const hw = tr.halfWAt(s);
-    const out = { lSoft: -(hw + L.soft), lWall: -(hw + L.wall), rSoft: hw + R.soft, rWall: hw + R.wall, hw, opp: false };
-    // wrong-side runs: the opposite carriageway becomes yours
-    const z = contraAt(tr, s);
-    if (z && this.sideTypeAt(tr, s, 1) === 'median') {
-      const o = oppLayout(tr, s, tr.stage);
-      const inGap = s >= z.g0 && s <= z.end;
-      const onOpp = x > hw + o.mw * 0.5;
-      let far = o.far + 0.3;
-      if (s > z.g1) far = lerp(o.far + 0.3, o.near + 0.6, clamp((s - z.g1) / (z.end - z.g1), 0, 1));
-      if (inGap) { out.rSoft = far - 0.1; out.rWall = far; }
-      else if (onOpp) { out.lSoft = o.near - 0.05; out.lWall = o.near - 0.15; out.rSoft = far - 0.1; out.rWall = far; }
-      out.opp = onOpp;
-    }
-    return out;
-  }
-
-  obstaclesNear(tr, s, out) {
-    out.length = 0;
-    const c0 = Math.floor((s - 8) / CHUNK), c1 = Math.floor((s + 8) / CHUNK);
-    for (let c = c0; c <= c1; c++) {
-      const ch = this.chunks.get(tr.id + ':' + c);
-      if (!ch) continue;
-      for (const o of ch.obstacles) if (Math.abs(o.s - s) < 12) out.push(o);
-    }
-    return out;
+    return { lSoft: -(hw + L.soft), lWall: -(hw + L.wall), rSoft: hw + R.soft, rWall: hw + R.wall, hw };
   }
 
   update(dt, time, cam) {

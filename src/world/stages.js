@@ -1,24 +1,11 @@
-// The route pyramid: start in Dhanmondi, fork left/right at the end of every
-// stage, escape Dhaka at sunrise through one of five exits.
+// Dhaka's districts: each one's road (sections), look (facades, trees, street
+// life, lamps, tint) and landmarks. A district is raced on its own as a lap
+// circuit, or all fifteen are strung together as the Run.
 //
 // Section helper S(len, curvature, elevationChange, extras). Positive k = right.
-// Extras: L/R/far side types, elev (road height above terrain), lanes, and for
-// set pieces: env (what is built around you), surface (what you drive on),
-// closed (no traffic), gap (nothing to drive on: you are airborne), jump.
+// Extras: L/R/far side types, elev (road height above terrain), lanes.
 
 const S = (len, k = 0, dy = 0, extra = {}) => ({ len, k, dy, ...extra });
-
-export const PYRAMID = [
-  ['dhanmondi'],
-  ['shahbag', 'manikmia'],
-  ['oldDhaka', 'kawranBazar', 'hatirjheel'],
-  ['sadarghat', 'motijheel', 'gulshan', 'mirpur'],
-  ['padma', 'highway', 'purbachal', 'airport', 'savar'],
-];
-
-// hour ranges per pyramid level (continuous axis, 24+ = after midnight)
-
-
 
 
 const CITY_FACADES = ['apt_cream', 'apt_pink', 'apt_mint', 'apt_yellow', 'apt_white', 'apt_blue', 'apt_tile', 'apt_tile2', 'apt_raw'];
@@ -27,56 +14,6 @@ const CBD_FACADES = ['office', 'glass_blue', 'glass_green', 'apt_white', 'apt_ti
 const POSH_FACADES = ['glass_blue', 'glass_green', 'apt_white', 'apt_blue', 'office', 'apt_white'];
 
 const STREET_LIFE = { p_lungi: 3, p_shirt: 3, p_saree: 2, p_kameez: 2, p_panjabi: 1, p_vendor: 1, teastall: 1.2, fuchka: 0.8, crowd0: 0.6, crowd1: 0.5, dog: 0.5, police: 0.15, fruitvan: 0.4 };
-
-// ------------------------------------------------------------------ set pieces
-const IN = { L: 'interior', R: 'interior', closed: true, noDeck: true, roof: true };
-
-// METRO DASH: the road is closed for metro works, so you take the stairs,
-// tap in with your bumper, drive the rails and jump into a clothing store
-const METRO_DASH = () => [
-  S(70, 0, 0, { lanes: 2, laneEase: 0.7, env: 'closure', closed: true, closeLead: 100, L: 'city', R: 'city', wallX: 0.4 }),
-  S(64, 0, 0, { ...IN, lanes: 2, elev: 6.5, surface: 'stairs', env: 'station' }),
-  S(92, 0, 0, { ...IN, lanes: 3, laneEase: 0.25, elev: 6.5, surface: 'tiles', env: 'station', gateAt: 38 }),
-  S(46, 0, 0, { ...IN, lanes: 2, laneEase: 0.3, elev: 12, surface: 'stairs', env: 'station' }),
-  S(110, 0, 0, { ...IN, lanes: 3, laneEase: 0.25, elev: 12, surface: 'tiles', env: 'platform' }),
-  S(30, 0, 0, { lanes: 2, laneEase: 0.5, elev: 11.2, surface: 'rail', env: 'viaduct', closed: true, L: 'elevated', R: 'elevated' }),
-  S(320, 0.0016, 0, { lanes: 2, elev: 11.2, surface: 'rail', env: 'viaduct', closed: true, L: 'elevated', R: 'elevated' }),
-  S(330, -0.0018, 0, { lanes: 2, elev: 11.2, surface: 'rail', env: 'viaduct', closed: true, L: 'elevated', R: 'elevated' }),
-  S(70, 0, 0, { lanes: 2, elev: 11.2, surface: 'rail', env: 'construction', closed: true, L: 'elevated', R: 'elevated', jump: { len: 100, h: 7.5, kind: 'store', slow: 0.38 } }),
-  S(84, 0, 0, { lanes: 2, elev: 13, surface: 'none', env: 'gap', gap: true, closed: true, L: 'gapCity', R: 'gapCity', noDeck: true }),
-  S(150, 0, 0, { ...IN, lanes: 3, laneEase: 0.15, elev: 13, surface: 'store', env: 'store', jump: { len: 92, h: 3.5, kind: 'storeOut', slow: 0.4 } }),
-  S(80, 0, 0, { lanes: 3, elev: 0, surface: 'none', env: 'gap', gap: true, closed: true, L: 'gapCity', R: 'gapCity', noDeck: true }),
-  S(110, 0, 0, { lanes: 4, laneEase: 0.6, elev: 0, closed: true, L: 'city', R: 'median' }),
-];
-
-// MALL CRAWL: through the doors, up the spiral, into the cinema, out of the screen
-const R_SPIRAL = 26;
-const MALL_CRAWL = () => [
-  S(90, 0, 0, { lanes: 3, laneEase: 0.6, env: 'mallFront', closed: true, closeLead: 130, L: 'city', R: 'city' }),
-  S(110, 0, 0, { ...IN, noDeck: false, lanes: 3, surface: 'mall', env: 'mallFloor' }),
-  S(Math.round(Math.PI * 2 * R_SPIRAL * 2.25), 1 / R_SPIRAL, 0, { ...IN, lanes: 2, laneEase: 0.2, hardK: true, elev: 18, surface: 'mall', env: 'spiral', cf: 0.22 }),
-  S(60, 0, 0, { ...IN, lanes: 3, laneEase: 0.4, elev: 18, surface: 'carpet', env: 'cinemaLobby' }),
-  S(100, 0, 0, { ...IN, lanes: 3, elev: 16, surface: 'carpet', env: 'cinema', jump: { len: 130, h: 7, kind: 'cinemaOut', slow: 0.33, roll: 1 } }),
-  S(120, 0, 0, { lanes: 3, elev: 9, surface: 'none', env: 'gap', gap: true, closed: true, L: 'gapCity', R: 'gapCity', noDeck: true }),
-  S(260, 0, 0, { lanes: 4, laneEase: 0.4, elev: 0, L: 'elevated', R: 'elevated', closed: true }),
-];
-
-// FUTURE PARK: through the turnstiles, past the rides, onto the roller coaster
-const COASTER = { lanes: 1.6, surface: 'coaster', env: 'coaster', closed: true, L: 'none', R: 'none', noDeck: true };
-const FUTURE_PARK = () => [
-  S(80, 0, 0, { lanes: 3, laneEase: 0.6, env: 'parkGate', closed: true, closeLead: 130, L: 'city', R: 'city' }),
-  S(320, 0.0022, 0, {
-    lanes: 3, surface: 'plaza', env: 'park', closed: true, L: 'open', R: 'open',
-    rides: [{ s: 60, type: 'wheel', side: 1, dist: 36, r: 22 }, { s: 140, type: 'carousel', side: -1, dist: 22 }, { s: 220, type: 'ship', side: 1, dist: 24 }, { s: 290, type: 'tower', side: -1, dist: 30 }],
-  }),
-  S(110, 0, 0, { ...COASTER, laneEase: 0.4, elev: 22, lift: true }),
-  S(70, 0, 0, { ...COASTER, elev: 4, crests: [{ s: 1, jump: { len: 36, h: 2.6, kind: 'coaster', slow: 0.6 } }] }),
-  S(90, 0.012, 0, { ...COASTER, elev: 13 }),
-  S(80, -0.014, 0, { ...COASTER, elev: 3, crests: [{ s: 1, jump: { len: 30, h: 2.2, kind: 'coaster' } }] }),
-  S(90, 0, 0, { ...COASTER, elev: 9, endRamp: { len: 82, h: 5, kind: 'coasterOut', slow: 0.42 } }),
-  S(76, 0, 0, { lanes: 4, laneEase: 0.3, elev: 0, surface: 'none', env: 'gap', gap: true, closed: true, L: 'open', R: 'open', noDeck: true }),
-  S(120, 0, 0, { lanes: 5, laneEase: 0.5, elev: 0, closed: true, L: 'kash', R: 'median' }),
-];
 
 export const STAGES = {
   // ======================================================================== LEVEL 0
@@ -97,8 +34,6 @@ export const STAGES = {
     medianPlants: { bush0: 2, bougain0: 3 },
     billboards: ['band', 'kacchi', 'gfun', 'swapno', 'tea', 'ononto', 'coaching', 'pathaw'],
     lampColor: '#ffad48', lampSpacing: 34, lakeW: 120, boats: 'swan',
-    traffic: { density: 20, mix: { rickshaw: 5, cng: 3, car: 3, bus: 1.2, bike: 2, suv: 1, tesla: 3, micro: 1 } },
-    peds: 0.8,
     tint: { color: '#ffb070', amount: 0.08 },
     skyline: 'midrise', fairyP: 0.15,
     landmarks: [
@@ -108,13 +43,6 @@ export const STAGES = {
     ],
     footbridges: [880, 2100, 3350],
     zebras: [500, 1700, 2400, 3100],
-    stalls: [[1900, 2280, -1]],
-    events: [
-      { type: 'teslas', s: 560, n: 6 },
-      { type: 'enemies', role: 'police', s: 1500, n: 2, label: 'POLICE BEHIND' },
-      { type: 'jam', s: 2950, len: 170 },
-    ],
-    lines: [{ s: 80, id: 'start' }, { s: 1180, id: 'sarobar' }, { s: 1880, id: 'stalls' }, { s: 2620, id: 'abahani' }],
   },
 
   // ======================================================================== LEVEL 1
@@ -133,8 +61,6 @@ export const STAGES = {
     lifeDensity: 0.12, wallLife: 0.12, wallTrees: 0.14,
     billboards: ['rong', 'band', 'coaching', 'tea', 'kolija', 'safety'],
     lampColor: '#ffb04a', festival: 'boishakh',
-    traffic: { density: 20, mix: { rickshaw: 8, cng: 2, car: 2, bus: 1, bike: 2, tesla: 3 } },
-    peds: 1.3, pedKind: 'student',
     tint: { color: '#ff7a8a', amount: 0.12 },
     skyline: 'midrise',
     alpana: [[0, 3100]],
@@ -144,13 +70,6 @@ export const STAGES = {
     ],
     banners: [{ s: 120, lines: ['শুভ নববর্ষ ১৪৩৩', 'SHUBHO NOBOBORSHO'] }, { s: 1850, lines: ['মঙ্গল শোভাযাত্রা', 'CHARUKOLA · DHAKA UNIVERSITY'], c1: '#1d5fa8', c2: '#0d2f5c' }],
     zebras: [600, 1300, 2000, 2700],
-    stalls: [[2480, 2900, -1]],
-    events: [
-      { type: 'enemies', role: 'police', s: 1100, n: 3 },
-      { type: 'jam', s: 2050, len: 150 },
-      { type: 'teslas', s: 2700, n: 7 },
-    ],
-    lines: [{ s: 60, id: 'boishakh' }, { s: 760, id: 'minar' }, { s: 1800, id: 'masks' }, { s: 2600, id: 'nilkhet' }],
   },
 
   manikmia: {
@@ -169,8 +88,6 @@ export const STAGES = {
     lifeDensity: 0.1,
     billboards: ['ononto', 'gfun', 'metro', 'walto', 'jfp', 'dana'],
     lampColor: '#ffd9a0', lampSpacing: 36,
-    traffic: { density: 13, mix: { car: 4, suv: 2, bus: 2, cng: 2, bike: 2, rickshaw: 0.6, micro: 1 } },
-    peds: 0.6, pedKind: 'student',
     tint: { color: '#ff86b0', amount: 0.1 },
     skyline: 'midrise', bonus: 6,
     landmarks: [
@@ -178,11 +95,6 @@ export const STAGES = {
       { type: 'sangsad', s: 1480, side: 1, dist: 200, clear: [1240, 1720] },
       { type: 'novoTheatre', s: 2140, side: 1, dist: 66, clear: [2070, 2210] },
     ],
-    events: [
-      { type: 'boss', id: 'heli', s: 340, fromX: -70 },
-      { type: 'kites', s0: 700, s1: 2000 },
-    ],
-    lines: [{ s: 60, id: 'manikmia' }, { s: 1200, id: 'sangsad' }, { s: 2280, id: 'flyover' }],
   },
 
   // ======================================================================== LEVEL 2
@@ -198,21 +110,11 @@ export const STAGES = {
     life: { p_lungi: 4, p_panjabi: 3, p_vendor: 2, teastall: 1.5, crowd0: 1, crowd1: 1, cow0: 0.6, cow1: 0.5, dog: 0.8, fruitvan: 0.8 },
     billboards: ['kacchi', 'mastan', 'chanachur', 'coil'],
     lampColor: '#ff9a3a', poleSpacing: 30,
-    traffic: { density: 24, mix: { rickshaw: 9, cng: 2, horse: 1.4, bike: 2, car: 1, van: 1.5, tesla: 5 } },
-    peds: 1.6, cows: true,
     tint: { color: '#ff8a3a', amount: 0.22, fogMul: 1.35 },
     skyline: 'dense', fairyP: 0.35, markFade: 0.9, roadTint: '#e8dccc',
     landmarks: [
       { type: 'starMosque', s: 900, side: 1, dist: 7.5, clear: [860, 940] },
     ],
-    stalls: [[600, 1150, -1], [1700, 2250, 1]],
-    events: [
-      { type: 'kites', s0: 0, s1: 3200 }, { type: 'fireworks', s0: 300, s1: 3200 }, { type: 'firebreathers', s0: 200, s1: 3000 },
-      { type: 'teslas', s: 300, n: 8 },
-      { type: 'jam', s: 1900, len: 130 },
-      { type: 'enemies', role: 'police', s: 2500, n: 2 },
-    ],
-    lines: [{ s: 60, id: 'oldDhaka' }, { s: 700, id: 'biryani' }, { s: 1400, id: 'horse' }, { s: 2400, id: 'shakrain' }],
   },
 
   kawranBazar: {
@@ -220,7 +122,7 @@ export const STAGES = {
     lanes: 4, L: 'city', R: 'median', far: 'city', metro: true, medianW: 3.2,
     sections: [
       S(260, 0), S(360, -0.0022), S(300, 0.0018), S(380, 0),
-      ...METRO_DASH(),
+      S(520, 0), S(520, 0), S(516, 0),
       S(300, 0.0025), S(300, -0.002), S(340, 0), S(300, 0.0015),
     ],
     facades: CBD_FACADES.concat(['apt_tile', 'apt_cream']), shops: ['shop_a', 'shop_b', 'shop_mall'], heights: [15, 36], backHeights: [24, 60], towerP: 0.15,
@@ -229,8 +131,6 @@ export const STAGES = {
     lifeDensity: 0.12,
     billboards: ['gfun', 'teletalk', 'swapno', 'jfp', 'walto', 'pathaw', 'chanachur', 'coaching', 'metro', 'ononto', 'kolija'],
     bbP: 0.28, lampColor: '#f2f4ff',
-    traffic: { density: 24, mix: { bus: 4, brtc: 1, car: 3, cng: 3, bike: 2, truck: 1, leguna: 1.5, rickshaw: 1, tesla: 1.5, micro: 1.5 } },
-    peds: 0.9,
     tint: { color: '#6a8aff', amount: 0.08 },
     skyline: 'modern', weather: { rain: 0.3, wet: 0.6 }, bonus: 14,
     landmarks: [
@@ -243,19 +143,6 @@ export const STAGES = {
     metroStations: [800],
     footbridges: [560, 3200],
     zebras: [400, 1100, 3300],
-    events: [
-      { type: 'enemies', role: 'police', s: 380, n: 2 },
-      { type: 'busrace', s: 900 },
-      { type: 'title', s: 1250, text: 'METRO DASH', small: '' },
-      { type: 'railTrain', s: 1730, lane: 1, ahead: 600, speed: 18 },
-      { type: 'railTrain', s: 2090, lane: -1, ahead: 520, speed: 20 },
-      { type: 'teslas', s: 2950, n: 6 },
-      { type: 'jam', s: 3150, len: 160 },
-    ],
-    lines: [
-      { s: 60, id: 'farmgate' }, { s: 700, id: 'metro' }, { s: 1000, id: 'busrace' }, { s: 1200, id: 'metroClosed' },
-      { s: 1385, id: 'metroStairs' }, { s: 1460, id: 'metroGates' }, { s: 1720, id: 'metroTracks' }, { s: 3000, id: 'prothomalu' },
-    ],
   },
 
   hatirjheel: {
@@ -263,7 +150,7 @@ export const STAGES = {
     lanes: 4, L: 'lake', R: 'lake', lakeW: 220,
     sections: [
       S(200, 0, 0, { L: 'city', R: 'city' }),
-      ...MALL_CRAWL(),
+      S(370, 0, 0, { L: 'city', R: 'city' }), S(370, 0), S(368, 0),
       S(400, 0.0035), S(300, -0.0035, 0, { L: 'bridge', R: 'bridge', elev: 3.5 }),
       S(400, 0.0045, 0, { elev: 0 }), S(350, -0.004), S(300, 0, 0, { L: 'bridge', R: 'bridge', elev: 3.5 }),
       S(300, 0, 0, { L: 'city', elev: 0 }),
@@ -275,18 +162,11 @@ export const STAGES = {
     railColor: [0.9, 0.9, 0.92], boats: 'taxi',
     billboards: ['hatir', 'gfun', 'swapno'],
     lampColor: '#e8f0ff', lampSpacing: 30,
-    traffic: { density: 10, mix: { car: 4, suv: 2, bike: 2, cng: 1, micro: 1 } },
-    peds: 0.4,
     tint: { color: '#ff3bd8', amount: 0.16 },
     skyline: 'lake', waterDeep: '#120a2a', waterLights: '#ff5ad8', bonus: 16,
     landmarks: [
       { type: 'fountain', s: 2600, side: -1, dist: 70 },
     ],
-    events: [
-      { type: 'title', s: 150, text: 'MALL CRAWL', small: '' },
-      { type: 'racers', s: 1450, n: 3 },
-    ],
-    lines: [{ s: 120, id: 'mall' }, { s: 420, id: 'spiral' }, { s: 830, id: 'cinema' }, { s: 1400, id: 'hatirjheel' }, { s: 2550, id: 'fountain' }],
   },
 
   // ======================================================================== LEVEL 3
@@ -302,8 +182,6 @@ export const STAGES = {
     launches: true, boats: 'nouka',
     billboards: ['dana', 'coil', 'chanachur'],
     lampColor: '#ff9f40', wireDensity: 1.6,
-    traffic: { density: 20, mix: { rickshaw: 4, cng: 2, truck: 2, leguna: 2, bike: 1, van: 1.5, tesla: 3 } },
-    peds: 1.1, cows: true,
     tint: { color: '#3a8a8a', amount: 0.15, fogMul: 1.25 },
     skyline: 'river', weather: { mist: 0.6, wet: 0.3 },
     waterDeep: '#0d1d1c', waterLights: '#ffb060', farWater: true,
@@ -311,12 +189,6 @@ export const STAGES = {
       { type: 'ahsanManzil', s: 1350, side: 1, dist: 48, clear: [1300, 1400] },
       { type: 'cableBridge', s: 2600, side: -1 },
     ],
-    stalls: [[400, 950, 1], [2000, 2400, 1]],
-    events: [
-      { type: 'teslas', s: 300, n: 6 },
-      { type: 'enemies', role: 'police', s: 1500, n: 3 },
-    ],
-    lines: [{ s: 80, id: 'sadarghat' }, { s: 1200, id: 'ahsan' }, { s: 2400, id: 'launch' }],
   },
 
   motijheel: {
@@ -330,8 +202,6 @@ export const STAGES = {
     life: { p_shirt: 4, p_lungi: 2, crowd0: 0.8, p_vendor: 1, teastall: 1, police: 0.3 },
     billboards: ['swapno', 'dana', 'walto', 'teletalk', 'safety'],
     lampColor: '#f4f2ff',
-    traffic: { density: 18, mix: { bus: 3, brtc: 1.2, car: 3, cng: 3, rickshaw: 3, tesla: 2 } },
-    peds: 0.5,
     tint: { color: '#3a6aaa', amount: 0.12 },
     skyline: 'modern', weather: { rain: 0.9, wet: 1, storm: true }, bonus: 6,
     puddles: [[200, 3000]],
@@ -341,11 +211,6 @@ export const STAGES = {
       { type: 'tower', s: 1750, side: 1, dist: 66, opts: { facade: 'office', h: 112, w: 28, d: 28, sign: 'বাংলাদেশ ব্যাংক', crown: [2.6, 2.2, 1.2] } },
       { type: 'kamalapur', s: 2520, side: -1, dist: 36, clear: [2440, 2600] },
     ],
-    events: [
-      { type: 'boss', id: 'bus', s: 450 },
-      { type: 'loadshed', s: 1700, len: 820 },
-    ],
-    lines: [{ s: 70, id: 'motijheel' }, { s: 1150, id: 'shapla' }, { s: 1720, id: 'loadshed' }, { s: 2420, id: 'kamalapur' }],
   },
 
   gulshan: {
@@ -363,8 +228,6 @@ export const STAGES = {
     lifeDensity: 0.05, lakeW: 160,
     billboards: ['swapno', 'dana', 'walto', 'gfun', 'pathaw', 'jfp'],
     lampColor: '#f2f6ff', lampSpacing: 30,
-    traffic: { density: 16, mix: { suv: 4, car: 4, bike: 3, cng: 1, bus: 0.5, micro: 1.5 } },
-    peds: 0.4,
     tint: { color: '#40c8ff', amount: 0.1 },
     skyline: 'modern', weather: { wet: 0.5 },
     landmarks: [
@@ -372,12 +235,6 @@ export const STAGES = {
       { type: 'tower', s: 1900, side: 1, dist: 70, opts: { facade: 'glass_blue', h: 96, w: 28, d: 28, sign: 'GULSHAN 2', signLatin: true, crown: [0.4, 2.2, 2.8] } },
       { type: 'embassy', s: 2700, side: -1, dist: 12, clear: [2660, 2740] },
     ],
-    events: [
-      { type: 'enemies', role: 'rab', s: 700, n: 3, label: 'RAB BEHIND' },
-      { type: 'vip', s: 1700 },
-      { type: 'racers', s: 2300, n: 2 },
-    ],
-    lines: [{ s: 60, id: 'gulshan' }, { s: 1000, id: 'cha400' }, { s: 1680, id: 'vip' }],
   },
 
   mirpur: {
@@ -392,8 +249,6 @@ export const STAGES = {
     lifeDensity: 0.12,
     billboards: ['bpl', 'gfun', 'pathaw', 'walto', 'chanachur', 'metro'],
     lampColor: '#ffd28a',
-    traffic: { density: 22, mix: { bus: 3, cng: 3, car: 2, rickshaw: 3, bike: 3, leguna: 1, tesla: 4 } },
-    peds: 1.2,
     tint: { color: '#40ff8a', amount: 0.08 },
     skyline: 'stadium',
     landmarks: [
@@ -401,14 +256,6 @@ export const STAGES = {
     ],
     metroStations: [700],
     zebras: [500, 1300, 2300],
-    stalls: [[2500, 2950, -1]],
-    events: [
-      { type: 'fireworks', s0: 1300, s1: 2600 }, { type: 'crowd', s0: 1400, s1: 2400 },
-      { type: 'teslas', s: 400, n: 8 },
-      { type: 'enemies', role: 'police', s: 900, n: 2 },
-      { type: 'jam', s: 2150, len: 160 },
-    ],
-    lines: [{ s: 60, id: 'mirpur' }, { s: 1500, id: 'stadium' }, { s: 2700, id: 'benarasi' }],
   },
 
   // ======================================================================== LEVEL 4 (exits)
@@ -425,15 +272,10 @@ export const STAGES = {
     trees: { palm0: 2, betel0: 2, banana0: 2, mango1: 1, bamboo0: 1 },
     fieldTrees: 0.05, hutP: 0.2,
     lampColor: '#ffe6c0', bridgeTruss: true, boats: 'fishing', pillarSpacing: 40,
-    traffic: { density: 12, mix: { bus: 3, truck: 3, car: 3, suv: 2 } },
-    peds: 0,
     tint: { color: '#ff6a4a', amount: 0.08 },
     skyline: 'river', weather: { mist: 0.5 }, waterDeep: '#1b2a3a', farWater: true,
     landmarks: [{ type: 'tollPlaza', s: 1350 }],
     banners: [{ s: 1600, lines: ['পদ্মা সেতু', 'PADMA MULTIPURPOSE BRIDGE'], c1: '#0f7a43', c2: '#04301a' }],
-    events: [{ type: 'racers', s: 400, n: 3 }, { type: 'enemies', role: 'police', s: 2000, n: 2 }],
-    lines: [{ s: 80, id: 'mawa' }, { s: 1250, id: 'toll' }, { s: 1700, id: 'padma' }, { s: 2700, id: 'flag' }],
-    ending: 'padma',
   },
 
   highway: {
@@ -448,17 +290,12 @@ export const STAGES = {
     trees: { palm0: 2, palm1: 1, betel0: 2, banana0: 2, bamboo0: 2, mango0: 1 },
     fieldTrees: 0.07, hutP: 0.35, fieldLife: { p_lungi: 2, cow0: 1, cow1: 1, teastall: 1 },
     lampColor: '#ffcf8a', boats: 'nouka',
-    traffic: { density: 16, mix: { truck: 6, bus: 3, car: 2, suv: 1, micro: 1 } },
-    peds: 0.3, cows: true,
     tint: { color: '#ffa060', amount: 0.08 },
     skyline: 'rural', weather: { mist: 0.7 },
     landmarks: [
       { type: 'highwayHotel', s: 900, side: -1, dist: 24 },
       { type: 'highwayHotel', s: 3000, side: -1, dist: 24 },
     ],
-    events: [{ type: 'busrace', s: 600 }, { type: 'enemies', role: 'police', s: 1300, n: 3, label: 'POLICE BEHIND' }],
-    lines: [{ s: 80, id: 'highway' }, { s: 850, id: 'rosmalai' }, { s: 2000, id: 'meghna' }],
-    ending: 'highway',
   },
 
   purbachal: {
@@ -473,20 +310,12 @@ export const STAGES = {
     facades: CITY_FACADES, heights: [10, 30],
     trees: { palm0: 1, betel0: 1, banana0: 1, mango0: 1 },
     lampColor: '#ffe0b0', lampSpacing: 40,
-    traffic: { density: 10, mix: { car: 4, suv: 3, bike: 3, cng: 1 } },
-    peds: 0.3,
     tint: { color: '#ffb28a', amount: 0.06 },
     skyline: 'rural', bonus: 14,
     landmarks: [
       { type: 'kurilLoops', s: 180, side: 1, dist: 72 },
       { type: 'jfp', s: 740, side: -1, dist: 70, clear: [560, 960] },
-      { type: 'futurePark', s: 740, side: -1, dist: 110 },
     ],
-    events: [
-      { type: 'racers', s: 2050, n: 4 },
-    ],
-    lines: [{ s: 80, id: 'kuril' }, { s: 780, id: 'jfp' }, { s: 2100, id: 'racers' }, { s: 2700, id: 'kash' }],
-    ending: 'purbachal',
   },
 
   airport: {
@@ -501,14 +330,9 @@ export const STAGES = {
     trees: { palm0: 1, mango0: 1, krishnachura0: 1 },
     lampColor: '#fff0d0',
     billboards: ['dana', 'swapno', 'walto'],
-    traffic: { density: 13, mix: { car: 4, suv: 3, bus: 2, cng: 1, micro: 1 } },
-    peds: 0.3,
     tint: { color: '#ffa0a0', amount: 0.06 },
     skyline: 'modern',
     landmarks: [{ type: 'airport', s: 1650, side: 1, dist: 175 }],
-    events: [{ type: 'planes', s0: 600, s1: 2800 }, { type: 'enemies', role: 'rab', s: 800, n: 2 }],
-    lines: [{ s: 80, id: 'expressway' }, { s: 1300, id: 'plane' }, { s: 2400, id: 'uttara' }],
-    ending: 'airport',
   },
 
   savar: {
@@ -524,59 +348,11 @@ export const STAGES = {
     trees: { palm0: 2, betel0: 1, banana0: 2, mango0: 1, bamboo0: 1, krishnachura0: 1 },
     fieldTrees: 0.06, hutP: 0.3, fieldLife: { p_lungi: 2, cow0: 1, cow1: 1 },
     lampColor: '#ffd8a0', boats: 'nouka',
-    traffic: { density: 16, mix: { bus: 5, truck: 3, cng: 2, car: 2, tesla: 2 } },
-    peds: 0.4, cows: true,
     tint: { color: '#ff8a6a', amount: 0.06 },
     skyline: 'rural', weather: { mist: 0.4 },
     landmarks: [
       { type: 'gabtoli', s: 140, side: -1, dist: 26, clear: [60, 220] },
       { type: 'smritiSoudho', s: 3640, side: -1, dist: 64 },
-    ],
-    events: [{ type: 'teslas', s: 300, n: 5 }, { type: 'enemies', role: 'police', s: 1300, n: 3 }],
-    lines: [{ s: 60, id: 'gabtoli' }, { s: 500, id: 'turag' }, { s: 1800, id: 'kilns' }, { s: 3000, id: 'smriti' }],
-    ending: 'savar',
-  },
-};
-
-export const ENDINGS = {
-  padma: {
-    title: 'Padma Bridge', bn: 'পদ্মা সেতু', headline: 'ACROSS THE PADMA',
-    lines: [
-      'Six kilometres of steel over the Padma, and the sun comes up red on green.',
-      'The fishing boats are already out. Somewhere in Faridpur, Khala is frying ilish.',
-      'You did not just leave Dhaka. You crossed a river people waited fifty years to cross.',
-    ],
-  },
-  highway: {
-    title: 'Dhaka–Chattogram Highway', bn: 'ঢাকা-চট্টগ্রাম মহাসড়ক', headline: 'SOUTH TO THE SEA',
-    lines: [
-      'Past Meghna Bridge the trucks thin out and the paddy turns gold.',
-      'You stop in Comilla for rosmalai. Then you keep driving, because why not.',
-      'By lunch you are standing in the sea at Cox’s Bazar, still holding the car keys.',
-    ],
-  },
-  purbachal: {
-    title: '300 Feet', bn: '৩০০ ফিট', headline: 'KASH AND OPEN ROAD',
-    lines: [
-      'Kash flowers on both sides, the road wide enough for a cricket match.',
-      'Four hundred other cars had the same idea. Everybody pulls over for cha at Neela Market.',
-      'Dhaka is behind you. For once, so is the traffic.',
-    ],
-  },
-  airport: {
-    title: 'Hazrat Shahjalal International Airport', bn: 'বিমানবন্দর', headline: 'FLIGHT AT 7:05',
-    lines: [
-      'You make the 7:05 flight with eleven minutes to spare.',
-      'Ammu packed twenty-three kilos of achar, two of shutki, and a prayer.',
-      'The plane banks over the city you just outran. It looks small from up here.',
-    ],
-  },
-  savar: {
-    title: 'Jatiyo Smriti Soudho', bn: 'জাতীয় স্মৃতিসৌধ', headline: 'SEVEN WALLS AT DAWN',
-    lines: [
-      'Seven walls rising out of red brick, one sunrise behind them.',
-      'The engine ticks as it cools. Tuntuni goes quiet for the first time all night.',
-      'Some roads are for racing. Some are for remembering.',
     ],
   },
 };
@@ -598,58 +374,76 @@ ROUTE.forEach((id, i) => {
 });
 // hour range per leg of the route (continuous axis, 24+ = after midnight)
 export const LEVEL_TIME = ROUTE.map((_, i) => [H0 + (i / ROUTE.length) * (H1 - H0), H0 + ((i + 1) / ROUTE.length) * (H1 - H0)]);
-export const CHECKPOINT_BONUS = ROUTE.map((_, i) => (i === 0 ? 0 : 40));
 
-// the next stage along the route (kept as a pair for the old fork plumbing)
+// the next stage along the route (as a pair: the world's track plumbing expects two branches)
 export function childrenOf(id) {
   const i = ROUTE.indexOf(id);
   if (i < 0 || i >= ROUTE.length - 1) return null;
   return [ROUTE[i + 1], ROUTE[i + 1]];
 }
 
-export function columnOf(id) {
-  return [Math.max(0, ROUTE.indexOf(id)), 0];
+
+
+// ------------------------------------------------------------------ the Run: a knockout across the city
+// Everyone starts in Dhanmondi. Entering these districts is a knockout gate:
+// anyone below the cut-off is out. The last four race across the Padma.
+export const RUN_FIELD = 24;
+export const KNOCKOUTS = { shahbag: 20, kawranBazar: 16, gulshan: 12, sadarghat: 8, mirpur: 6, purbachal: 4 };
+
+// ------------------------------------------------------------------ district circuits
+// A district raced as laps: its own sections scaled to about LAP_LEN, long
+// plain straights given a bend and a crest, laid down CIRCUIT_LAPS times end
+// to end (every lap has the same corners in the same order). Landmarks and
+// street furniture are scaled and repeated with the lap.
+export const CIRCUIT_LAPS = 3;
+const LAP_LEN = 3200;
+const WATER = ['lake', 'river', 'bridge'];
+
+export function circuitId(id) { return id + '@circuit'; }
+
+export function circuitStage(id) {
+  const key = circuitId(id);
+  if (STAGES[key]) return STAGES[key];
+  const base = STAGES[id];
+  const total = base.sections.reduce((a, s) => a + s.len, 0);
+  const f = LAP_LEN / total;
+  let flip = 1, hill = 1;
+  const lap = base.sections.map((s0, i) => {
+    const s = { ...s0, len: Math.round(s0.len * f) };
+    const water = WATER.includes(s.L || base.L) || WATER.includes(s.R || base.R);
+    const ends = i === 0 || i === base.sections.length - 1;
+    if (!s.k && !ends && !water && s.len > 90) { s.k = 0.0036 * flip; flip = -flip; }
+    if (!s.dy && !ends && !water && s.elev == null && !base.flat) { s.dy = 10 * hill; hill = -hill; }
+    return s;
+  });
+  // close the lap's hills so every lap starts at the same height
+  const rise = lap.reduce((a, s) => a + (s.dy || 0), 0);
+  if (rise) lap[lap.length - 1].dy = (lap[lap.length - 1].dy || 0) - rise;
+  const lapLen = lap.reduce((a, s) => a + s.len, 0);
+  const at = (s, i) => s * f + i * lapLen;
+  const every = (list, fn) => Array.from({ length: CIRCUIT_LAPS }, (_, i) => (list || []).map((v) => fn(v, i))).flat();
+  const [h0, h1] = LEVEL_TIME[base.level];
+  STAGES[key] = {
+    ...base,
+    id: key, circuit: true, district: id, laps: CIRCUIT_LAPS, lapLen, final: true, hour: (h0 + h1) / 2,
+    sections: every(lap, (s) => ({ ...s })),
+    landmarks: every(base.landmarks, (l, i) => ({ ...l, s: at(l.s, i), clear: l.clear && [at(l.clear[0], i), at(l.clear[1], i)] })),
+    footbridges: every(base.footbridges, at),
+    zebras: every(base.zebras, at),
+    metroStations: every(base.metroStations, at),
+    banners: every(base.banners, (b, i) => ({ ...b, s: at(b.s, i) })),
+    alpana: every(base.alpana, ([a, b], i) => [at(a, i), at(b, i)]),
+    puddles: every(base.puddles, ([a, b], i) => [at(a, i), at(b, i)]),
+  };
+  return STAGES[key];
 }
 
-// ------------------------------------------------------------------ the circuit (Horizon Chase-style race)
-// One lap of Dhanmondi streets: big readable sweepers, crests, the lake on the
-// left. The lap is laid down CIRCUIT_LAPS times end to end, so every lap has
-// the same corners in the same order. Lengths and bends are used as written
-// (no stage scaling, no extra bends).
-export const CIRCUIT_LAPS = 3;
-const CIRCUIT_LAP = [
-  S(260, 0, 0),
-  S(280, 0.0032, 12),
-  S(220, 0, -12, { L: 'lake' }),
-  S(260, -0.0044, 0, { L: 'lake' }),
-  S(240, 0.0018, 10, { L: 'lake' }),
-  S(200, 0, -10, { L: 'park', R: 'park' }),
-  S(240, 0.0052, 0, { L: 'park', R: 'park' }),
-  S(200, -0.0016, 14, { L: 'park' }),
-  S(220, 0.0012, -14, { L: 'park' }),
-  S(180, -0.0028, 6),
-  S(220, -0.0046, -6),
-  S(200, 0.0024, 12),
-  S(260, 0, -12),
-  S(240, 0.0038, 0),
-  S(220, -0.0022, 8),
-  S(200, 0, -8),
-];
-export const CIRCUIT_LAP_LEN = CIRCUIT_LAP.reduce((a, s) => a + s.len, 0);
-const perLap = (list, fn) => Array.from({ length: CIRCUIT_LAPS }, (_, i) => list.map((v) => fn(v, i * CIRCUIT_LAP_LEN))).flat();
-
-STAGES.circuit = {
-  ...STAGES.dhanmondi,
-  id: 'circuit', name: 'Dhanmondi Circuit', short: 'DHANMONDI', bn: 'ধানমন্ডি সার্কিট', sub: 'Satmasjid Road · Lake Road · 3 laps',
-  circuit: true, laps: CIRCUIT_LAPS, lapLen: CIRCUIT_LAP_LEN, final: true, level: 0, music: 'monsoon',
-  lanes: 3, L: 'city', R: 'city',
-  sections: perLap(CIRCUIT_LAP, (s) => ({ ...s })),
-  landmarks: perLap([
-    { type: 'satmasjid', s: 420, side: 1, dist: 52, clear: [340, 520] },
-    { type: 'sarobar', s: 900, side: -1, dist: 28 },
-  ], (l, o) => ({ ...l, s: l.s + o, clear: l.clear && [l.clear[0] + o, l.clear[1] + o] })),
-  footbridges: perLap([640, 1620, 2420], (s, o) => s + o),
-  zebras: perLap([560, 2200], (s, o) => s + o),
-  stalls: [], events: [], lines: [], puddles: [], ramps: [],
-  traffic: { density: 0, mix: { car: 1 } }, peds: 0,
+// ------------------------------------------------------------------ the map
+// Where each district sits on the title map (0..1 across, 0..1 down), roughly
+// true to Dhaka with the far exits pulled in to fit.
+export const MAP_POS = {
+  mirpur: [0.30, 0.18], airport: [0.55, 0.08], gulshan: [0.60, 0.28], purbachal: [0.86, 0.20],
+  savar: [0.07, 0.22], manikmia: [0.36, 0.38], kawranBazar: [0.47, 0.42], hatirjheel: [0.60, 0.43],
+  dhanmondi: [0.33, 0.52], shahbag: [0.46, 0.55], motijheel: [0.63, 0.60], oldDhaka: [0.50, 0.70],
+  sadarghat: [0.47, 0.80], highway: [0.88, 0.76], padma: [0.30, 0.95],
 };
