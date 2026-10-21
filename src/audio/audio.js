@@ -1,6 +1,13 @@
 // All sound is synthesised: engines, horns, bells, crashes, the city.
 
 import { clamp, fx } from '../core/util.js';
+import { ENGINE_WORKLET, ENGINES } from './engineWorklet.js';
+
+const GEAR_TOPS = {
+  4: [0.28, 0.5, 0.75, 1.0],
+  5: [0.23, 0.4, 0.58, 0.78, 1.0],
+  6: [0.2, 0.34, 0.49, 0.64, 0.81, 1.0],
+};
 
 export class AudioEngine {
   constructor() {
@@ -45,6 +52,30 @@ export class AudioEngine {
     this.applyVolumes();
     this.buildEngine();
     this.buildLoops();
+    this.loadEngineWorklet();
+  }
+
+  // the modelled engine; until it loads (or where worklets are missing) the old oscillator engine plays
+  async loadEngineWorklet() {
+    const ctx = this.ctx;
+    if (!ctx.audioWorklet || typeof AudioWorkletNode === 'undefined') return;
+    try {
+      const url = URL.createObjectURL(new Blob([ENGINE_WORKLET], { type: 'application/javascript' }));
+      await ctx.audioWorklet.addModule(url);
+      const eng = ENGINES[this.engineKind] || ENGINES.v12;
+      const W = new AudioWorkletNode(ctx, 'engine-proc', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: eng.cfg });
+      // body: a little low-end weight and a presence bump, like a mic behind the car
+      const low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 140; low.gain.value = 5;
+      const pres = ctx.createBiquadFilter(); pres.type = 'peaking'; pres.frequency.value = 1800; pres.Q.value = 0.8; pres.gain.value = 2.5;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 28;
+      W.connect(hp).connect(low).connect(pres).connect(this.eng);
+      const send = ctx.createGain(); send.gain.value = 0.08;
+      pres.connect(send).connect(this.reverb);
+      this.W = W;
+      this.vg = { gear: 1, shiftT: 0, blipT: 0, rpm: eng.idle, last: ctx.currentTime };
+    } catch (e) {
+      console.warn('engine worklet unavailable', e);
+    }
   }
 
   applyVolumes() {
@@ -55,13 +86,26 @@ export class AudioEngine {
     this.sfx.gain.setTargetAtTime(this.vol.sfx, t, 0.05);
   }
 
+  // a plate-ish room: sparse early reflections, then a dense tail whose highs die first
   impulse(sec, decay) {
     const ctx = this.ctx;
-    const len = Math.floor(ctx.sampleRate * sec);
-    const b = ctx.createBuffer(2, len, ctx.sampleRate);
+    const sr = ctx.sampleRate;
+    const len = Math.floor(sr * sec);
+    const pre = Math.floor(sr * 0.012);
+    const b = ctx.createBuffer(2, len, sr);
     for (let c = 0; c < 2; c++) {
       const d = b.getChannelData(c);
-      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      let lp = 0;
+      for (let i = pre; i < len; i++) {
+        const t = (i - pre) / (len - pre);
+        const damp = 0.85 - 0.75 * t;
+        lp += ((Math.random() * 2 - 1) - lp) * damp;
+        d[i] = lp * Math.pow(1 - t, decay) * (t < 0.02 ? t / 0.02 : 1);
+      }
+      for (let k = 0; k < 9; k++) {
+        const at = pre + Math.floor(sr * (0.004 + Math.random() * 0.07));
+        if (at < len) d[at] += (Math.random() < 0.5 ? -1 : 1) * (0.5 - k * 0.04);
+      }
     }
     return b;
   }
@@ -181,6 +225,46 @@ export class AudioEngine {
 
   setEngineKind(kind) {
     this.engineKind = kind;
+    if (this.W) this.W.port.postMessage({ cfg: (ENGINES[kind] || ENGINES.v12).cfg });
+  }
+
+  // a virtual multi-speed gearbox for the sound: real cars climb through gears
+  modelEngine(p, t) {
+    const eng = ENGINES[this.engineKind] || ENGINES.v12;
+    const vg = this.vg;
+    const dt = clamp(t - vg.last, 0, 0.1);
+    vg.last = t;
+    const tops = GEAR_TOPS[eng.gears];
+    const vmax = p.vmax || 80;
+    const sp = Math.max(0, p.speed);
+    let thr = p.throttle;
+    const rpmAt = (g) => eng.red * 0.97 * sp / (vmax * tops[g - 1]);
+    let rpm = rpmAt(vg.gear);
+    if (vg.shiftT > 0) vg.shiftT -= dt;
+    if (vg.blipT > 0) vg.blipT -= dt;
+    if (vg.shiftT <= 0) {
+      if (rpm > eng.red * 0.95 && vg.gear < eng.gears && thr > 0.2) {
+        vg.gear++;
+        vg.shiftT = 0.13;
+        if (this.W && fx.next() < 0.5) this.W.port.postMessage({ pop: 1 + (fx.next() < 0.4 ? 1 : 0) });
+        rpm = rpmAt(vg.gear);
+      } else if (vg.gear > 1 && rpm < eng.red * (thr > 0.5 ? 0.55 : 0.4)) {
+        vg.gear--;
+        vg.blipT = 0.09;
+        rpm = rpmAt(vg.gear);
+      }
+    }
+    // pulling away: the clutch lets the revs rise ahead of the wheels
+    if (vg.gear === 1) rpm = Math.max(rpm, eng.idle + thr * (eng.red * 0.5 - eng.idle) * clamp(1 - sp / (vmax * 0.12), 0, 1));
+    rpm = Math.max(eng.idle, rpm);
+    // limiter bounce
+    if (rpm > eng.red) rpm = eng.red - fx.next() * 260;
+    if (vg.shiftT > 0) thr = 0;
+    if (vg.blipT > 0) thr = 1;
+    if (!p.engineOn) thr = 0;
+    vg.rpm = rpm;
+    this.rpmNorm = rpm / eng.red;
+    return { rpm, thr };
   }
 
   // per-frame continuous parameters
@@ -208,6 +292,14 @@ export class AudioEngine {
     } else {
       base = 42; span = 175; cut = 600 + rpm * 3200 + thr * 1400; vol = 0.24;
       E.lfoG.gain.setTargetAtTime(0, t, 0.1);
+    }
+    if (this.W) {
+      const m = this.modelEngine(p, t);
+      const P = this.W.parameters;
+      P.get('rpm').setTargetAtTime(m.rpm, t, 0.02);
+      P.get('throttle').setTargetAtTime(m.thr, t, 0.02);
+      P.get('gain').setTargetAtTime(on * (k === 'jet' ? 0.2 : 0.3) * (0.55 + m.thr * 0.45) * (p.boost ? 1.15 : 1), t, 0.05);
+      vol = 0;
     }
     const f = base + rpm * span;
     E.o1.frequency.setTargetAtTime(f, t, 0.03);

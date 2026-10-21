@@ -61,8 +61,8 @@
     </div>
     <div class="press" id="pressStart">CLICK OR PRESS ENTER</div>
     <nav class="menu" id="mainMenu" hidden>
-      <button data-act="arcade"><span>ARCADE</span><i>5 STAGES · 5 EXITS</i></button>
-      <button data-act="cruise"><span>NIGHT CRUISE</span><i>NO TIMER</i></button>
+      <button data-act="arcade"><span>THE RUN</span><i>24 DRIVERS · FINISH FIRST</i></button>
+      <button data-act="cruise"><span>FREE DRIVE</span><i>NO RIVALS · NO RULES</i></button>
       <button data-act="garage"><span>GARAGE</span><i>PICK A RIDE</i></button>
       <button data-act="scores"><span>HIGH SCORES</span><i>HALL OF FAME</i></button>
       <button data-act="settings"><span>SETTINGS</span><i>TWEAK</i></button>
@@ -133,8 +133,8 @@
         <div><b>↑ / W</b> gas &nbsp; <b>↓ / S</b> brake &nbsp; <b>← →</b> steer &nbsp; <b>SPACE</b> nitro</div>
         <div><b>H</b> horn (slow traffic sometimes moves over) &nbsp; <b>SHIFT</b> LO / HI (manual gearbox)</div>
         <div><b>C</b> camera &nbsp; <b>R</b> next radio station &nbsp; <b>V</b> photo mode &nbsp; <b>ESC</b> pause &nbsp; <b>F</b> fullscreen</div>
-        <p>Beat the clock to each checkpoint gate. Every gate adds time. At the end of each stage the road splits: keep left or right to choose where you go next. Five stages, five exits out of Dhaka, five endings.</p>
-        <p>Police, RAB and street racers will try to run you off the road. Shove them into traffic, walls and each other for a <b>TAKEDOWN</b> and extra time. Near misses, drifts, big air and smashed stalls fill the <b>NITRO</b> bar. Jammed? Hit the ramp and take the wrong side. Mind the pedestrians. They bounce, but they hold grudges.</p>
+        <p>THE RUN: twenty-four drivers race across Dhaka in one night, and you start last. Each stage has a target position you must reach before it ends, or you are out. Win the final stage to take the prize. At the end of each stage the road splits: keep left or right to choose your route. Five exits, five endings.</p>
+        <p>Rivals block and shove. Police and RAB will try to run you off the road. Shove any of them into traffic, walls and each other for a <b>TAKEDOWN</b>: a wrecked rival drops way back. Near misses, drifts, big air and smashed stalls fill the <b>NITRO</b> bar. Jammed? Hit the ramp and take the wrong side. Mind the pedestrians. They bounce, but they hold grudges.</p>
         <p>Gamepad works (RT gas, LT brake, B nitro, X shift, RB horn, Y camera). On a phone, use the on-screen pedals.</p>
       </div>
       <div class="hint">BACKSPACE back</div>
@@ -144,9 +144,12 @@
   <!-- ======================== HUD -->
   <section id="hud" class="hud">
     <div class="h-time plate" id="hTimeBox">
-      <div class="lbl">TIME</div>
-      <div class="big" id="hTime">75</div>
+      <div class="lbl" id="hTimeLbl">POS</div>
+      <div class="big" id="hTime">24</div>
+      <div class="of" id="hOf">/24</div>
     </div>
+    <div class="h-obj" id="hObj"><div class="need" id="hNeed">TARGET P16</div><div class="gap" id="hGapA"></div><div class="gap behind" id="hGapB"></div></div>
+    <div class="h-tags" id="hTags"></div>
     <div class="h-stage" id="hStage">
       <div class="st-bn" id="hStageBn">DHANMONDI</div>
       <div class="st-en" id="hStageEn">STAGE 1</div>
@@ -232,11 +235,21 @@
 
   <section id="gameover" class="screen dim">
     <div class="over">
-      <div class="over-bn">TIME UP</div>
-      <div class="over-en">GAME OVER</div>
+      <div class="over-bn" id="overBn">ELIMINATED</div>
+      <div class="over-en" id="overEn">THE RUN IS OVER</div>
       <div class="over-sub" id="overSub">Stuck in traffic. Again tomorrow.</div>
       <div class="pc-tally" id="overTally"></div>
-      <div class="hint">ENTER continue</div>
+      <div class="hint" id="overHint">ENTER continue</div>
+    </div>
+  </section>
+
+  <section id="story" class="screen dim">
+    <div class="story-card">
+      <div class="story-kicker">TONIGHT · DHANMONDI TO THE CITY LIMITS</div>
+      <div class="story-title">THE DHAKA RUN</div>
+      <div class="story-lines" id="storyLines"></div>
+      <div class="story-grid" id="storyGrid"></div>
+      <div class="hint">ENTER race</div>
     </div>
   </section>
 

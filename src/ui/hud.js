@@ -43,6 +43,14 @@ export class HUD {
     this.takeEl = $('hTake');
     this.rearEl = $('hRear');
     this.sareeEl = $('hSaree');
+    this.timeLbl = $('hTimeLbl');
+    this.ofEl = $('hOf');
+    this.objEl = $('hObj');
+    this.needEl = $('hNeed');
+    this.gapA = $('hGapA');
+    this.gapB = $('hGapB');
+    this.tagsEl = $('hTags');
+    this.tagPool = [];
     this.takeT = 0;
     this.rearPool = [];
     this.buildTacho();
@@ -224,7 +232,7 @@ export class HUD {
       el.style.display = '';
       el.style.left = (50 + clamp(r.x, -1, 1) * 46).toFixed(1) + '%';
       el.style.transform = `translateX(-50%) scale(${(0.7 + r.near * 0.6).toFixed(2)})`;
-      el.className = r.kind === 'police' ? 'blue' : r.kind === 'racer' ? 'gold' : '';
+      el.className = r.kind === 'police' ? 'blue' : r.kind === 'racer' || r.kind === 'rival' ? 'gold' : '';
     });
   }
 
@@ -252,6 +260,32 @@ export class HUD {
     this.camEl.classList.add('show');
     clearTimeout(this._camT);
     this._camT = setTimeout(() => this.camEl.classList.remove('show'), 1400);
+  }
+
+  position(pos, up) {
+    this.timeBox.classList.remove('up', 'down');
+    void this.timeBox.offsetWidth;
+    this.timeBox.classList.add(up ? 'up' : 'down');
+  }
+
+  // floating name tags over rival cars: [{x, y, name, pos, boss}] in px
+  tags(list) {
+    while (this.tagPool.length < list.length) {
+      const b = document.createElement('b');
+      this.tagsEl.appendChild(b);
+      this.tagPool.push(b);
+    }
+    this.tagPool.forEach((el, i) => {
+      const t = list[i];
+      if (!t) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
+      el.style.display = '';
+      el.style.left = t.x.toFixed(0) + 'px';
+      el.style.top = t.y.toFixed(0) + 'px';
+      el.style.opacity = t.a.toFixed(2);
+      const html = `<i>P${t.pos}</i>${t.name}`;
+      if (el._h !== html) { el.innerHTML = html; el._h = html; }
+      el.classList.toggle('boss', !!t.boss);
+    });
   }
 
   timeAdded() {
@@ -314,16 +348,39 @@ export class HUD {
   update(dt, d) {
     this.t += dt;
     const L = this.last;
-    const tInt = Math.max(0, Math.ceil(d.time));
+    // the big plate shows your race position in the Run, the clock otherwise
+    if (L.race !== !!d.race) {
+      L.race = !!d.race;
+      this.timeLbl.textContent = d.race ? 'POS' : 'TIME';
+      this.ofEl.style.display = d.race ? '' : 'none';
+      this.objEl.style.display = d.race ? '' : 'none';
+      L.time = null;
+    }
+    const tInt = d.race ? d.pos : Math.max(0, Math.ceil(d.time));
     if (L.time !== tInt) { this.time.textContent = bn(tInt); L.time = tInt; }
-    const low = d.time < 10 && d.running;
+    if (d.race) {
+      const ok = d.pos <= d.need;
+      const needTxt = d.need === 1 ? 'FINISH FIRST' : `TARGET P${d.need}`;
+      if (L.need !== needTxt + ok) { this.needEl.textContent = needTxt; this.needEl.classList.toggle('ok', ok); L.need = needTxt + ok; }
+      if (this.t - (L.gapT || 0) > 0.2) {
+        L.gapT = this.t;
+        const n = d.near || {};
+        this.gapA.textContent = n.ahead ? `▲ ${n.ahead.name} +${n.ahead.t.toFixed(1)}s` : '▲ CLEAR ROAD';
+        this.gapB.textContent = n.behind ? `▼ ${n.behind.name} −${n.behind.t.toFixed(1)}s` : '';
+      }
+      if (L.field !== d.field) { this.ofEl.textContent = '/' + d.field; L.field = d.field; }
+    }
+    const low = !d.race && d.time < 10 && d.running;
     if (L.low !== low) { this.timeBox.classList.toggle('low', low); L.low = low; }
     const sc = Math.floor(d.score);
     if (L.score !== sc) { this.score.textContent = bn(sc.toLocaleString('en-US')); L.score = sc; }
     if (this.t - (L.lapT || 0) > 0.07) { this.lap.textContent = fmtTime(d.lap); L.lapT = this.t; }
     const sp = Math.round(d.speed);
     if (L.speed !== sp) { this.speed.textContent = bn(sp); L.speed = sp; }
-    if (L.gear !== d.gear) {
+    if (d.gearN) {
+      if (L.gearN !== d.gearN) { this.gear.innerHTML = `<b class="on">${d.gearN}</b>`; L.gearN = d.gearN; L.gear = null; }
+    } else if (L.gear !== d.gear) {
+      if (L.gearN) { this.gear.innerHTML = '<b class="lo">LO</b><b class="hi">HI</b>'; L.gearN = 0; }
       this.gear.children[0].classList.toggle('on', d.gear === 0);
       this.gear.children[1].classList.toggle('on', d.gear === 1);
       L.gear = d.gear;

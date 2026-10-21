@@ -18,7 +18,7 @@ const DARK_COLORS = ['#141416', '#1c1c1e', '#f2f2ee', '#2a2a2e', '#d8d8d4', '#e8
 const RACER_COLORS = { supra: '#ff6a00', skyline: '#1d4fd8', celica: '#ffd200', chaser: '#f2f2ee', miata: '#c8102e' };
 
 // overall traffic volume: sparse enough to weave through at full speed
-const TRAFFIC_SCALE = 0.45;
+const TRAFFIC_SCALE = 0.9;
 
 export const TRAFFIC_TYPES = {
   ...BASE_TYPES,
@@ -34,6 +34,7 @@ export const ENEMY_TYPES = {
   police: { models: ['policeHilux'], hp: 100, speed: 1.04, ram: 6.5, siren: true, score: 6000, time: 2, label: 'POLICE', weight: 1.1 },
   rab: { models: ['rab'], hp: 170, speed: 1.1, ram: 8.5, siren: true, score: 9000, time: 3, label: 'RAB', weight: 1.4 },
   racer: { models: ['supra', 'skyline', 'celica', 'chaser', 'miata'], hp: 115, speed: 1.08, ram: 5.5, score: 7000, time: 2, label: 'RACER', weight: 0.9 },
+  rival: { models: ['supra', 'skyline', 'celica', 'chaser', 'miata'], hp: 150, speed: 1.02, ram: 4.5, score: 5000, time: 0, label: 'RIVAL', weight: 1 },
   bossbus: { models: ['bossbus0', 'bossbus1'], hp: 240, speed: 0.97, ram: 9, score: 0, time: 0, label: 'BUS', weight: 2.6 },
 };
 
@@ -470,12 +471,24 @@ export class Traffic {
     const px = v.track === player.track ? player.x : v.track.parent === player.track ? player.x - v.track.side * FORK_OFF : player.track.parent === v.track ? player.x + player.track.side * FORK_OFF : player.x;
     // set pieces are closed: chasers pile into the barrier at the entrance
     const cl = closedAt(tr, v.s + v.l + 2, 0);
-    if (cl && !v.wreck && en.role !== 'bossbus') {
+    if (cl && !v.wreck && en.role !== 'bossbus' && en.role !== 'rival') {
       const bs = cl.s0 + (tr.sectionAt(Math.min(cl.s0 + 1, tr.length)).closeLead ?? 0);
       if (v.s + v.l > bs - 2) { v.vx = (fx.next() - 0.5) * 6; this.damageEnemy(v, 999, 'barrier'); return; }
     }
     let vT, xT;
-    if (en.role === 'bossbus') {
+    if (en.role === 'rival') {
+      // racing, not hunting: hold a line, overtake traffic, lean on you when you are alongside
+      vT = Math.min(en.vT ?? en.base ?? 40, vmaxE);
+      en.lineT = (en.lineT ?? 0) - dt;
+      if (en.lineT <= 0 || en.lineX == null) {
+        en.lineT = 2 + this.rng.next() * 4;
+        const lanes = this.ourLanes(tr, sNow);
+        en.lineX = this.laneX(tr, sNow, this.rng.int(0, lanes - 1));
+      }
+      xT = clamp(en.lineX, -hw + v.w + 0.6, hw - v.w - 0.6);
+      if (rel > 2 && rel < 22 && Math.abs(px - v.x) < 3.5 && this.rng.chance(dt * 0.5)) en.lineX = px; // block
+      if (Math.abs(rel) < 4 && en.ramT <= 0 && this.rng.chance(dt * 0.8)) { en.ramDur = 0.35; en.ramT = 3 + this.rng.next() * 3; }
+    } else if (en.role === 'bossbus') {
       // drunk: lurching, swerving, trying to squash you, racing each other
       const lurch = Math.sin(en.wobble * 0.9) * 0.6 + Math.sin(en.wobble * 2.3 + 1) * 0.25;
       // ahead: hog the road and make you earn the overtake; behind: floor it
@@ -506,7 +519,7 @@ export class Traffic {
       if (d > 0 && d < 30 && Math.abs(o.x - v.x) < o.w + v.w + 0.5) {
         const room = (o.x > 0 ? -1 : 1);
         xT = o.x + room * (o.w + v.w + 1.2);
-        if (d < 12) vT = Math.min(vT, o.v + 4);
+        if (d < 12 && en.role !== 'rival') vT = Math.min(vT, o.v + 4);
       }
     }
     // the ram itself
@@ -517,7 +530,7 @@ export class Traffic {
     }
     v.vx = damp(v.vx, vxT, en.role === 'bossbus' ? 3 : 6, dt);
     const dv = vT - v.v;
-    v.v = clamp(v.v + clamp(dv, -12 * dt, (en.role === 'bossbus' ? 5 : 9) * dt), 0, vmaxE);
+    v.v = clamp(v.v + clamp(dv, -12 * dt, (en.role === 'bossbus' ? 5 : en.role === 'rival' ? 15 : 9) * dt), 0, vmaxE);
     v.s += v.v * dt;
     v.x += v.vx * dt;
     // walls: slamming into the edge hurts
@@ -536,6 +549,11 @@ export class Traffic {
       const d = o.s - v.s;
       if (Math.abs(d) < o.l + v.l && Math.abs(o.x - v.x) < o.w + v.w) {
         const relv = v.v - (o.oncoming ? -o.v : o.v);
+        if (en.role === 'rival' && !o.oncoming) {
+          // rivals bully their way through: shove the slowpoke aside, lose a little speed
+          if (relv > 2) { o.x += Math.sign(o.x - v.x || 1) * 1.4; o.v += relv * 0.3; v.v *= 0.9; if (o.T.tippable && relv > 15) this.wreck(o, 'enemy'); }
+          continue;
+        }
         if (relv > 9) {
           this.damageEnemy(v, relv * (en.role === 'bossbus' ? 1.2 : 4.5), 'traffic');
           if (o.T.tippable || relv > 20) this.wreck(o, 'enemy');

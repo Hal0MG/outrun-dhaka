@@ -4,10 +4,11 @@ import { CARS } from '../game/cars.js';
 import { TRACKS, music } from '../audio/music.js';
 import { audio } from '../audio/audio.js';
 import { ENDINGS, STAGES, PYRAMID } from '../world/stages.js';
+import { RIVALS, FIELD, TARGETS } from '../game/race.js';
 import { bn, store, fmtTime } from '../core/util.js';
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ['loading', 'title', 'garage', 'radio', 'settings', 'scores', 'howto', 'pause', 'ending', 'gameover', 'nameentry'];
+const SCREENS = ['loading', 'title', 'garage', 'radio', 'settings', 'scores', 'howto', 'pause', 'ending', 'gameover', 'nameentry', 'story'];
 
 export class Menus {
   constructor(game, input, settings, saveSettings) {
@@ -63,7 +64,7 @@ export class Menus {
       this.game.buildCar();
       this.refresh();
     });
-    for (const id of ['ending', 'gameover']) $(id).addEventListener('click', () => this.input.tap('confirm'));
+    for (const id of ['ending', 'gameover', 'story']) $(id).addEventListener('click', () => this.input.tap('confirm'));
   }
 
   updateEndingsLabel() {
@@ -125,7 +126,13 @@ export class Menus {
     } else if (s === 'ending') {
       if (ok && this.endingReady) this.afterResults();
     } else if (s === 'gameover') {
-      if (ok && this.overReady) this.afterResults();
+      if (ok && this.overReady) {
+        if (this.game.eliminated) { audio.confirm(); this.hideAll(); this.game.retryStage(); }
+        else this.afterResults();
+      }
+      if (back && this.overReady && this.game.eliminated) { this.game.eliminated = null; this.afterResults(); }
+    } else if (s === 'story') {
+      if (ok && this.storyReady) { audio.confirm(); this.hideAll(); this.game.beginCountdown(); }
     } else if (s === 'nameentry') {
       const L = this.letters;
       const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .-!';
@@ -210,12 +217,36 @@ export class Menus {
     for (const s of SCREENS) $(s).classList.remove('show');
     this.screen = 'race';
     this.game.startRun(this.pendingMode || 'arcade');
-    if (this.pendingMode === 'cruise') this.game.timeLeft = Infinity;
+    if (this.game.state === 'story') this.showStory();
     if (CARS[this.game.carIndex].id === 'rickshaw') setTimeout(() => this.game.say.say('rickshaw9000', true), 5000);
+  }
+
+  hideAll() {
+    for (const s of SCREENS) $(s).classList.remove('show');
+    this.screen = 'race';
+  }
+
+  // the setup: why you are racing across Dhaka tonight
+  showStory() {
+    const lines = [
+      'You lost <b>Golden Bhai</b>’s shipment of ilish in the Buriganga. All of it. He wants <b>৳5 crore</b> by sunrise.',
+      'There is exactly one way to make that kind of money in one night: <b>the Dhaka Run</b>. Twenty-four drivers, Dhanmondi to the edge of the city, no rules, winner takes everything.',
+      '<b>RAJA</b> has won it three years running in a black Skyline. Nobody has ever started from the back and won. You are starting from the back.',
+      `Reach <b>P${TARGETS[0]}</b> by the end of Dhanmondi, then keep climbing. Finish first or don’t come home.`,
+    ];
+    $('storyLines').innerHTML = lines.map((l) => `<p>${l}</p>`).join('');
+    const grid = RIVALS.map((r, i) => `<span><i>P${i + 1}</i>${r.name}</span>`);
+    grid.push(`<span class="you"><i>P${FIELD}</i>YOU</span>`);
+    $('storyGrid').innerHTML = grid.join('');
+    this.show('story');
+    this.storyReady = false;
+    [...$('storyLines').children].forEach((p, i) => setTimeout(() => p.classList.add('in'), 300 + i * 900));
+    setTimeout(() => (this.storyReady = true), 900);
   }
 
   pause() {
     if (this.game.state !== 'race' && this.game.state !== 'countdown') return;
+    this.game.hud.tags([]);
     this.prevState = this.game.state;
     this.game.state = 'paused';
     this.show('pause');
@@ -263,6 +294,7 @@ export class Menus {
     const total = Math.floor(g.score + g.goalBonus);
     this.finalScore = total;
     $('pcTally').innerHTML = `
+      <span>FINISHED</span><span>${g.racing ? 'P1 · WINNER' : 'FREE DRIVE'}</span>
       <span>DISTANCE SCORE</span><span>${bn(Math.floor(g.score).toLocaleString('en-US'))}</span>
       <span>TIME BONUS</span><span>${bn((g.goalBonus || 0).toLocaleString('en-US'))}</span>
       <span>NEAR MISSES</span><span>${bn(g.nearMisses)}</span>
@@ -286,6 +318,11 @@ export class Menus {
     const g = this.game;
     const total = Math.floor(g.score);
     this.finalScore = total;
+    const E = g.eliminated;
+    $('overBn').textContent = E ? 'ELIMINATED' : 'TIME UP';
+    $('overEn').textContent = E ? (E.need === 1 ? `FINISHED P${E.pos}` : `P${E.pos} · NEEDED P${E.need}`) : 'GAME OVER';
+    $('overSub').textContent = E ? (E.need === 1 ? 'Second place pays nothing. Golden Bhai does not do silver.' : 'The field rolled on without you.') : 'Stuck in traffic. Again tomorrow.';
+    $('overHint').textContent = E ? 'ENTER retry stage · BACKSPACE give up' : 'ENTER continue';
     $('overTally').innerHTML = `<span>SCORE</span><span>${bn(total.toLocaleString('en-US'))}</span><span>REACHED</span><span>${STAGES[g.path[g.path.length - 1]].name.toUpperCase()}</span>`;
     this.show('gameover');
     this.overReady = false;

@@ -20,6 +20,7 @@ import { SetPieces } from './dynamic.js';
 import { Breakables, debrisOf } from './breakables.js';
 import { Peds } from './peds.js';
 import { Bosses } from './bosses.js';
+import { Race, FIELD, RIVALS } from './race.js';
 import { CARS, buildPlayerCar, makeEnvMap, applyEnv, attachSaree, attachBags } from './cars.js';
 import { audio } from '../audio/audio.js';
 import { music, TRACKS } from '../audio/music.js';
@@ -65,6 +66,7 @@ export class Game {
     this.peds = new Peds(this.scene, this.world);
     this.bosses = new Bosses(this.scene, this.world, this.traffic, this.breakables, this.particles);
     this.world.onChunk = (ch) => this.pieces.addRides(ch);
+    this.race = new Race(this);
     this.cam = new CameraRig(this.R.camera);
     this.carIndex = this.settings.car ?? 0;
     this.colorIndex = this.settings.color ?? 0;
@@ -138,7 +140,8 @@ export class Game {
     this.mode = mode;
     this.resetWorld('dhanmondi');
     const diff = this.settings.difficulty || 'normal';
-    this.timeLeft = mode === 'cruise' ? Infinity : diff === 'easy' ? 95 : diff === 'hard' ? 74 : 84;
+    // the Run has no clock: you race the field, and each stage has a position to reach
+    this.timeLeft = Infinity;
     this.traffic.densityMul = diff === 'easy' ? 0.75 : diff === 'hard' ? 1.25 : 1;
     this.score = 0;
     this.lap = 0;
@@ -152,15 +155,69 @@ export class Game {
     this.bounced = 0;
     this.chainT = 0;
     this.chain = 0;
-    this.state = 'countdown';
+    this.racing = mode === 'arcade';
+    if (this.racing) {
+      this.race.start();
+      // the grid owns the first stretch of road
+      this.traffic.list = this.traffic.list.filter((v) => v.s > this.player.s + 320);
+    } else this.race.stop();
+    this.state = this.racing ? 'story' : 'countdown';
     this.countT = 0;
     this.countStep = -1;
-    this.hud.setStage(STAGES.dhanmondi, true);
+    this.hud.setStage(STAGES.dhanmondi, !this.racing);
     this.hud.show(true);
     this.lowWarned = false;
     this.cam.mode = this.settings.camera || 'chase';
     this.goalReached = null;
     this.player.boost = 0.35;
+  }
+
+  // the story card is done: lights
+  beginCountdown() {
+    this.state = 'countdown';
+    this.countT = 0;
+    this.countStep = -1;
+    this.hud.setStage(this.player.track.stage, true);
+    const need = this.race.target(this.player.track.level);
+    setTimeout(() => this.hud.warn(need === 1 ? 'FINAL STAGE · FINISH FIRST' : `REACH P${need} BY THE END OF THE STAGE`, 4), 3400);
+  }
+
+  eliminate(pos, need) {
+    if (this.state !== 'race') return;
+    this.state = 'gameover';
+    this.overT = 0;
+    this.eliminated = { pos, need, stage: this.race.snap?.stageId };
+    this.hud.boss(false);
+    this.say.say('eliminated', true);
+    this.onTimeUp?.();
+  }
+
+  // back to the start of the stage you failed, with the field as it was
+  retryStage() {
+    const sn = this.race.snap;
+    if (!sn) return this.startRun(this.mode);
+    this.resetWorld(sn.stageId);
+    this.path = sn.path.slice();
+    this.stageIndex = this.path.length - 1;
+    this.hud.setPath(this.path);
+    this.race.restore();
+    this.traffic.list = this.traffic.list.filter((v) => v.s > this.player.s + 320);
+    this.score = sn.score;
+    this.eliminated = null;
+    this.goalReached = null;
+    this.player.boost = 0.35;
+    this.hud.show(true);
+    this.beginCountdown();
+  }
+
+  onPosition(pos, prev) {
+    this.hud.position(pos, pos < prev);
+    if (pos < prev) {
+      audio.blip(1400);
+      this.addScore(1500 * (prev - pos));
+      if (pos === 1) this.say.say('lead', true);
+      else if (fx.next() < 0.25) this.say.say('posGain');
+    } else if (fx.next() < 0.3) this.say.say('posLose');
   }
 
   // a moment of slow motion
@@ -192,9 +249,9 @@ export class Game {
     if (st === 'title' || st === 'menu' || st === 'garage' || st === 'radio' || st === 'settings' || st === 'scores' || st === 'howto') {
       autopilot = this.attract(dt);
       cinematic = st === 'garage' ? 'garage' : 'title';
-    } else if (st === 'countdown') {
+    } else if (st === 'countdown' || st === 'story') {
       autopilot = { throttle: 0, steer: 0, brake: 1 };
-      this.updateCountdown(dt);
+      if (st === 'countdown') this.updateCountdown(dt);
     } else if (st === 'goal' || st === 'ending' || st === 'nameentry2') {
       autopilot = { throttle: 0, steer: -P.x * 0.08, brake: P.v > 2 ? 0.75 : 1 };
       cinematic = 'ending';
@@ -213,6 +270,7 @@ export class Game {
       if (st === 'race') this.raceLogic(dt);
       this.traffic.update(dt, P, this.world, { densityMul: st === 'race' || st === 'countdown' ? 1 : 0.7 });
       this.handleTrafficEvents();
+      if (this.racing) this.race.update(dt);
       this.bosses.update(dt, P, this.R.camera);
       this.handleBossEvents();
       this.peds.update(dt, P, this.world, st !== 'countdown');
@@ -302,7 +360,7 @@ export class Game {
     if (forkSide && !tr.isFinal && P.s > tr.length - 320) targetX = forkSide * hw * 0.55;
     const sec = tr.sectionAt(s);
     if (sec.surface === 'rail') targetX = this.pieces.safeRail?.(tr, P) ?? -LANE_W / 2;
-    const cf = k * P.v * P.v * 0.165 * (1.15 - P.def.grip * 0.25) * (sec.cf ?? 1);
+    const cf = k * P.v * P.v * 0.14 * (1.15 - P.def.grip * 0.25) * (sec.cf ?? 1);
     const steerRate = 14 * clamp(P.v / 12, 0, 1) * (1 - 0.32 * Math.min(1, P.v / P.vmax)) * P.def.grip;
     let steer = clamp((cf + (targetX - P.x) * 1.4 - P.vx * 0.25) / Math.max(1, steerRate), -1, 1);
     for (const v of this.traffic.list) {
@@ -496,6 +554,10 @@ export class Game {
       setTimeout(() => this.say.say('checkpoint', true), 2600);
     }
     // goal
+    if (tr.isFinal && P.s >= tr.goalS && !this.goalReached && this.racing && this.race.position > 1) {
+      this.goalReached = 'lost';
+      this.eliminate(this.race.position, 1);
+    }
     if (tr.isFinal && P.s >= tr.goalS && !this.goalReached) {
       this.goalReached = tr.stage.ending;
       this.state = 'goal';
@@ -598,7 +660,7 @@ export class Game {
         }
       } else if (e.type === 'teslas') {
         if (P.s > s && fire(key)) {
-          for (let k = 0; k < Math.ceil((e.n || 6) * 0.6); k++) { const ts = P.s + 150 + k * 45 + fx.next() * 10; if (T.spawnable(tr, ts)) T.spawn(tr, ts, { type: 'tesla' }); }
+          for (let k = 0; k < Math.ceil((e.n || 6) * 0.85); k++) { const ts = P.s + 150 + k * 34 + fx.next() * 10; if (T.spawnable(tr, ts)) T.spawn(tr, ts, { type: 'tesla' }); }
           this.hud.warn('TESLA SWARM!', 2.5);
           this.say.say('tesla', true);
         }
@@ -608,7 +670,7 @@ export class Game {
           else if (e.id === 'bus') this.bosses.startBuses(tr, P.s);
         }
       } else if (e.type === 'racers') {
-        if (P.s > s && fire(key)) {
+        if (P.s > s && fire(key) && !this.racing) {
           for (let k = 0; k < (e.n || 3); k++) T.spawnEnemy(tr, 'racer', P.s - 50 - k * 20, { speed: P.v * 0.95 + 8, lane: k });
           this.hud.warn('STREET RACERS!', 3);
           this.say.say('racersNew', true);
@@ -689,6 +751,8 @@ export class Game {
     const P = this.player;
     const tr = P.track;
     if (!tr.isFinal && P.s > tr.length) {
+      const verdict = this.racing && this.state === 'race' ? { pos: this.race.position, need: this.race.target(tr.level) } : null;
+      const failed = verdict && verdict.pos > verdict.need;
       const { child, xNew } = this.world.commitFork(tr, P.x);
       P.track = child;
       P.s -= tr.length;
@@ -696,6 +760,13 @@ export class Game {
       this.path.push(child.stageId);
       this.stageIndex = this.path.length - 1;
       this.hud.setPath(this.path);
+      if (this.racing) this.race.onFork(tr.length, !failed);
+      if (failed) this.eliminate(verdict.pos, verdict.need);
+      else if (verdict) {
+        const next = this.race.target(child.level);
+        this.hud.takedown(`STAGE CLEAR · P${verdict.pos}`, next === 1 ? 'FINAL STAGE · WIN IT' : `NEXT TARGET · P${next}`, 3);
+        audio.checkpoint();
+      }
       this.sky.setSkyline(child.stage.skyline || 'midrise');
       this.applyStageAtmo(child);
       this.pieces.clear();
@@ -804,6 +875,7 @@ export class Game {
       const v = e.v;
       const pos = v.track.point(v.s, v.x, 0.8, new THREE.Vector3());
       if (e.type === 'takedown') {
+        const rv = v.rival ? this.race.onWreck(v) : null;
         audio.takedown();
         this.cam.kick(0.5);
         for (let i = 0; i < 26; i++) this.particles.smoke(pos, new THREE.Vector3(), 1.6, [0.3, 0.28, 0.27]);
@@ -819,7 +891,7 @@ export class Game {
         this.addBoost(0.35);
         const how = e.cause === 'wall' ? 'INTO THE WALL' : e.cause === 'traffic' ? 'INTO TRAFFIC' : e.cause === 'enemy' ? 'FRIENDLY FIRE' : e.cause === 'barrier' ? 'INTO THE BARRIER' : 'RAMMED';
         if (this.timeLeft !== Infinity && E.time) { this.timeLeft += E.time; this.hud.timeAdded(); }
-        this.hud.takedown(this.chain > 1 ? `TAKEDOWN ×${this.chain}!` : 'TAKEDOWN!', `${E.label} · ${how} · +${bn(pts.toLocaleString('en-US'))}${E.time ? ` · +${E.time} SEC` : ''}`);
+        this.hud.takedown(this.chain > 1 ? `TAKEDOWN ×${this.chain}!` : rv ? 'RIVAL WRECKED!' : 'TAKEDOWN!', `${rv ? rv.name : E.label} · ${how} · +${bn(pts.toLocaleString('en-US'))}${E.time ? ` · +${E.time} SEC` : ''}`);
         this.slowmo(0.4, 0.55);
         this.flashT = 0.25;
         if (fx.next() < 0.6) this.say.say('takedown', true);
@@ -1156,7 +1228,7 @@ export class Game {
     const rearL = new THREE.Vector3(-0.8, 0.1, C.dims.len * 0.32).applyMatrix4(g.matrixWorld);
     const rearR = new THREE.Vector3(0.8, 0.1, C.dims.len * 0.32).applyMatrix4(g.matrixWorld);
     if (P.slip > 0.3 && P.v > 10 && !P.crash && !P.air) {
-      if (fx.next() < P.slip) { this.particles.smoke(rearL, vel, P.slip); this.particles.smoke(rearR, vel, P.slip); }
+      if (fx.next() < P.slip * 0.5) { this.particles.smoke(rearL, vel, P.slip * 0.6); this.particles.smoke(rearR, vel, P.slip * 0.6); }
     }
     if (P.offroad > 0.5 && P.v > 6 && !P.air) {
       if (fx.next() < 0.7) this.particles.dust(fx.next() < 0.5 ? rearL : rearR, vel);
@@ -1219,7 +1291,7 @@ export class Game {
     const heli = A && A.kind === 'heli' ? clamp(1 - Math.abs(A.s - P.s) / 220, 0, 1) : 0;
     const quiet = this.state === 'paused' || this.state === 'photo';
     audio.update({
-      rpm: P.rpm, throttle: P.throttle, speed: P.v, slip: P.slip, offroad: P.offroad, scrape: P.scrape,
+      rpm: P.rpm, throttle: P.throttle, speed: P.v, vmax: P.vmax, slip: P.slip, offroad: P.offroad, scrape: P.scrape,
       engineOn: !quiet, convertible: P.def.id === 'rosso',
       rain: this.weather.rain, city: L('river') ? 0.5 : 1 - this.night * 0.3, river: L('river') || st.farWater ? 1 : 0,
       siren: quiet ? 0 : this.siren || 0, rotor: quiet ? 0 : heli, boost: P.boosting && this.state === 'race',
@@ -1260,11 +1332,18 @@ export class Game {
       score: this.score || 0,
       lap: this.lap || 0,
       speed: P.kmh,
-      rpm: P.rpm,
+      rpm: audio.rpmNorm ?? P.rpm,
       gear: P.gear,
+      gearN: audio.vg && !this.settings.manual ? audio.vg.gear : 0,
       progress: prog,
       stageIndex: this.stageIndex,
+      race: this.racing,
+      pos: this.race.position,
+      need: this.race.target(tr.level),
+      field: FIELD,
+      near: this.racing ? this.race.neighbours() : null,
     });
+    this.updateTags();
     this.hud.nitro(P.boost, P.boosting);
     // enemies closing in from behind
     this.rearT = (this.rearT || 0) - dt;
@@ -1278,6 +1357,34 @@ export class Game {
       }
       this.hud.rear(list.slice(0, 6));
     }
+  }
+
+  // name tags over the rival cars ahead of you
+  updateTags() {
+    const list = [];
+    if (this.racing && (this.state === 'race' || this.state === 'countdown')) {
+      const P = this.player;
+      const cam = this.R.camera;
+      const W = window.innerWidth, H = window.innerHeight;
+      const order = this.race.rivals.map((r) => r.prog).sort((a, b) => b - a);
+      const pp = this.race.progress();
+      const v = this._tagV || (this._tagV = new THREE.Vector3());
+      for (const r of this.race.rivals) {
+        const veh = r.veh;
+        if (!veh || veh.wreck || veh.track !== P.track) continue;
+        const rel = veh.s - P.s;
+        if (rel < 4 || rel > 170) continue;
+        veh.track.point(veh.s, veh.x, (veh.md?.hgt || 1.4) + 0.5, v);
+        v.project(cam);
+        if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) continue;
+        let pos = 1;
+        for (const p of order) if (p > r.prog) pos++;
+        if (pp > r.prog) pos++;
+        list.push({ x: (v.x * 0.5 + 0.5) * W, y: (-v.y * 0.5 + 0.5) * H, name: r.name, pos, boss: r.i === 0, a: rel < 130 ? 1 : (170 - rel) / 40 });
+        if (list.length >= 6) break;
+      }
+    }
+    this.hud.tags(list);
   }
 
   // ------------------------------------------------------------ radio

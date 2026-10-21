@@ -3,7 +3,12 @@
 
 export const LINES = {
   // stage intros & landmarks
-  start: ['Dhanmondi to anywhere. Nobody has ever made it. Nobody has ever tried.'],
+  start: ['Twenty-three cars ahead of us. Start picking them off.', 'Last place again. Good, nowhere to go but up.'],
+  posGain: ['One more down!', 'Did you see his face? Priceless.', 'Bye bye!', 'Keep going, there is more of them.', 'That was a Premio overtaking a Supra. History.'],
+  posLose: ['He just passed us! Do something!', 'We are going backwards!', 'Who taught you to drive, the BRTC?'],
+  lead: ['We are LEADING the Dhaka Run. Somebody call my mother.', 'First place! Don’t look in the mirror, Raja is there.'],
+  eliminated: ['That’s it. We’re out. Golden Bhai is going to turn us into ilish.', 'Out of the Run. I am walking home.'],
+  raja: ['That black Skyline. That’s Raja. Don’t blink.'],
   sarobar: ['There’s a concert at Rabindra Sarobar. One day that’ll be us on stage.'],
   fuchka: ['Fuchka! Stop for one second... fine. FINE.'],
   abahani: ['Abahani field. My cousin scored a goal here once. Once.'],

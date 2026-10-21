@@ -1,6 +1,6 @@
 # Outrun Dhaka · আউটরান ঢাকা
 
-An OutRun-style arcade racer through Dhaka. Start at Dhanmondi Road 27 at golden hour, fork your way across the city through the night, and escape at sunrise through one of five exits.
+An arcade racer through Dhaka. THE RUN: twenty-four drivers race from Dhanmondi to the edge of the city in one night, and you start last. Reach the target position by the end of every stage, then win the final one.
 
 ## Play
 
@@ -16,6 +16,8 @@ Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · SHIFT/Z s
 - Traffic jams: hit the ramp and jump to the oncoming carriageway, then return through a median gap.
 - Set pieces: Metro Dash (Kawran Bazar), Mall Crawl (Hatirjheel), Future Park (300 Feet).
 - Bosses: the helicopter (Manik Mia) and the drunk night buses (Motijheel).
+- Rivals: 23 named drivers (Raja in the black Skyline is the champion). Wreck one and they drop way back. Fail a stage target and you can retry that stage.
+- Sound: a modelled engine (firing pulses through an exhaust model, with a virtual gearbox and overrun crackle) running in an AudioWorklet; music mixed with sidechain ducking and a glue compressor.
 
 ## The route
 
@@ -27,7 +29,7 @@ Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · SHIFT/Z s
 Padma   CTG Highway   300 Feet   Airport   Savar
 ```
 
-Each stage ends in a fork: keep left or right. Every checkpoint gate adds time. Each exit has its own ending; finding one unlocks the Rickshaw 9000.
+Each stage ends in a fork: keep left or right. Each exit has its own ending; winning once unlocks the Rickshaw 9000. FREE DRIVE has no rivals and no clock.
 
 ## Build
 

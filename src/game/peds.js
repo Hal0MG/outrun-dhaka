@@ -135,7 +135,7 @@ export class Peds {
     // spawn street crossers ahead (more of them near footbridges, naturally)
     if (active) {
       this.spawnT -= dt;
-      const rate = (tr.stage.peds ?? 0.5) * 0.5;
+      const rate = (tr.stage.peds ?? 0.5) * 0.8;
       if (this.spawnT <= 0 && rate > 0) {
         this.spawnT = this.rng.range(1.2, 3.2) / rate;
         const s = P.s + this.rng.range(140, 260);

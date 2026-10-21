@@ -199,7 +199,7 @@ export class Player {
     this.vx = damp(this.vx, vxT, this.spin ? 3 : 9, dt);
     // centrifugal push to the outside of the curve
     const wet = opts.wet || 0;
-    const cf = -k * this.v * this.v * 0.165 * (1 + wet * 0.25) * (1.15 - def.grip * 0.25) * (sec.cf ?? 1);
+    const cf = -k * this.v * this.v * 0.14 * (1 + wet * 0.25) * (1.15 - def.grip * 0.25) * (sec.cf ?? 1);
     this.x += (this.vx + cf) * dt;
 
     // drift: steering hard into a curve at speed

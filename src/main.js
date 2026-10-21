@@ -17,7 +17,8 @@ const saveSettings = () => store.set('settings', settings);
 
 const loadMsg = document.getElementById('loadMsg');
 const progress = (m) => { loadMsg.textContent = m; };
-const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+// a frame, or a short timeout when the tab is in the background and rAF is paused
+const nextFrame = () => new Promise((r) => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 120); });
 
 async function loadFonts() {
   if (!document.fonts) return;
