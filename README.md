@@ -1,0 +1,44 @@
+# Outrun Dhaka · আউটরান ঢাকা
+
+An OutRun-style arcade racer through Dhaka. Start at Dhanmondi Road 27 at golden hour, fork your way across the city through the night, and escape at sunrise through one of five exits.
+
+## Play
+
+- **Easiest:** open `dist/index.html` in Chrome or Edge. It is a single self-contained file (fonts load from Google Fonts when online; it falls back to system Bengali fonts offline).
+- **Dev server:** `npm install`, then `npm run dev` and open http://127.0.0.1:5173
+
+Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · SHIFT/Z shift LO/HI (manual gearbox) · H horn · C camera · R radio · V photo mode · ESC pause · F fullscreen. Gamepads and phone touch controls work too.
+
+## What's on the road
+
+- Wide lanes, local traffic (Axio/Premio/Allion, Noah, Hiace, Prado, taxis), pedestrians, street stalls you can flatten, and e-rickshaw "teslas" that cut you off.
+- Enemies: police pickups, RAB SUVs and rare street racers (Supra, Skyline, Celica, Chaser, Miata). Wreck them for takedown bonuses.
+- Traffic jams: hit the ramp and jump to the oncoming carriageway, then return through a median gap.
+- Set pieces: Metro Dash (Kawran Bazar), Mall Crawl (Hatirjheel), Future Park (300 Feet).
+- Bosses: the helicopter (Manik Mia) and the drunk night buses (Motijheel).
+
+## The route
+
+```
+                 Dhanmondi
+           Shahbag      Manik Mia
+     Old Dhaka   Kawran Bazar   Hatirjheel
+ Sadarghat   Motijheel   Gulshan   Mirpur
+Padma   CTG Highway   300 Feet   Airport   Savar
+```
+
+Each stage ends in a fork: keep left or right. Every checkpoint gate adds time. Each exit has its own ending; finding one unlocks the Rickshaw 9000.
+
+## Build
+
+- `npm run build` writes the single-file game to `dist/index.html`.
+- `npm run artifact` also writes `dist/outrun-dhaka.artifact.html` (same game without the document skeleton, for hosts that supply their own).
+
+Everything (buildings, signboards, rickshaw art, trees, cars, landmarks, music, engine sounds) is generated in code at startup; there are no asset files.
+
+## Code map
+
+- `src/world/` track geometry, stages, chunk streaming, props, landmarks, textures, sky, road shader
+- `src/game/` player physics, traffic AI, cars, camera, particles, weather, race logic
+- `src/audio/` synthesised engines and effects, the music sequencer and five tracks
+- `src/ui/` HUD, menus, Tuntuni's dialogue

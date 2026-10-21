@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Outrun Dhaka</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="An OutRun-style arcade racer through Dhaka: start in Dhanmondi at golden hour, fork your way across the city through the night, and escape at sunrise.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Galada&family=Hind+Siliguri:wght@400;500;600;700&family=Tiro+Bangla&display=swap">
+<link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="flower" viewBox="-50 -50 100 100">
+      <g stroke="#111" stroke-width="2.5">
+        <g fill="var(--f1, #e4252b)">
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(45)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(90)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(135)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(180)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(225)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(270)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(315)"/>
+        </g>
+        <g fill="var(--f2, #ffb000)" transform="rotate(22.5) scale(0.6)">
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(60)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(120)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(180)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(240)"/>
+          <path d="M0 0 C14 -10 36 -12 44 0 C36 12 14 10 0 0Z" transform="rotate(300)"/>
+        </g>
+        <circle r="9" fill="#fff6c8"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<div id="ui">
+  <!-- ======================== LOADING -->
+  <section id="loading" class="screen show">
+    <div class="wheel" aria-hidden="true"><div class="hub"></div></div>
+    <div class="load-bn">HOLD ON, BHAI…</div>
+    <div class="load-msg" id="loadMsg">Warming up the engine</div>
+  </section>
+
+  <!-- ======================== TITLE -->
+  <section id="title" class="screen">
+    <div class="logo" id="logo">
+      <svg class="fl fl1"><use href="#flower"/></svg>
+      <svg class="fl fl2" style="--f1:#ff2e88;--f2:#22d3ee"><use href="#flower"/></svg>
+      <div class="logo-bn">DHAKA</div>
+      <div class="logo-en">OUTRUN</div>
+      <div class="logo-ribbon"><span>DHANMONDI</span><b>→</b><span>EVERYWHERE</span></div>
+    </div>
+    <div class="press" id="pressStart">CLICK OR PRESS ENTER</div>
+    <nav class="menu" id="mainMenu" hidden>
+      <button data-act="arcade"><span>ARCADE</span><i>5 STAGES · 5 EXITS</i></button>
+      <button data-act="cruise"><span>NIGHT CRUISE</span><i>NO TIMER</i></button>
+      <button data-act="garage"><span>GARAGE</span><i>PICK A RIDE</i></button>
+      <button data-act="scores"><span>HIGH SCORES</span><i>HALL OF FAME</i></button>
+      <button data-act="settings"><span>SETTINGS</span><i>TWEAK</i></button>
+      <button data-act="howto"><span>HOW TO DRIVE</span><i>CONTROLS</i></button>
+    </nav>
+    <div class="title-foot">
+      <span id="endingsFound"></span>
+      <span class="keys">↑ gas · ↓ brake · ←→ steer · SPACE nitro · H horn · C camera · R radio · V photo · ESC pause</span>
+    </div>
+  </section>
+
+  <!-- ======================== GARAGE -->
+  <section id="garage" class="screen">
+    <div class="panel garage-card">
+      <div class="plate-head"><span>GARAGE</span><i>NO. 27</i></div>
+      <div class="car-name" id="carName">ROSSO 86</div>
+      <div class="car-bn" id="carBn"></div>
+      <p class="car-blurb" id="carBlurb"></p>
+      <div class="stats" id="carStats"></div>
+      <div class="swatches" id="carColors"></div>
+      <div class="garage-nav">
+        <button data-act="prevCar">◀</button>
+        <button data-act="pickCar" class="go">SELECT</button>
+        <button data-act="nextCar">▶</button>
+      </div>
+      <div class="hint">←→ car · ↑↓ colour · ENTER select · BACKSPACE back</div>
+    </div>
+  </section>
+
+  <!-- ======================== RADIO SELECT -->
+  <section id="radio" class="screen">
+    <div class="transistor">
+      <div class="tr-top"><span>NATIONAL</span><i>TRANSISTOR</i></div>
+      <div class="tr-dial">
+        <div class="tr-scale"><span>88</span><span>92</span><span>96</span><span>100</span><span>104</span><span>108</span></div>
+        <div class="tr-needle" id="needle"></div>
+      </div>
+      <ul class="tr-list" id="stationList"></ul>
+      <div class="tr-grille"></div>
+      <div class="hint">↑↓ tune · ENTER drive · the radio keeps playing in the car (R to switch)</div>
+    </div>
+  </section>
+
+  <!-- ======================== SETTINGS -->
+  <section id="settings" class="screen">
+    <div class="panel set-card">
+      <div class="plate-head"><span>SETTINGS</span></div>
+      <div class="set-list" id="setList"></div>
+      <div class="hint">↑↓ choose · ←→ change · BACKSPACE back</div>
+    </div>
+  </section>
+
+  <!-- ======================== SCORES -->
+  <section id="scores" class="screen">
+    <div class="panel score-card">
+      <div class="plate-head"><span>HIGH SCORES</span></div>
+      <ol class="score-list" id="scoreList"></ol>
+      <div class="endings-grid" id="endingsGrid"></div>
+      <div class="hint">BACKSPACE back</div>
+    </div>
+  </section>
+
+  <!-- ======================== HOW TO -->
+  <section id="howto" class="screen">
+    <div class="panel how-card">
+      <div class="plate-head"><span>HOW TO DRIVE</span></div>
+      <div class="how-grid">
+        <div><b>↑ / W</b> gas &nbsp; <b>↓ / S</b> brake &nbsp; <b>← →</b> steer &nbsp; <b>SPACE</b> nitro</div>
+        <div><b>H</b> horn (slow traffic sometimes moves over) &nbsp; <b>SHIFT</b> LO / HI (manual gearbox)</div>
+        <div><b>C</b> camera &nbsp; <b>R</b> next radio station &nbsp; <b>V</b> photo mode &nbsp; <b>ESC</b> pause &nbsp; <b>F</b> fullscreen</div>
+        <p>Beat the clock to each checkpoint gate. Every gate adds time. At the end of each stage the road splits: keep left or right to choose where you go next. Five stages, five exits out of Dhaka, five endings.</p>
+        <p>Police, RAB and street racers will try to run you off the road. Shove them into traffic, walls and each other for a <b>TAKEDOWN</b> and extra time. Near misses, drifts, big air and smashed stalls fill the <b>NITRO</b> bar. Jammed? Hit the ramp and take the wrong side. Mind the pedestrians. They bounce, but they hold grudges.</p>
+        <p>Gamepad works (RT gas, LT brake, B nitro, X shift, RB horn, Y camera). On a phone, use the on-screen pedals.</p>
+      </div>
+      <div class="hint">BACKSPACE back</div>
+    </div>
+  </section>
+
+  <!-- ======================== HUD -->
+  <section id="hud" class="hud">
+    <div class="h-time plate" id="hTimeBox">
+      <div class="lbl">TIME</div>
+      <div class="big" id="hTime">75</div>
+    </div>
+    <div class="h-stage" id="hStage">
+      <div class="st-bn" id="hStageBn">DHANMONDI</div>
+      <div class="st-en" id="hStageEn">STAGE 1</div>
+      <div class="st-sub" id="hStageSub"></div>
+    </div>
+    <div class="h-score">
+      <div class="row"><span class="lbl">SCORE</span><span id="hScore">0</span></div>
+      <div class="row small"><span class="lbl">LAP</span><span id="hLap">0'00"00</span></div>
+      <div class="pips" id="hPips"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="h-progress"><div class="bar" id="hProg"></div><div class="flag"></div></div>
+
+    <div class="h-boss" id="hBoss">
+      <div class="bs-name" id="hBossName">BOSS</div>
+      <div class="bs-bar"><b id="hBossBar"></b></div>
+      <div class="bs-sub" id="hBossSub"></div>
+    </div>
+
+    <div class="h-speed">
+      <svg id="tacho" viewBox="-110 -110 220 130"></svg>
+      <div class="kmh"><span id="hSpeed">0</span><i>KM/H</i></div>
+      <div class="gear" id="hGear"><b class="lo on">LO</b><b class="hi">HI</b></div>
+      <div class="nitro" id="hNitro"><span>NITRO</span><div class="nb"><b id="hNitroBar"></b></div></div>
+    </div>
+
+    <div class="h-radio" id="hRadio">
+      <div class="vfd"><span id="hStation">JHALMURI FM</span><b id="hFreq">88.0</b></div>
+      <div class="eq" id="hEq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <canvas id="hMap" width="180" height="120"></canvas>
+    <div class="h-rear" id="hRear"></div>
+
+    <div class="h-msg" id="hMsg"></div>
+    <div class="h-combo" id="hCombo"></div>
+    <div class="h-warn" id="hWarn"></div>
+    <div class="h-takedown" id="hTake"></div>
+    <div class="h-bubble" id="hBubble">
+      <canvas id="tuntuni" width="96" height="96"></canvas>
+      <div class="bubble"><div class="b-bn" id="hSayBn"></div><div class="b-en" id="hSayEn"></div></div>
+    </div>
+    <div class="signal" id="signal"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+    <div class="h-cam" id="hCam"></div>
+    <div class="h-saree" id="hSaree"></div>
+  </section>
+  <div class="photo-hint" id="photoHint" hidden>PHOTO MODE &nbsp;·&nbsp; ←→ orbit · ↑↓ height · SPACE / H zoom · V exit</div>
+
+  <!-- ======================== TOUCH -->
+  <div id="touch" hidden>
+    <button class="t-left" data-t="left">◀</button>
+    <button class="t-right" data-t="right">▶</button>
+    <button class="t-brake" data-t="brake">BRAKE</button>
+    <button class="t-gas" data-t="gas">GAS</button>
+    <button class="t-horn" data-t="horn">HORN</button>
+    <button class="t-nitro" data-t="boost">NITRO</button>
+    <button class="t-pause" data-t="pause">II</button>
+  </div>
+
+  <!-- ======================== PAUSE -->
+  <section id="pause" class="screen dim">
+    <div class="panel pause-card">
+      <div class="plate-head"><span>PAUSED</span><i>CHA BREAK</i></div>
+      <nav class="menu small" id="pauseMenu">
+        <button data-act="resume"><span>RESUME</span></button>
+        <button data-act="restart"><span>RESTART</span></button>
+        <button data-act="settings"><span>SETTINGS</span></button>
+        <button data-act="quit"><span>QUIT TO TITLE</span></button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- ======================== RESULTS / ENDING -->
+  <section id="ending" class="screen">
+    <div class="postcard" id="postcard">
+      <div class="pc-stamp" id="pcStamp">5</div>
+      <div class="pc-bn" id="pcBn"></div>
+      <div class="pc-title" id="pcTitle"></div>
+      <div class="pc-lines" id="pcLines"></div>
+      <div class="pc-tally" id="pcTally"></div>
+      <canvas id="pcMap" width="360" height="200"></canvas>
+      <div class="hint" id="pcHint">ENTER continue</div>
+    </div>
+  </section>
+
+  <section id="gameover" class="screen dim">
+    <div class="over">
+      <div class="over-bn">TIME UP</div>
+      <div class="over-en">GAME OVER</div>
+      <div class="over-sub" id="overSub">Stuck in traffic. Again tomorrow.</div>
+      <div class="pc-tally" id="overTally"></div>
+      <div class="hint">ENTER continue</div>
+    </div>
+  </section>
+
+  <section id="nameentry" class="screen dim">
+    <div class="panel name-card">
+      <div class="plate-head"><span>YOUR NAME</span><i>HALL OF FAME</i></div>
+      <div class="name-score" id="nameScore"></div>
+      <div class="letters" id="letters"><b>A</b><b>A</b><b>A</b></div>
+      <div class="hint">↑↓ letter · ←→ move · ENTER save</div>
+    </div>
+  </section>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
