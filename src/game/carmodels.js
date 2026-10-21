@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { MeshBuilder } from '../world/builder.js';
+import { loftCar, loftToBuilder, BODIES } from './carbody.js';
 
 const PAINT = [1, 1, 1];
 const DARK = [0.09, 0.09, 0.1];
@@ -338,98 +339,125 @@ export function policePickup(A) {
 }
 
 // ------------------------------------------------------------ the rivals
+
+
+
+
+
+// ------------------------------------------------------------ the rival racers: lofted, smooth-shaded bodies
+function rowNear(body, u) {
+  let best = body.rows[0];
+  for (const r of body.rows) if (Math.abs(r.u - u) < Math.abs(best.u - u)) best = r;
+  return best;
+}
+
+function sportsCar(A, key, opts = {}) {
+  const sp = BODIES[key];
+  const body = loftCar(sp);
+  const B = new MeshBuilder(true);
+  const Lt = lights();
+  const white = A.get('white');
+  loftToBuilder(B, body, white);
+  const L = sp.L, hw = sp.W / 2;
+  // wheels sit in the arches, tyres flush with the body side
+  const tw = opts.tyreW || 0.25;
+  for (const u of sp.wheels) {
+    const z = -L / 2 + u * L;
+    for (const x of [-hw + tw / 2 + 0.05, hw - tw / 2 - 0.05]) B.wheel(x, sp.r, z, sp.r, tw, 20, [1, 1, 1], A.get('tyre'), A.get('rim'));
+  }
+  // nose: headlights high on the corners, grille and intake low in the middle
+  // lights sit on the very nose and tail faces, just proud of the skin
+  const nose = body.rows[0], nose2 = rowNear(body, 0.04);
+  const ny = Math.min(nose.pts[15][1], nose2.pts[15][1]) + 0.02, nw = nose.pts[7][0];
+  const fz = -L / 2 + 0.02;
+  for (const sd of [-1, 1]) {
+    Lt.head.box(sd * nw * 0.62, ny - 0.14, nose.z - 0.012, opts.headW || 0.4, opts.headH || 0.08, 0.06, 0, { color: [2.7, 2.6, 2.3] });
+    Lt.amber.box(sd * nw * 0.8, ny - 0.24, nose.z - 0.012, 0.1, 0.05, 0.05, 0, { color: [2.5, 1.3, 0.2] });
+  }
+  B.quad([nw * 0.42, sp.clear + 0.12, fz - 0.01], [-nw * 0.42, sp.clear + 0.12, fz - 0.01], [-nw * 0.42, sp.clear + 0.3, fz - 0.01], [nw * 0.42, sp.clear + 0.3, fz - 0.01], [0, 0, 1, 1], [1, 1, 1], A.get('grille'));
+  plate(B, A, fz - 0.005, sp.clear + 0.06 + 0.07, false);
+  // tail: lights across the top of the rear face, plate and pipes below
+  const tail = body.rows[body.rows.length - 1];
+  const ty = tail.pts[15][1], tw2 = tail.pts[7][0];
+  const rz = L / 2 - 0.01;
+  for (const sd of [-1, 1]) {
+    if (opts.roundTails) for (const k of opts.roundTails) discZ(Lt.tail, sd * tw2 * k, ty - 0.11, tail.z + 0.012, 0.075, 12, [2.6, 0.08, 0.05], 1);
+    else Lt.tail.box(sd * tw2 * 0.6, ty - 0.17, tail.z + 0.012, opts.tailW || 0.42, 0.1, 0.05, 0, { color: [2.5, 0.08, 0.04] });
+  }
+  if (opts.tailBar) Lt.tail.box(0, ty - 0.15, tail.z + 0.012, tw2 * 0.9, 0.04, 0.05, 0, { color: [1.6, 0.05, 0.03] });
+  plate(B, A, rz + 0.012, sp.clear + 0.28, true);
+  for (const x of opts.pipes || [-hw * 0.55, hw * 0.55]) {
+    discZ(B, x, sp.clear + 0.08, rz + 0.03, 0.045, 12, [0.85, 0.86, 0.88], 1, white);
+    discZ(B, x, sp.clear + 0.08, rz + 0.035, 0.03, 12, [0.03, 0.03, 0.03], 1, white);
+  }
+  // mirrors at the base of the windscreen
+  if (sp.windscreen) {
+    const r = rowNear(body, sp.windscreen[1] - 0.02);
+    const y = r.pts[7][1];
+    for (const sd of [-1, 1]) {
+      B.box(sd * (r.pts[7][0] + 0.05), y, r.z, 0.08, 0.04, 0.05, 0, { color: [0.05, 0.05, 0.05], region: white });
+      B.box(sd * (r.pts[7][0] + 0.13), y + 0.03, r.z, 0.14, 0.09, 0.07, 0, { color: PAINT, region: white });
+    }
+  }
+  opts.extra?.(B, body, white);
+  return finish({ B, Lt }, L, sp.W, Math.max(...sp.top.map((k) => k[1])) + 0.02);
+}
+
 export function supra(A) {
-  // MK4: long rounded hood, bubble cabin, the hoop wing
-  const L = 4.52, r = L / 2;
-  const sp = {
-    L, W: 1.81, r: 0.33, tyreW: 0.27, belt: 0.86, roofY: 1.27, bumperH: 0.42, tumble: 0.32,
-    body: [[r, 0.28], [r + 0.04, 0.5], [r, 0.74], [r - 0.18, 0.86], [r - 0.75, 0.88], [-r + 1.4, 0.86], [-r + 0.6, 0.72], [-r + 0.08, 0.56], [-r - 0.04, 0.4], [-r + 0.1, 0.26]],
-    cabin: [[r - 0.78, 0.88], [r - 1.4, 1.26], [-r + 2.15, 1.27], [-r + 1.42, 0.87]],
-    pillars: [-r + 1.85],
-    wheelZ: [-r + 0.82, r - 0.82], grilleY: 0.42,
-    roundTails: [0.62, 0.36], tailY: 0.74, tailW: 0.2, tailH: 0.16, headY: 0.62, headW: 0.44, headH: 0.08, plateY: 0.52,
-  };
-  const m = carFromSpec(A, sp);
-  // the wing: uprights + blade
-  for (const x of [-0.7, 0.7]) m.B.box(x, 0.86, r - 0.2, 0.06, 0.28, 0.12, 0, { color: PAINT, region: A.get('white') });
-  m.B.box(0, 1.12, r - 0.22, 1.66, 0.05, 0.32, 0, { color: PAINT, region: A.get('white') });
-  // racing hood stripe
-  m.B.box(0.18, 0.865, -r + 0.9, 0.14, 0.012, 1.3, 0, { color: [0.12, 0.12, 0.12], region: A.get('white') });
-  return finish(m, L, 1.81, 1.3);
+  return sportsCar(A, 'supra', {
+    roundTails: [0.62, 0.36], tyreW: 0.27, headW: 0.42,
+    extra: (B, body, white) => {
+      // the hoop wing
+      const L = 4.52, r = 4.52 / 2;
+      for (const x of [-0.68, 0.68]) B.box(x, 0.9, r - 0.24, 0.06, 0.22, 0.14, 0, { color: PAINT, region: white });
+      B.box(0, 1.1, r - 0.26, 1.62, 0.045, 0.32, 0, { color: PAINT, region: white });
+      for (const x of [-0.82, 0.82]) B.box(x, 1.02, r - 0.26, 0.03, 0.16, 0.36, 0, { color: PAINT, region: white });
+    },
+  });
 }
 
 export function skyline(A) {
-  // R34 GT-R: square shoulders, tall wing, four round tail lights
-  const L = 4.6, r = L / 2;
-  const sp = {
-    L, W: 1.79, r: 0.34, tyreW: 0.28, belt: 0.95, roofY: 1.36, bumperH: 0.45, tumble: 0.22,
-    body: [[r, 0.28], [r + 0.03, 0.62], [r - 0.04, 0.92], [r - 0.7, 0.96], [-r + 1.35, 0.95], [-r + 0.35, 0.86], [-r, 0.72], [-r - 0.04, 0.36], [-r + 0.08, 0.26]],
-    cabin: [[r - 0.72, 0.96], [r - 1.22, 1.35], [-r + 2.0, 1.36], [-r + 1.38, 0.96]],
-    pillars: [-r + 1.75, 0.2],
-    wheelZ: [-r + 0.82, r - 0.85], grilleY: 0.55,
-    roundTails: [0.62, 0.36], tailY: 0.86, tailW: 0.2, tailH: 0.16, headY: 0.78, headW: 0.42, headH: 0.1, plateY: 0.54,
-  };
-  const m = carFromSpec(A, sp);
-  for (const x of [-0.6, 0.6]) m.B.box(x, 0.95, r - 0.3, 0.05, 0.2, 0.12, 0, { color: PAINT, region: A.get('white') });
-  m.B.box(0, 1.14, r - 0.3, 1.5, 0.05, 0.28, 0, { color: PAINT, region: A.get('white') });
-  m.B.box(0, 0.24, -r + 0.05, 1.7, 0.06, 0.3, 0, { color: TRIM, region: A.get('white') }); // splitter
-  return finish(m, L, 1.79, 1.38);
+  return sportsCar(A, 'skyline', {
+    roundTails: [0.66, 0.38], tyreW: 0.28,
+    extra: (B, body, white) => {
+      const r = 4.6 / 2;
+      for (const x of [-0.6, 0.6]) B.box(x, 0.98, r - 0.3, 0.05, 0.18, 0.12, 0, { color: PAINT, region: white });
+      B.box(0, 1.15, r - 0.3, 1.5, 0.05, 0.28, 0, { color: PAINT, region: white });
+      B.box(0, 0.11, -r + 0.06, 1.66, 0.04, 0.28, 0, { color: TRIM, region: white }); // front splitter
+    },
+  });
 }
 
 export function celica(A) {
-  // T230: a wedge with a sharp nose and a high tail
-  const L = 4.34, r = L / 2;
-  const sp = {
-    L, W: 1.74, r: 0.31, belt: 0.86, roofY: 1.3, bumperH: 0.42, tumble: 0.3,
-    body: [[r, 0.3], [r + 0.03, 0.62], [r - 0.05, 0.95], [r - 0.55, 0.94], [-r + 1.45, 0.86], [-r + 0.55, 0.66], [-r - 0.02, 0.42], [-r + 0.12, 0.28]],
-    cabin: [[r - 0.4, 0.94], [r - 1.25, 1.29], [-r + 2.1, 1.3], [-r + 1.48, 0.86]],
-    pillars: [-r + 1.85],
-    wheelZ: [-r + 0.8, r - 0.8], grilleY: 0.36,
-    tailY: 0.9, tailW: 0.42, tailH: 0.1, headY: 0.64, headW: 0.46, headH: 0.1, plateY: 0.55,
-  };
-  const m = carFromSpec(A, sp);
-  m.B.box(0, 0.95, r - 0.1, 1.5, 0.04, 0.2, 0, { color: PAINT, region: A.get('white') });
-  return finish(m, L, 1.74, 1.32);
+  return sportsCar(A, 'celica', {
+    tailW: 0.46, headW: 0.46,
+    extra: (B, body, white) => B.box(0, 1.0, 4.34 / 2 - 0.12, 1.44, 0.04, 0.2, 0, { color: PAINT, region: white }),
+  });
 }
 
 export function chaser(A) {
-  // JZX100: a long, low four-door that drifts better than it parks
-  const L = 4.72, r = L / 2;
-  const sp = {
-    L, W: 1.76, r: 0.32, belt: 0.9, roofY: 1.38, bumperH: 0.42, tumble: 0.16,
-    body: [[r, 0.26], [r + 0.02, 0.6], [r - 0.03, 0.88], [r - 0.82, 0.92], [-r + 1.2, 0.91], [-r + 0.3, 0.8], [-r, 0.66], [-r - 0.03, 0.34], [-r + 0.08, 0.24]],
-    cabin: [[r - 0.84, 0.92], [r - 1.4, 1.37], [-r + 2.0, 1.38], [-r + 1.22, 0.91]],
-    pillars: [-r + 1.6, 0.25],
-    wheelZ: [-r + 0.88, r - 0.92], grilleY: 0.52,
-    tailY: 0.84, tailW: 0.62, tailH: 0.14, headY: 0.72, headW: 0.48, headH: 0.1, plateY: 0.5, tailBar: true,
-  };
-  const m = carFromSpec(A, sp);
-  m.B.box(0, 0.92, r - 0.25, 1.4, 0.03, 0.18, 0, { color: PAINT, region: A.get('white') });
-  return finish(m, L, 1.76, 1.39);
+  return sportsCar(A, 'chaser', {
+    tailW: 0.6, tailBar: true, headW: 0.46,
+    extra: (B, body, white) => B.box(0, 0.93, 4.72 / 2 - 0.22, 1.36, 0.03, 0.16, 0, { color: PAINT, region: white }),
+  });
 }
 
 export function miata(A) {
-  // ND roadster, roof down, two heads and a lot of confidence
-  const L = 3.92, r = L / 2;
-  const sp = {
-    L, W: 1.73, r: 0.3, belt: 0.82, roofY: 0.82, bumperH: 0.4,
-    body: [[r, 0.28], [r + 0.03, 0.6], [r - 0.05, 0.82], [r - 0.75, 0.84], [-r + 1.55, 0.82], [-r + 0.5, 0.7], [-r - 0.02, 0.48], [-r + 0.1, 0.27]],
-    cabin: null,
-    wheelZ: [-r + 0.75, r - 0.75], grilleY: 0.42,
-    tailY: 0.76, tailW: 0.32, tailH: 0.1, headY: 0.66, headW: 0.42, headH: 0.08, plateY: 0.5,
-  };
-  const m = carFromSpec(A, sp);
-  const white = A.get('white');
-  // windscreen + roll hoops + occupants
-  m.B.quad([0.72, 0.84, -r + 1.55], [-0.72, 0.84, -r + 1.55], [-0.66, 1.18, -r + 1.85], [0.66, 1.18, -r + 1.85], [0, 0, 1, 1], [1, 1, 1], A.get('glass'));
-  m.B.box(0, 0.83, 0.1, 1.4, 0.03, 1.1, 0, { color: DARK, region: white });
-  for (const x of [-0.38, 0.38]) {
-    m.B.box(x, 0.83, 0.55, 0.36, 0.32, 0.08, 0, { color: DARK, region: white });
-    m.B.box(x, 0.9, 0.22, 0.34, 0.36, 0.28, 0, { color: [0.85, 0.85, 0.82], region: white });
-    m.B.box(x, 1.26, 0.22, 0.22, 0.24, 0.22, 0, { color: [0.55, 0.36, 0.24], region: white });
-    m.B.box(x, 1.44, 0.24, 0.23, 0.08, 0.23, 0, { color: [0.08, 0.06, 0.05], region: white });
-  }
-  return finish(m, L, 1.73, 1.25);
+  return sportsCar(A, 'miata', {
+    tailW: 0.3, headW: 0.38,
+    extra: (B, body, white) => {
+      const r = 3.92 / 2;
+      // windscreen frame + glass, roll hoops and the two heads
+      B.quad([0.7, 0.84, -r + 1.6], [-0.7, 0.84, -r + 1.6], [-0.64, 1.16, -r + 1.86], [0.64, 1.16, -r + 1.86], [0, 0, 1, 1], [1, 1, 1], A.get('glass'));
+      B.box(0, 1.15, -r + 1.86, 1.32, 0.04, 0.05, 0, { color: [0.05, 0.05, 0.05], region: white });
+      for (const x of [-0.38, 0.38]) {
+        B.box(x, 0.84, 0.62, 0.3, 0.28, 0.06, 0, { color: [0.05, 0.05, 0.05], region: white });
+        B.box(x, 0.86, 0.25, 0.34, 0.36, 0.28, 0, { color: [0.85, 0.85, 0.82], region: white });
+        B.box(x, 1.22, 0.25, 0.2, 0.22, 0.2, 0, { color: [0.55, 0.36, 0.24], region: white });
+        B.box(x, 1.4, 0.27, 0.21, 0.07, 0.21, 0, { color: [0.08, 0.06, 0.05], region: white });
+      }
+    },
+  });
 }
 
 // ------------------------------------------------------------ battery rickshaw ("Tesla")

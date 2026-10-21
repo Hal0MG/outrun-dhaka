@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { buildCNG, buildRickshaw } from './vehicles.js';
 import * as P from '../world/paint.js';
+import { loftCar, loftToGeometry, BODIES } from './carbody.js';
 
 export const CARS = [
   {
@@ -194,6 +195,20 @@ export function buildPlayerCar(def, colorHex, assets) {
   const leather = new THREE.MeshStandardMaterial({ color: '#1a1414', roughness: 0.5, metalness: 0.1 });
   const piping = new THREE.MeshStandardMaterial({ color: '#c49a6c', roughness: 0.6 });
   const out = { group, body, paint, wheels: [], front: [], popups: [], tailMat, headMat, exhaust: [], seats: [], def };
+  const skin = paint.clone();
+  skin.vertexColors = true;
+  const lofted = (key) => {
+    const b = loftCar({ ...BODIES[key], stations: 80 });
+    const m = new THREE.Mesh(loftToGeometry(b), skin);
+    body.add(m);
+    return b;
+  };
+  // height of the top surface at a z position (for sitting parts on the skin)
+  const topAt = (b, z) => {
+    let best = b.rows[0];
+    for (const r of b.rows) if (Math.abs(r.z - z) < Math.abs(best.z - z)) best = r;
+    return best.pts[15][1];
+  };
 
   const addWheel = (x, y, z, r, w, front) => {
     const wm = wheelMesh(r, w, tyreMat, rimMat);
@@ -211,17 +226,7 @@ export function buildPlayerCar(def, colorHex, assets) {
 
   if (def.id === 'rosso') {
     const W = 1.98;
-    const geo = profileBody([
-      [2.25, 0.25], [2.3, 0.42], [2.2, 0.58], [1.2, 0.74], [0.62, 0.8], [0.58, 0.86], [-0.55, 0.88],
-      [-0.75, 0.98], [-1.95, 1.0], [-2.22, 0.97], [-2.28, 0.8], [-2.28, 0.36], [-2.12, 0.25],
-    ], [[-1.4, 0.42], [1.45, 0.4]], W, 0.06);
-    // reorder arches for the path direction (rear -> front)
-    const bodyMesh = new THREE.Mesh(geo, paint);
-    body.add(bodyMesh);
-    // cockpit tub
-    const tub = new THREE.Mesh(new THREE.BoxGeometry(W - 0.32, 0.25, 1.25), black);
-    tub.position.set(0, 0.8, 0.0);
-    body.add(tub);
+    const lb = lofted('rosso');
     // seats (driver on the RIGHT: Bangladesh drives on the left)
     for (const x of [-0.4, 0.4]) {
       const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.5), leather);
@@ -237,12 +242,11 @@ export function buildPlayerCar(def, colorHex, assets) {
       body.add(pipe);
     }
     // rear deck vents (the flat black engine cover)
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(W - 0.6, 0.02, 1.05), black);
-    deck.position.set(0, 1.056, 1.3);
-    body.add(deck);
+    const ventMat = new THREE.MeshStandardMaterial({ color: '#2a2a2e', roughness: 0.4, metalness: 0.5 });
     for (let i = 0; i < 7; i++) {
-      const v = new THREE.Mesh(new THREE.BoxGeometry(W - 0.66, 0.025, 0.04), new THREE.MeshStandardMaterial({ color: '#2a2a2e', roughness: 0.4, metalness: 0.5 }));
-      v.position.set(0, 1.07, 0.87 + i * 0.14);
+      const z = 0.87 + i * 0.14;
+      const v = new THREE.Mesh(new THREE.BoxGeometry(W - 0.7, 0.02, 0.05), ventMat);
+      v.position.set(0, topAt(lb, z) + 0.02, z);
       body.add(v);
     }
     // windscreen
@@ -272,7 +276,7 @@ export function buildPlayerCar(def, colorHex, assets) {
     for (const sx of [-1, 1]) {
       for (let i = 0; i < 6; i++) {
         const st = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.035, 1.5 - i * 0.04), black);
-        st.position.set(sx * (W / 2 + 0.005), 0.46 + i * 0.055, -0.15 - i * 0.02);
+        st.position.set(sx * (W / 2 - 0.005), 0.44 + i * 0.05, 0.25 - i * 0.02);
         body.add(st);
       }
     }
@@ -316,10 +320,10 @@ export function buildPlayerCar(def, colorHex, assets) {
       fl.position.set(x, 0.38, -2.29);
       body.add(fl);
     }
-    addWheel(-0.85, 0.36, -1.45, 0.36, 0.28, true);
-    addWheel(0.85, 0.36, -1.45, 0.36, 0.28, true);
-    addWheel(-0.86, 0.38, 1.4, 0.38, 0.34, false);
-    addWheel(0.86, 0.38, 1.4, 0.38, 0.34, false);
+    addWheel(-0.84, 0.37, -1.44, 0.37, 0.28, true);
+    addWheel(0.84, 0.37, -1.44, 0.37, 0.28, true);
+    addWheel(-0.83, 0.37, 1.4, 0.37, 0.34, false);
+    addWheel(0.83, 0.37, 1.4, 0.37, 0.34, false);
     // driver + Tuntuni
     out.driver = headOf('#8a5a3a', '#110d0a', { shades: true });
     out.driver.position.set(0.4, 1.47, 0.24);
@@ -349,25 +353,18 @@ export function buildPlayerCar(def, colorHex, assets) {
     out.dims = { len: 4.5, wid: 1.98, hgt: 1.2 };
   } else if (def.id === 'premio') {
     const W = 1.74;
-    const geo = profileBody([
-      [2.3, 0.3], [2.35, 0.5], [2.25, 0.72], [1.2, 0.82], [-1.7, 0.86], [-2.28, 0.8], [-2.3, 0.4], [-2.2, 0.3],
-    ], [[-1.42, 0.36], [1.42, 0.36]], W, 0.06);
-    body.add(new THREE.Mesh(geo, paint));
-    // greenhouse
-    const cab = profileBody([[1.0, 0.82], [0.35, 1.36], [-0.9, 1.38], [-1.55, 0.86]], [], W - 0.16, 0.05);
-    body.add(new THREE.Mesh(cab, paint));
-    const winMat = new THREE.MeshPhysicalMaterial({ color: '#0e1318', metalness: 0.2, roughness: 0.08, clearcoat: 1 });
-    const win = profileBody([[0.95, 0.86], [0.36, 1.32], [-0.88, 1.34], [-1.48, 0.88]], [], W - 0.1, 0.03);
-    body.add(new THREE.Mesh(win, winMat));
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(W + 0.02, 0.04, 4.4), chrome);
-    strip.position.set(0, 0.62, 0);
-    body.add(strip);
+    lofted('premio');
+    for (const sx of [-1, 1]) {
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 3.4), chrome);
+      strip.position.set(sx * (W / 2 - 0.01), 0.6, 0.1);
+      body.add(strip);
+    }
     for (const x of [-0.6, 0.6]) {
       const tl = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.04), tailMat);
       tl.position.set(x, 0.68, 2.29);
       body.add(tl);
-      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.14, 0.04), headMat);
-      hl.position.set(x, 0.62, -2.34);
+      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.1, 0.04), headMat);
+      hl.position.set(x, 0.58, -2.3);
       body.add(hl);
     }
     const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), new THREE.MeshBasicMaterial({ map: plateTexture('১১-৪২০৪') }));
@@ -382,10 +379,10 @@ export function buildPlayerCar(def, colorHex, assets) {
     const tb = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.1, 0.12), new THREE.MeshStandardMaterial({ color: '#ff7eb6' }));
     tb.position.set(0.35, 0.92, 0.95);
     body.add(tb);
-    addWheel(-0.78, 0.33, -1.42, 0.33, 0.24, true);
-    addWheel(0.78, 0.33, -1.42, 0.33, 0.24, true);
-    addWheel(-0.78, 0.33, 1.42, 0.33, 0.24, false);
-    addWheel(0.78, 0.33, 1.42, 0.33, 0.24, false);
+    addWheel(-0.74, 0.32, -1.52, 0.32, 0.23, true);
+    addWheel(0.74, 0.32, -1.52, 0.32, 0.23, true);
+    addWheel(-0.74, 0.32, 1.38, 0.32, 0.23, false);
+    addWheel(0.74, 0.32, 1.38, 0.32, 0.23, false);
     out.driver = headOf('#8a5a3a', '#1a1a1a', {});
     out.driver.position.set(0.4, 1.12, -0.05);
     body.add(out.driver);
