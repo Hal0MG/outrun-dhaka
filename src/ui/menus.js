@@ -312,7 +312,7 @@ export class Menus {
       $('mapMeta').textContent = `${RUN_FIELD} CARS · ${ROUTE.length} DISTRICTS`;
       $('mapBn').textContent = 'ঢাকা রান';
       $('mapName').textContent = 'DHANMONDI TO THE PADMA';
-      $('mapSub').textContent = `One road across the whole city, dusk to dawn. Knockout gates: ${gates}. The last four race over the Padma.`;
+      $('mapSub').textContent = `One road across the whole city, dusk to dawn. Knockout gates: ${gates}. Fall below the cut-off and you are out.`;
     } else {
       const st = STAGES[id];
       $('mapKind').textContent = 'CIRCUIT';

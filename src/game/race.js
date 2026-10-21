@@ -1,8 +1,7 @@
 // Races. Two kinds share one engine:
 //  - circuit: one district, three laps, sixty cars on a rolling start, you start last
 //  - run:     the whole city end to end, seventy-two cars; at each knockout
-//             gate everyone below the cut-off is out, the last four race
-//             across the Padma for the win
+//             gate everyone below the cut-off is out
 // Every car's progress is a distance G along the whole route (track.base + s),
 // so the field can spread over several district tracks at once. Rivals are
 // real cars for the whole race; contact and grass only ever cost speed. Coins,
@@ -40,11 +39,10 @@ export const CIRCUIT_FIELD = 60;
 // (a circuit tank lasts about a lap; passing cars is how you keep the tank topped up)
 const TANK_RUN = 9000;
 const CAN_FUEL = 0.25;
-const PASS_FUEL = 0.05; // per car passed
-const PASS_NITRO = 5; // cars passed per free nitro charge
+const PASS_FUEL = 0.09; // per car passed
+const PASS_NITRO = 8; // cars passed per free nitro charge
 const ROLL_V = 22; // the rolling start: everyone rolls at this speed until GO
-const ROW_GAP = 11; // metres between grid rows
-const GRID_AHEAD = 60; // the front row starts this far behind the line
+const FIELD_GAP = 38; // metres between one racer and the next, strung out along the road ahead of you
 const VIEW = 420;
 
 export class Race {
@@ -72,32 +70,31 @@ export class Race {
     this.coins = 0;
     this.finished = null;
     this.field = kind === 'run' ? RUN_FIELD : CIRCUIT_FIELD;
-    this.tank = kind === 'run' ? TANK_RUN : tr.lapLen * 1.1;
+    this.tank = kind === 'run' ? TANK_RUN : tr.lapLen * 1.3;
     this.passes = 0;
     this.passNitro = 0;
     this.wrongAcc = 0;
     // medal times for a circuit: a little over the time a perfect run at top speed would take
     if (kind === 'circuit') { const nom = (tr.goalS - tr.gateS) / P.vmax; this.par = [nom * 1.07, nom * 1.13, nom * 1.22]; } else this.par = null;
-    // a rolling start: staggered rows across the road behind the line, everyone already moving; the last slot is yours
+    // a rolling start with the field strung out along the road: you start at the back on the line, and every racer
+    // ahead is one gap further on (the leader about two kilometres up the road). Nobody is bunched up, so you only
+    // ever have a few cars in front of you at a time, however good the first minute is.
     const n = this.field - 1;
     const lanes = Math.max(2, Math.min(5, Math.round(tr.lanesAt(tr.gateS))));
     const hwG = tr.halfWAt(tr.gateS);
-    const slotS = (slot) => tr.gateS - GRID_AHEAD - Math.floor(slot / lanes) * ROW_GAP;
-    const slotX = (slot) => {
-      const row = Math.floor(slot / lanes), lane = (slot + (row % 2)) % lanes;
-      return -hwG + LANE_W * (lane + 0.5) + (row % 2 ? 0.5 : -0.5);
-    };
-    P.s = slotS(n);
-    P.x = slotX(n);
+    const laneX = (k) => -hwG + LANE_W * (((k % lanes) + lanes) % lanes + 0.5);
+    P.s = tr.gateS - 20;
+    P.x = laneX(1);
     P.v = ROLL_V;
     P.vx = 0;
     this.rivals = RIVALS.slice(0, n).map((d, i) => {
       const md = g.fleet.md(d.model);
+      const x = laneX(i * 3 + 1);
       return {
-        ...d, i, G: slotS(i), x: slotX(i), gx: slotX(i), v: ROLL_V, vx: 0, out: false, done: false, ready: true,
-        // the front-runners match your top speed (nitro and clean lines to catch them); the field thins
-        // toward the back of the grid, where the cars are easy: a challenge the whole way, not a rush then a wall
-        skill: (kind === 'run' ? 1.005 : 0.995) - 0.17 * Math.pow(i / n, 1.6), bias: ((i * 7) % 5 - 2) * 0.32, dodge: null, dodgeT: 0,
+        ...d, i, G: tr.base + tr.gateS + 25 + (n - i) * FIELD_GAP, x, gx: x, v: ROLL_V, vx: 0, out: false, done: false, ready: true,
+        // everyone is a touch slower than your top speed and the pace falls only gently down the field: the leader
+        // takes nitro and a clean line to catch, the cars behind are passable one at a time, not all at once
+        skill: (kind === 'run' ? 0.99 : 0.985) - (kind === 'run' ? 0.065 : 0.055) * (i / n), bias: ((i * 7) % 5 - 2) * 0.32, dodge: null, dodgeT: 0,
         w: md.wid / 2, l: md.len / 2,
         car: { model: d.model, md, track: null, s: 0, x: 0, yaw: 0, roll: 0, color: new THREE.Color(d.color), brake: false },
       };
@@ -284,10 +281,10 @@ export class Race {
       const kA = Math.max(Math.abs(this.kAt(r.G + 30)), Math.abs(this.kAt(r.G + 70)));
       // take bends at a little under what the car's own grip can hold (the same grip you have)
       if (kA > 1e-4) vT = Math.min(vT, Math.sqrt((P.steerGrip * 0.93) / (kA * CORNER_K)));
-      // keep the pack in reach (gently)
+      // only a loose leash: a leader miles up the road eases a little. Nobody speeds up to catch you, so the field
+      // you leave behind stays behind and the field ahead stays spread out.
       const gap = r.G - PG;
-      if (gap > 300) vT *= Math.max(0.86, 1 - (gap - 300) / 2500);
-      else if (gap < -300) vT *= Math.min(1.07, 1 + (-gap - 300) / 3000);
+      if (gap > 700) vT *= Math.max(0.93, 1 - (gap - 700) / 6000);
       if (r.done) vT = Math.min(vT, 26);
       if (!go) vT = ROLL_V; // the rolling start: hold formation until GO
       // the inside of the next bend, else the rival's own lane

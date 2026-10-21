@@ -15,8 +15,8 @@ Hold gas and steer. Corners push you to the outside, harder the faster you go, s
 
 ## Races
 
-- **Circuit:** any of the fifteen districts, three laps, sixty cars on a rolling start, you start last. Each lap is the district's own road (its look, landmarks and time of night) laid end to end, so every lap has the same corners.
-- **The Run:** seventy-two cars on one road through every district, dusk to dawn, Dhanmondi to the Padma Bridge (about five minutes). Knockout gates at Shahbag (top 56 go through), Kawran Bazar (42), Gulshan (30), Sadarghat (20), Mirpur (12) and 300 Feet (4); the last four race over the Padma.
+- **Circuit:** any of the fifteen districts, three laps, sixty cars on a rolling start, you start last and the field is strung out up the road ahead, so you pass a few at a time instead of the whole pack at once. Each lap is the district's own road (its look, landmarks and time of night) laid end to end, so every lap has the same corners.
+- **The Run:** seventy-two cars on one road through every district, dusk to dawn, Dhanmondi to the Padma Bridge (about five minutes). Knockout gates at Shahbag (top 69 go through), Kawran Bazar (63), Gulshan (56), Sadarghat (48), Mirpur (41) and 300 Feet (33), so the back of the field is thinned at each gate.
 
 Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan → Old Dhaka → Sadarghat → Motijheel → Mirpur → Airport Road → 300 Feet → CTG Highway → Savar → Padma Bridge
 
