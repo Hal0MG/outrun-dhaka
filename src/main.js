@@ -75,8 +75,6 @@ async function boot() {
   menus.onSettingsChanged = (key) => {
     if (key === 'quality') { settings.qualityAuto = false; R.setQuality(settings.quality); }
     if (key === 'musicVol' || key === 'sfxVol') { audio.vol.music = settings.musicVol; audio.vol.sfx = settings.sfxVol; audio.applyVolumes(); }
-    if (key === 'touch') applyTouch();
-    if (key === 'camera') game.cam.mode = settings.camera;
   };
   audio.vol.music = settings.musicVol;
   audio.vol.sfx = settings.sfxVol;
@@ -97,7 +95,7 @@ async function boot() {
   const touchEl = document.getElementById('touch');
   const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
   function applyTouch() {
-    const on = settings.touch === 'on' || (settings.touch === 'auto' && isTouch);
+    const on = isTouch;
     touchEl.hidden = !on;
     document.body.classList.toggle('touch', on);
   }

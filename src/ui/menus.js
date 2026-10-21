@@ -355,18 +355,11 @@ export class Menus {
 
   // ------------------------------------------------------------ settings
   settingRows() {
-    const S = this.settings;
     return [
       ['QUALITY', 'quality', ['low', 'medium', 'high']],
-      ['DIFFICULTY', 'difficulty', ['easy', 'normal', 'hard']],
-      ['GEARBOX', 'manual', [false, true], (v) => (v ? 'MANUAL LO/HI' : 'AUTOMATIC')],
       ['MUSIC VOLUME', 'musicVol', [0, 0.2, 0.4, 0.6, 0.8, 1], (v) => Math.round(v * 100) + '%'],
       ['SFX VOLUME', 'sfxVol', [0, 0.2, 0.4, 0.6, 0.8, 1], (v) => Math.round(v * 100) + '%'],
-      ['CAMERA', 'camera', ['chase', 'far', 'hood', 'low']],
-      ['SPEED BLUR', 'blur', [true, false], (v) => (v ? 'ON' : 'OFF')],
-      ['SLOW MOTION', 'slowmo', [true, false], (v) => (v ? 'ON' : 'OFF')],
-      ['CRT SCANLINES', 'crt', [false, true], (v) => (v ? 'ON' : 'OFF')],
-      ['TOUCH CONTROLS', 'touch', ['auto', 'on', 'off']],
+      ['SCANLINES', 'crt', [false, true], (v) => (v ? 'ON' : 'OFF')],
     ];
   }
 
@@ -394,7 +387,7 @@ export class Menus {
       $('carBn').textContent = '';
       $('carBlurb').textContent = '';
       const stat = (label, v) => `<span>${label}</span><div class="bar"><b style="width:${Math.round(v * 100)}%"></b></div>`;
-      $('carStats').innerHTML = stat('TOP SPEED', def.top / 430) + stat('ACCEL', def.accel / 1.2) + stat('GRIP', def.grip) + `<span>KM/H</span><span>${bn(def.top)}</span>`;
+      $('carStats').innerHTML = stat('TOP SPEED', def.top / 300) + stat('ACCEL', def.accel / 1.2) + stat('GRIP', def.grip) + `<span>KM/H</span><span>${bn(def.top)}</span>`;
       $('carColors').innerHTML = def.colors.map((c, i) => `<b data-i="${i}" style="background:${c}" class="${i === this.game.colorIndex ? 'sel' : ''}"></b>`).join('');
     } else if (s === 'radio') {
       const rows = TRACKS.map((t, i) => `<li data-i="${i}" class="${i === this.sel ? 'sel' : ''}"><b>${t.freq}</b><span>${t.station}<small>“${t.title}” · raag ${t.raga}</small></span><em>${t.bpm} bpm</em></li>`);

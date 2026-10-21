@@ -8,7 +8,6 @@ const KEYMAP = {
   ArrowDown: 'down', KeyS: 'down',
   Space: 'boost', KeyB: 'boost', KeyN: 'boost', ShiftLeft: 'gear', ShiftRight: 'gear', KeyZ: 'gear',
   KeyH: 'horn', KeyX: 'horn',
-  KeyC: 'camera',
   KeyR: 'radio',
   KeyM: 'mute',
   Escape: 'pause', KeyP: 'pause',

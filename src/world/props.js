@@ -480,14 +480,14 @@ export function metroViaduct(ctx, s0, s1, x) {
   const B = ctx.B.misc;
   const conc = ctx.misc.get('concrete_smooth');
   const H = 13;
-  const step = 24;
+  const step = 54;
   for (let s = Math.ceil(s0 / step) * step; s < s1; s += step) {
     const yaw = ctx.track.yawAt(s);
     // piers stand on the ground, whatever the road is doing, and reach right up to the deck
     const g = ctx.P(s, x, 0, true);
     const top = ctx.P(s, x, H - 1.0);
     const ph = Math.max(2, top[1] - g[1] - 1.2);
-    B.box(g[0], g[1] - 0.5, g[2], 1.8, ph + 0.5, 2.2, yaw, { color: [0.86, 0.85, 0.82], region: conc, tile: [3, 3] });
+    B.box(g[0], g[1] - 0.5, g[2], 1.3, ph + 0.5, 2.2, yaw, { color: [0.86, 0.85, 0.82], region: conc, tile: [3, 3] });
     // T cap
     B.box(g[0], g[1] + ph - 0.1, g[2], 9.5, 1.3, 2.4, yaw, { color: [0.86, 0.85, 0.82], region: conc, tile: [3, 3] });
     ctx.obstacle(s, x, 1.0, 1.2, 'solid');

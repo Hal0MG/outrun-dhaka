@@ -5,55 +5,56 @@ import * as THREE from 'three';
 import { buildCNG, buildRickshaw } from './vehicles.js';
 import * as P from '../world/paint.js';
 import { loftCar, loftToGeometry, BODIES } from './carbody.js';
+import { sportsCar } from './carmodels.js';
 
 export const CARS = [
   {
     id: 'rosso', name: 'ROSSO 86', bn: 'রোসো ৮৬', tag: 'FLAT-12 · 1986 · RIGHT-HAND DRIVE',
     blurb: 'Flat-twelve wedge, right-hand drive, imported in 1989 by an uncle nobody talks about.',
-    top: 390, accel: 1.05, grip: 0.82, width: 1.98, length: 4.5,
+    top: 290, accel: 1.05, grip: 0.82, width: 1.98, length: 4.5,
     colors: ['#c8102e', '#f2f0ea', '#111318', '#ffb000', '#1d5fa8'],
   },
   {
     id: 'premio', name: 'UNCLE PREMIO', bn: 'আঙ্কেল প্রিমিও', tag: '1.8 VVT-i · TISSUE BOX INCLUDED',
     blurb: 'The official car of Dhaka uncles. Tissue box on the rear shelf. Indestructible.',
-    top: 345, accel: 0.92, grip: 0.95, width: 1.74, length: 4.6,
+    top: 190, accel: 0.92, grip: 0.95, width: 1.74, length: 4.6,
     colors: ['#f2f2ee', '#b9bcc0', '#1c1c1e', '#7a1d22', '#2b4a6b'],
   },
   {
     id: 'cng', name: 'CNG TURBO', bn: 'সিএনজি টার্বো', tag: 'THREE WHEELS · ONE CAGE · ZERO FEAR',
     blurb: 'Three wheels, one cage, zero fear. Squeezes through gaps that do not exist.',
-    top: 300, accel: 1.2, grip: 0.88, width: 1.4, length: 2.7,
+    top: 95, accel: 1.2, grip: 0.88, width: 1.4, length: 2.7,
     colors: ['#1f8a3c', '#ffb000', '#c8102e', '#1d5fa8', '#111318'],
   },
   {
     id: 'supra', name: 'SUPRA MK4', tag: '', blurb: '', engine: 'i6',
-    top: 380, accel: 1.0, grip: 0.9, width: 1.81, length: 4.52,
+    top: 285, accel: 1.0, grip: 0.9, width: 1.81, length: 4.52,
     colors: ['#ff6a00', '#e8e4da', '#111318', '#1d4fd8', '#c8102e'],
   },
   {
     id: 'skyline', name: 'SKYLINE R34', tag: '', blurb: '', engine: 'rb',
-    top: 370, accel: 1.05, grip: 1.0, width: 1.79, length: 4.6,
+    top: 265, accel: 1.05, grip: 1.0, width: 1.79, length: 4.6,
     colors: ['#1d4fd8', '#c0c4cc', '#111318', '#f2f2ee', '#6b6f78'],
   },
   {
     id: 'celica', name: 'CELICA', tag: '', blurb: '', engine: 'i4t',
-    top: 340, accel: 0.95, grip: 0.92, width: 1.74, length: 4.34,
+    top: 225, accel: 0.95, grip: 0.92, width: 1.74, length: 4.34,
     colors: ['#ffd200', '#c8102e', '#f2f2ee', '#111318', '#1d4fd8'],
   },
   {
     id: 'chaser', name: 'CHASER', tag: '', blurb: '', engine: 'i6',
-    top: 350, accel: 0.9, grip: 0.86, width: 1.76, length: 4.72,
+    top: 245, accel: 0.9, grip: 0.86, width: 1.76, length: 4.72,
     colors: ['#f2f2ee', '#111318', '#1d4fd8', '#6b6f78', '#2f8f4e'],
   },
   {
     id: 'miata', name: 'MX-5', tag: '', blurb: '', engine: 'i4t',
-    top: 320, accel: 1.0, grip: 1.05, width: 1.73, length: 3.92,
+    top: 215, accel: 1.0, grip: 1.05, width: 1.73, length: 3.92,
     colors: ['#c8102e', '#f2f2ee', '#111318', '#ffb000', '#22d3ee'],
   },
   {
     id: 'rickshaw', name: 'RICKSHAW 9000', bn: 'রিকশা ৯০০০', tag: 'HAND-PAINTED · JET-ASSISTED',
     blurb: 'Hand-painted, jet-assisted. The puller has not been told. Unlocks after your first goal.',
-    top: 420, accel: 1.12, grip: 0.7, width: 1.15, length: 2.6, locked: true,
+    top: 250, accel: 1.12, grip: 0.7, width: 1.15, length: 2.6, locked: true,
     colors: ['#c8102e', '#1d5fa8', '#118a4a', '#ffb000', '#7b2f9e'],
   },
 ];
@@ -428,37 +429,15 @@ export function buildPlayerCar(def, colorHex, assets) {
       const z = z0 + u * L;
       for (const x of [-hw + tw / 2 + 0.05, hw - tw / 2 - 0.05]) addWheel(x, sp.r, z, sp.r, tw, k === 0);
     });
-    // lights on the nose and tail faces
+    // everything small (lamps, grille, vents, plates, seams, mirrors) comes from the shared detail builder
     const nose = lb.rows[0], tail = lb.rows[lb.rows.length - 1];
     const ny = Math.min(nose.pts[15][1], rowAt(0.04).pts[15][1]) + 0.02;
-    for (const sd of [-1, 1]) {
-      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.05), headMat);
-      hl.position.set(sd * nose.pts[7][0] * 0.62, ny - 0.1, nose.z - 0.01);
-      body.add(hl);
-      const am = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.05), amberMat);
-      am.position.set(sd * nose.pts[7][0] * 0.8, ny - 0.2, nose.z - 0.01);
-      body.add(am);
-      const tl = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.1, 0.05), tailMat);
-      tl.position.set(sd * tail.pts[7][0] * 0.6, tail.pts[15][1] - 0.15, tail.z + 0.01);
-      body.add(tl);
-    }
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), new THREE.MeshBasicMaterial({ map: plateTexture('ঢাকা-১১') }));
-    plate.position.set(0, sp.clear + 0.28, tail.z + 0.015);
-    body.add(plate);
-    for (const x of [-hw * 0.55, hw * 0.55]) {
-      const ex = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.14, 10), chrome);
-      ex.rotation.x = Math.PI / 2;
-      ex.position.set(x, sp.clear + 0.08, tail.z + 0.02);
-      body.add(ex);
-      out.exhaust.push(new THREE.Vector3(x, sp.clear + 0.08, tail.z + 0.15));
-    }
-    // mirrors
-    const mw = sp.windscreen ? rowAt(sp.windscreen[1] - 0.02) : null;
-    if (mw) for (const sd of [-1, 1]) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.07), paint);
-      m.position.set(sd * (mw.pts[7][0] + 0.12), mw.pts[7][1] + 0.05, mw.z);
-      body.add(m);
-    }
+    const det = sportsCar(assets.fx, def.id, { noBody: true, noWheels: true, tyreW: tw, roundTails: def.id === 'supra' || def.id === 'skyline' ? [0.62, 0.36] : undefined, tailBar: def.id === 'chaser' });
+    body.add(new THREE.Mesh(det.body, assets.mats.fx));
+    if (det.head) body.add(new THREE.Mesh(det.head, headMat));
+    if (det.tail) body.add(new THREE.Mesh(det.tail, tailMat));
+    if (det.amber) body.add(new THREE.Mesh(det.amber, amberMat));
+    for (const x of [-hw * 0.55, hw * 0.55]) out.exhaust.push(new THREE.Vector3(x, sp.clear + 0.08, tail.z + 0.15));
     // wings
     const wing = (z, y, w, up) => {
       for (const x of up) { const u = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.12), paint); u.position.set(x, y - 0.1, z); body.add(u); }

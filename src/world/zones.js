@@ -11,20 +11,17 @@ export const CONTRA = { rampBefore: 70, jamLead: 10, gapAfter: 40, gapLen: 150, 
 
 export function buildZones(tr, stage, M) {
   const Z = { contra: [], stalls: [], closed: [], ramps: [] };
-  for (const e of stage.events || []) {
-    if (e.type === 'jam') {
-      const s = M(e.s), len = M(e.s + (e.len || 160)) - s;
-      const median = (tr.sectionAt(s).R || stage.R) === 'median';
-      if (median && !stage.twoWay) {
-        const z = {
-          jam0: s, jam1: s + len,
-          ramp: s - CONTRA.rampBefore,
-          g0: s + len + CONTRA.gapAfter, g1: s + len + CONTRA.gapAfter + CONTRA.gapLen,
-        };
-        z.end = z.g1 + CONTRA.taper;
-        Z.contra.push(z);
-      }
+  // wherever the road has a divider (not set pieces), the median is a flat crossing: the whole
+  // opposite carriageway is open to you, and real oncoming traffic uses it
+  if (!stage.twoWay) {
+    let run = null;
+    for (const sec of tr.sections) {
+      const med = (sec.R || stage.R) === 'median' && !sec.closed && !sec.env && !sec.fork && !sec.gap && !sec.goalRun;
+      if (med && run && Math.abs(run.end - sec.s0) < 1) run.end = sec.s1;
+      else if (med) { run = { s0: sec.s0, end: sec.s1 }; Z.contra.push(run); }
+      else run = null;
     }
+    for (const r of Z.contra) { r.jam0 = r.s0; r.jam1 = r.s0; r.ramp = r.s0 + 30; r.g0 = r.s0; r.g1 = 1e9; }
   }
   for (const st of stage.stalls || []) Z.stalls.push({ s0: M(st[0]), s1: M(st[1]), side: st[2] || -1 });
   for (const sec of tr.sections) {

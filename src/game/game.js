@@ -81,7 +81,7 @@ export class Game {
     const def = CARS[this.carIndex];
     if (this.car) this.scene.remove(this.car.group);
     const color = def.colors[this.colorIndex % def.colors.length];
-    this.car = buildPlayerCar(def, color, { misc: this.world.assets.misc, mats: this.world.mats });
+    this.car = buildPlayerCar(def, color, { misc: this.world.assets.misc, fx: this.world.assets.fx, mats: this.world.mats });
     this.scene.add(this.car.group);
     if (this.env) applyEnv(this.car, this.env.texture);
     const prev = this.player;
@@ -174,7 +174,7 @@ export class Game {
     this.hud.setStage(STAGES.dhanmondi, true);
     this.hud.show(true);
     this.lowWarned = false;
-    this.cam.mode = this.settings.camera || 'chase';
+    this.cam.mode = 'chase';
     this.goalReached = null;
     this.player.boost = 0.35;
   }
@@ -230,7 +230,7 @@ export class Game {
 
   // a moment of slow motion
   slowmo(k, dur) {
-    if (this.settings.slowmo === false) return;
+    return; // no slow motion
     this.slowK = Math.min(this.slowK, k);
     this.slowT = Math.max(this.slowT, dur);
   }
@@ -241,7 +241,7 @@ export class Game {
     let tsT = 1;
     if (this.slowT > 0) { this.slowT -= dtReal; tsT = this.slowK; if (this.slowT <= 0) this.slowK = 1; }
     const P = this.player;
-    if (P.air && P.air.slow && this.state === 'race' && this.settings.slowmo !== false) {
+    if (false) {
       const u = P.airU();
       if (u > 0.08 && u < 0.9) tsT = Math.min(tsT, Math.max(0.72, P.air.slow));
     }
@@ -272,7 +272,7 @@ export class Game {
 
     if (st !== 'paused' && st !== 'photo') {
       const wet = shared.uWet.value;
-      P.update(dt, input, this.world, { auto: this.settings.manual ? false : true, autopilot, wet });
+      P.update(dt, input, this.world, { auto: true, autopilot, wet });
       this.handlePlayerEvents();
       this.handleFork();
       if (st === 'race') this.raceLogic(dt);
@@ -316,23 +316,20 @@ export class Game {
     // post fx
     const vr = P.v / P.vmax;
     const F = this.R.final.uniforms;
-    F.uBlur.value = this.settings.blur === false ? 0 : (st === 'race' ? Math.max(0, vr - 0.8) * 0.5 + (P.boosting ? 0.25 : 0) : 0);
+    F.uBlur.value = st === 'race' ? Math.max(0, vr - 0.85) * 0.4 + (P.boosting ? 0.2 : 0) : 0;
     F.uScan.value = this.settings.crt ? 1 : 0;
     F.uFlash.value = Math.max(this.weather.flash * 0.35, this.flashT || 0);
     this.flashT = Math.max(0, (this.flashT || 0) - dtReal * 2);
     F.uDim.value = this.dimT || 0;
   }
 
+  // title / menu background: the car waits on the start line, nobody else on the road
   attract(dt) {
-    // the car cruises through Dhanmondi on its own
     const P = this.player;
-    const tr = P.track;
-    const want = this.state === 'garage' ? 0 : 19;
-    if (P.s > tr.length - 600) {
-      this.resetWorld('dhanmondi');
-      for (let i = 0; i < 10; i++) this.world.stream(this.player.track, this.player.s, 4);
-    }
-    return this.autoDrive(want);
+    this.traffic.list.length = 0;
+    this.peds.clear?.();
+    if (this.state !== 'garage' && P.s > P.track.gateS + 2) { this.resetWorld('dhanmondi'); }
+    return { throttle: 0, steer: 0, brake: 1 };
   }
 
   // simple driver AI: hold a lane, counter-steer curves, dodge traffic
@@ -361,9 +358,6 @@ export class Game {
     }
     let targetX = want < 25 ? -hw + LANE_W * 1.5 : -hw + LANE_W * (this._autoLane - 0.5);
     // aim for the ramp when a jam is ahead
-    const z = contraAt(tr, P.s + 120);
-    if (z && P.s < z.ramp) targetX = hw - LANE_W * 0.5;
-    if (z && P.s > z.jam0 - 20 && P.s < z.g0 + 40) { const lim = this.world.limits(tr, s, P.x); if (lim.opp) targetX = lim.lWall + LANE_W * 0.7; }
     if (forkSide && !tr.isFinal && P.s > tr.length - 320) targetX = forkSide * hw * 0.55;
     const sec = tr.sectionAt(s);
     if (sec.surface === 'rail') targetX = this.pieces.safeRail?.(tr, P) ?? -LANE_W / 2;
@@ -459,20 +453,20 @@ export class Game {
 
   titleCam(dt) {
     const P = this.player;
-    const tr = P.track;
     const cam = this.R.camera;
-    const t = this.time * 0.07;
-    const side = Math.sin(t) * 6;
-    const back = 9 + Math.cos(t * 1.3) * 3;
-    const p = tr.point(Math.max(0, P.s - back), P.x + side, 1.6 + Math.sin(t * 0.7) * 0.8, new THREE.Vector3());
-    const l = tr.point(P.s + 10, P.x * 0.5, 1.4, new THREE.Vector3());
-    cam.position.lerp(p, 1 - Math.exp(-dt * 2));
-    if (!this._titleInit) { cam.position.copy(p); this._titleInit = true; }
+    const pose = P.pose(this._pose || (this._pose = { pos: new THREE.Vector3() }));
+    const c = pose.pos;
+    // a slow sweep across the rear three-quarter view, low and wide, start gate and crowd behind the car
+    const t = this.time * 0.12;
+    const ang = pose.yaw + Math.sin(t) * 0.75 + (Math.sin(t) > 0 ? 0 : 0);
+    const r = 8.5 + Math.sin(t * 0.7) * 1.2;
+    const h = 1.5 + Math.sin(t * 0.9) * 0.25;
+    cam.position.set(c.x - Math.sin(ang) * r, c.y + h, c.z + Math.cos(ang) * r);
     cam.up.set(0, 1, 0);
-    cam.lookAt(l);
-    cam.fov = damp(cam.fov, 46, 2, dt);
+    cam.lookAt(c.x + Math.sin(pose.yaw) * 4, c.y + 0.9, c.z - Math.cos(pose.yaw) * 4);
+    cam.fov = damp(cam.fov, 42, 3, dt);
     cam.updateProjectionMatrix();
-    this.cam.camS = P.s - back; this.cam.camX = P.x + side; this.cam.camH = 1.6;
+    this.cam.camS = P.s - 8; this.cam.camX = P.x; this.cam.camH = h;
   }
 
   updateCountdown(dt) {
@@ -497,10 +491,6 @@ export class Game {
   raceInput(dt) {
     const I = this.input;
     const P = this.player;
-    if (I.pressed('gear') && this.settings.manual) {
-      if (P.gear === 0) P.shiftUp(); else P.shiftDown();
-    }
-    if (I.pressed('camera')) this.hud.cam(this.cam.cycle());
     if (I.horn && !this.horning) {
       this.horning = true;
       audio.horn(audio.engineKind, true);
@@ -549,7 +539,7 @@ export class Game {
     // checkpoint gate (child tracks)
     if (!tr.isFirst && !tr.gatePassed && P.s >= tr.gateS) {
       tr.gatePassed = true;
-      const bonus = CHECKPOINT_BONUS[tr.level] + (tr.stage.bonus || 0) + (this.settings.difficulty === 'easy' ? 6 : this.settings.difficulty === 'hard' ? -6 : 0);
+      const bonus = CHECKPOINT_BONUS[tr.level] + (tr.stage.bonus || 0);
       if (this.timeLeft !== Infinity) this.timeLeft += bonus;
       this.hud.timeAdded();
       this.hud.message('CHECKPOINT', 2);
@@ -628,8 +618,8 @@ export class Game {
         if (P.s > s - 560 && fire(key)) T.spawnJam(tr, s, tr.mapS((e.s ?? 0) + (e.len || 150)) - s);
         if (P.s > s - 330 && P.s < s - 120 && fire(key + 'w')) {
           const z = contraAt(tr, s);
-          this.hud.warn(z ? 'JAM AHEAD · RAMP ON THE RIGHT ▶' : 'JAM AHEAD · FIND A GAP', 3.5);
-          this.say.say(z ? 'jamRamp' : 'jam', true);
+          this.hud.warn('JAM AHEAD', 3);
+          this.say.say('jam', true);
         }
       } else if (e.type === 'loadshed') {
         const a = s, b = tr.mapS((e.s ?? 0) + (e.len || 600));
@@ -1378,7 +1368,7 @@ export class Game {
       speed: P.kmh,
       rpm: audio.rpmNorm ?? P.rpm,
       gear: P.gear,
-      gearN: audio.vg && !this.settings.manual ? audio.vg.gear : 0,
+      gearN: audio.vg ? audio.vg.gear : 0,
       progress: prog,
       stageIndex: this.stageIndex,
       race: this.racing,

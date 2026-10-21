@@ -87,6 +87,7 @@ function panelColor(spec, u, j, cab) {
   if (j === 2) return bumper || spec.sills ? C.trim : C.paint;
   if (j <= 7) {
     if (j === 3 && bumper) return C.trim;
+    if (j === 6 && !spec.open && !bumper) return C.trim;
     return C.paint;
   }
   if (spec.open) {
@@ -172,23 +173,34 @@ function emit(body, quad, capTri) {
   }
 }
 
+const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// per-vertex shading baked into colours: darker low down (occlusion), sky-lit glass, a soft highlight on top surfaces
+function shade(c, y, tint) {
+  if (c === C.paint) {
+    const k = 0.5 + 0.5 * sm(0.16, 0.7, y) + 0.1 * sm(0.9, 1.5, y);
+    return [tint[0] * k, tint[1] * k, tint[2] * k];
+  }
+  if (c === C.glass) {
+    const t = sm(0.8, 1.55, y);
+    return [c[0] + (0.34 - c[0]) * t * 0.7, c[1] + (0.42 - c[1]) * t * 0.7, c[2] + (0.55 - c[2]) * t * 0.7];
+  }
+  return c;
+}
+
 // into a MeshBuilder (instanced traffic / rivals; atlas region for the flat white texel)
 export function loftToBuilder(B, body, region, tint = C.paint) {
-  const mul = (c) => (c === C.paint ? tint : c);
   emit(body,
     (a, b, c, d, na, nb, nc, nd, col) => {
-      const k = mul(col);
-      const i0 = B.vert(a[0], a[1], a[2], na[0], na[1], na[2], 0, 0, k, region);
-      const i1 = B.vert(b[0], b[1], b[2], nb[0], nb[1], nb[2], 1, 0, k, region);
-      const i2 = B.vert(c[0], c[1], c[2], nc[0], nc[1], nc[2], 1, 1, k, region);
-      const i3 = B.vert(d[0], d[1], d[2], nd[0], nd[1], nd[2], 0, 1, k, region);
+      const i0 = B.vert(a[0], a[1], a[2], na[0], na[1], na[2], 0, 0, shade(col, a[1], tint), region);
+      const i1 = B.vert(b[0], b[1], b[2], nb[0], nb[1], nb[2], 1, 0, shade(col, b[1], tint), region);
+      const i2 = B.vert(c[0], c[1], c[2], nc[0], nc[1], nc[2], 1, 1, shade(col, c[1], tint), region);
+      const i3 = B.vert(d[0], d[1], d[2], nd[0], nd[1], nd[2], 0, 1, shade(col, d[1], tint), region);
       B.idx.push(i0, i1, i2, i0, i2, i3);
     },
     (a, b, c, n, col) => {
-      const k = mul(col);
-      const i0 = B.vert(a[0], a[1], a[2], n[0], n[1], n[2], 0.5, 0.5, k, region);
-      const i1 = B.vert(b[0], b[1], b[2], n[0], n[1], n[2], 0, 0, k, region);
-      const i2 = B.vert(c[0], c[1], c[2], n[0], n[1], n[2], 1, 0, k, region);
+      const i0 = B.vert(a[0], a[1], a[2], n[0], n[1], n[2], 0.5, 0.5, shade(col, a[1], tint), region);
+      const i1 = B.vert(b[0], b[1], b[2], n[0], n[1], n[2], 0, 0, shade(col, b[1], tint), region);
+      const i2 = B.vert(c[0], c[1], c[2], n[0], n[1], n[2], 1, 0, shade(col, c[1], tint), region);
       B.idx.push(i0, i1, i2);
     });
 }
@@ -198,8 +210,8 @@ export function loftToGeometry(body) {
   const pos = [], nor = [], col = [];
   const v = (p, n, c) => { pos.push(p[0], p[1], p[2]); nor.push(n[0], n[1], n[2]); col.push(c[0], c[1], c[2]); };
   emit(body,
-    (a, b, c, d, na, nb, nc, nd, k) => { v(a, na, k); v(b, nb, k); v(c, nc, k); v(a, na, k); v(c, nc, k); v(d, nd, k); },
-    (a, b, c, n, k) => { v(a, n, k); v(b, n, k); v(c, n, k); });
+    (a, b, c, d, na, nb, nc, nd, k) => { const W3 = C.paint; v(a, na, shade(k, a[1], W3)); v(b, nb, shade(k, b[1], W3)); v(c, nc, shade(k, c[1], W3)); v(a, na, shade(k, a[1], W3)); v(c, nc, shade(k, c[1], W3)); v(d, nd, shade(k, d[1], W3)); },
+    (a, b, c, n, k) => { const W3 = C.paint; v(a, n, shade(k, a[1], W3)); v(b, n, shade(k, b[1], W3)); v(c, n, shade(k, c[1], W3)); });
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
@@ -223,7 +235,7 @@ export function surfaceAt(body, u, j, s = 1) {
 export const BODIES = {
   // Toyota Supra MK4: long low nose, bubble cabin set back, rounded tail
   supra: {
-    L: 4.52, W: 1.81, r: 0.33, wheels: [0.17, 0.81], clear: 0.14, tumble: 0.74,
+    L: 4.52, W: 1.81, r: 0.33, wheels: [0.21, 0.78], clear: 0.14, tumble: 0.74,
     top: [[0, 0.5], [0.03, 0.62], [0.1, 0.7], [0.3, 0.8], [0.36, 0.84], [0.47, 1.2], [0.6, 1.26], [0.7, 1.2], [0.8, 0.95], [0.9, 0.9], [0.97, 0.84], [1, 0.62]],
     belt: [[0, 0.5], [0.36, 0.84], [0.5, 0.88], [0.75, 0.9], [1, 0.84]],
     plan: [[0, 0.62], [0.03, 0.85], [0.1, 0.96], [0.2, 1], [0.5, 0.98], [0.8, 1], [0.95, 0.94], [1, 0.72]],
@@ -231,7 +243,7 @@ export const BODIES = {
   },
   // Nissan Skyline R34 GT-R: boxy, upright, square shoulders
   skyline: {
-    L: 4.6, W: 1.79, r: 0.34, wheels: [0.18, 0.81], clear: 0.15, tumble: 0.82, crown: 0.012,
+    L: 4.6, W: 1.79, r: 0.34, wheels: [0.205, 0.785], clear: 0.15, tumble: 0.82, crown: 0.012,
     top: [[0, 0.62], [0.03, 0.82], [0.08, 0.9], [0.3, 0.96], [0.33, 0.98], [0.44, 1.32], [0.68, 1.36], [0.79, 1.06], [0.85, 0.98], [0.97, 0.94], [1, 0.72]],
     belt: [[0, 0.62], [0.33, 0.98], [0.6, 1.0], [0.85, 0.98], [1, 0.94]],
     plan: [[0, 0.8], [0.02, 0.92], [0.08, 0.99], [0.2, 1], [0.8, 1], [0.97, 0.97], [1, 0.84]],
@@ -239,7 +251,7 @@ export const BODIES = {
   },
   // Toyota Celica T230: pointed wedge, high tail
   celica: {
-    L: 4.34, W: 1.74, r: 0.31, wheels: [0.18, 0.82], clear: 0.14, tumble: 0.74,
+    L: 4.34, W: 1.74, r: 0.31, wheels: [0.21, 0.81], clear: 0.14, tumble: 0.74,
     top: [[0, 0.48], [0.04, 0.62], [0.2, 0.76], [0.34, 0.86], [0.48, 1.24], [0.62, 1.28], [0.82, 1.06], [0.95, 0.98], [1, 0.8]],
     belt: [[0, 0.48], [0.34, 0.86], [0.7, 0.92], [1, 0.98]],
     plan: [[0, 0.55], [0.04, 0.82], [0.12, 0.96], [0.3, 1], [0.8, 1], [0.96, 0.92], [1, 0.75]],
@@ -247,7 +259,7 @@ export const BODIES = {
   },
   // Toyota Chaser JZX100: long low four-door saloon
   chaser: {
-    L: 4.72, W: 1.76, r: 0.32, wheels: [0.18, 0.8], clear: 0.13, tumble: 0.84, crown: 0.015,
+    L: 4.72, W: 1.76, r: 0.32, wheels: [0.2, 0.775], clear: 0.13, tumble: 0.84, crown: 0.015,
     top: [[0, 0.6], [0.03, 0.8], [0.08, 0.86], [0.28, 0.92], [0.31, 0.94], [0.42, 1.36], [0.68, 1.38], [0.79, 0.98], [0.84, 0.94], [0.97, 0.9], [1, 0.7]],
     belt: [[0, 0.6], [0.31, 0.94], [0.6, 0.96], [0.84, 0.94], [1, 0.9]],
     plan: [[0, 0.8], [0.02, 0.93], [0.08, 0.99], [0.2, 1], [0.85, 1], [0.97, 0.96], [1, 0.84]],
@@ -255,7 +267,7 @@ export const BODIES = {
   },
   // Mazda MX-5 ND: short, curvy roadster with the roof down
   miata: {
-    L: 3.92, W: 1.73, r: 0.3, wheels: [0.18, 0.8], clear: 0.13, open: true, cockpit: [0.42, 0.7],
+    L: 3.92, W: 1.73, r: 0.3, wheels: [0.22, 0.81], clear: 0.13, open: true, cockpit: [0.42, 0.7],
     top: [[0, 0.5], [0.03, 0.64], [0.12, 0.74], [0.38, 0.84], [0.5, 0.84], [0.72, 0.84], [0.85, 0.82], [0.96, 0.78], [1, 0.6]],
     plan: [[0, 0.6], [0.04, 0.86], [0.15, 1], [0.45, 0.94], [0.8, 1], [0.95, 0.94], [1, 0.74]],
   },

@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { MeshBuilder } from '../world/builder.js';
-import { loftCar, loftToBuilder, BODIES } from './carbody.js';
+import { loftCar, loftToBuilder, surfaceAt, BODIES } from './carbody.js';
 
 const PAINT = [1, 1, 1];
 const DARK = [0.09, 0.09, 0.1];
@@ -266,54 +266,124 @@ function rowNear(body, u) {
   return best;
 }
 
-function sportsCar(A, key, opts = {}) {
+// small helpers for flat decals on the nose / tail / flanks
+const DARKC = [0.02, 0.02, 0.025];
+function frontQuad(Bx, x0, x1, y0, y1, z, color, region) {
+  Bx.quad([x1, y0, z], [x0, y0, z], [x0, y1, z], [x1, y1, z], [0, 0, 1, 1], color, region);
+}
+function rearQuad(Bx, x0, x1, y0, y1, z, color, region) {
+  Bx.quad([x0, y0, z], [x1, y0, z], [x1, y1, z], [x0, y1, z], [0, 0, 1, 1], color, region);
+}
+// a slanted lamp: inner edge x0 (higher), outer edge x1; on the nose (dir -1) or tail (dir +1)
+function lampShape(Bx, dir, x0, x1, yb, yt0, yt1, z, color, region) {
+  const q = dir < 0
+    ? [[x1, yb, z], [x0, yb, z], [x0, yt0, z], [x1, yt1, z]]
+    : [[x0, yb, z], [x1, yb, z], [x1, yt1, z], [x0, yt0, z]];
+  if (x1 < x0) Bx.quad(q[1], q[0], q[3], q[2], [0, 0, 1, 1], color, region);
+  else Bx.quad(q[0], q[1], q[2], q[3], [0, 0, 1, 1], color, region);
+}
+// a thin line hugging the skin between two surface samples (double sided)
+function skinLine(Bx, p0, p1, w, color, region, lift = 0.004) {
+  const dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2];
+  const out = [Math.sign(p0[0]) * 0.2, 1, 0];
+  let nx = -dz * out[1], ny = dz * out[0], nz = dx * out[1] - dy * out[0];
+  const l = Math.hypot(nx, ny, nz) || 1;
+  nx = (nx / l) * w; ny = (ny / l) * w; nz = (nz / l) * w;
+  const e = [p0[0] === 0 ? 0 : Math.sign(p0[0]) * lift, p0[0] === 0 ? lift : 0, 0];
+  const A1 = [p0[0] + nx + e[0], p0[1] + ny + e[1], p0[2] + nz], B1 = [p0[0] - nx + e[0], p0[1] - ny + e[1], p0[2] - nz];
+  const C1 = [p1[0] - nx + e[0], p1[1] - ny + e[1], p1[2] - nz], D1 = [p1[0] + nx + e[0], p1[1] + ny + e[1], p1[2] + nz];
+  Bx.quad(A1, B1, C1, D1, [0, 0, 1, 1], color, region);
+  Bx.quad(D1, C1, B1, A1, [0, 0, 1, 1], color, region);
+}
+
+function carDetail(A, body, sp, B, Lt, opts) {
+  const white = A.get('white');
+  const hw = sp.W / 2, lo = sp.clear;
+  const nose = body.rows[0], tail = body.rows[body.rows.length - 1];
+  const nw = nose.pts[7][0], tw = tail.pts[7][0];
+  const nTop = nose.pts[15][1], tTop = tail.pts[15][1];
+  const tall = nTop > 0.95;
+  const fz = nose.z - 0.007, rz = tail.z + 0.007;
+  // ---- front fascia: low intake, grille, corner vents, lamps, fog lights
+  const iy1 = Math.min(nTop - 0.2, lo + 0.2);
+  frontQuad(B, -nw * 0.8, nw * 0.8, lo + 0.04, iy1, fz, DARKC, white);
+  const gy0 = iy1 + 0.02, gy1 = Math.max(gy0 + 0.1, nTop - (tall ? 0.18 : 0.08));
+  frontQuad(B, -nw * 0.46, nw * 0.46, gy0, Math.min(gy1, gy0 + (tall ? 0.34 : 0.14)), fz - 0.002, [1, 1, 1], A.get('grille'));
+  for (const sd of [-1, 1]) {
+    const hb = nTop - (tall ? 0.34 : 0.19), ht = nTop - (tall ? 0.1 : 0.05);
+    lampShape(B, -1, sd * nw * 0.5, sd * nw * 0.96, hb - 0.015, ht + 0.01, ht + 0.03, fz - 0.002, [0.03, 0.03, 0.035], white);
+    lampShape(Lt.head, -1, sd * nw * 0.54, sd * nw * 0.92, hb + 0.01, ht - 0.01, ht + 0.012, fz - 0.006, [2.6, 2.5, 2.2]);
+    lampShape(Lt.amber, -1, sd * nw * 0.8, sd * nw * 0.96, hb - 0.075, hb - 0.01, hb - 0.01, fz - 0.005, [2.5, 1.3, 0.2]);
+    discZ(Lt.head, sd * nw * 0.66, lo + 0.125, fz - 0.004, 0.04, 10, [1.9, 1.9, 1.6], -1);
+    frontQuad(B, Math.min(sd * nw * 0.8, sd * nw * 0.95), Math.max(sd * nw * 0.8, sd * nw * 0.95), lo + 0.06, lo + 0.2, fz - 0.003, DARKC, white);
+  }
+  plate(B, A, fz - 0.002, lo + 0.1 + 0.07, false);
+  // ---- rear: tail lamps, reverse lamps, diffuser panel, plate, pipes
+  for (const sd of [-1, 1]) {
+    const yb = tTop - 0.2, yt = tTop - 0.05;
+    if (opts.roundTails) {
+      for (const k of opts.roundTails) discZ(Lt.tail, sd * tw * k, tTop - 0.12, rz + 0.004, 0.075, 12, [2.6, 0.08, 0.05], 1);
+    } else {
+      lampShape(Lt.tail, 1, sd * tw * 0.52, sd * tw * 0.97, yb, yt + 0.01, yt - 0.01, rz + 0.005, [2.5, 0.08, 0.04]);
+    }
+    discZ(Lt.head, sd * tw * 0.3, lo + 0.24, rz + 0.004, 0.03, 8, [1.6, 1.6, 1.5], 1);
+  }
+  if (opts.tailBar) rearQuad(Lt.tail, -tw * 0.5, tw * 0.5, tTop - 0.15, tTop - 0.11, rz + 0.005, [1.6, 0.05, 0.03]);
+  rearQuad(B, -tw * 0.82, tw * 0.82, lo + 0.04, lo + 0.18, rz, DARKC, white);
+  plate(B, A, rz + 0.002, lo + 0.32, true);
+  for (const x of opts.pipes || [-hw * 0.55, hw * 0.55]) {
+    discZ(B, x, lo + 0.08, rz + 0.025, 0.045, 12, [0.85, 0.86, 0.88], 1, white);
+    discZ(B, x, lo + 0.08, rz + 0.03, 0.03, 12, [0.03, 0.03, 0.03], 1, white);
+  }
+  // ---- flanks: door shut lines, handles, chrome belt on saloons
+  const seams = sp.seams || (sp.open ? [0.42] : sp.pillars) || [];
+  for (const sd of [-1, 1]) {
+    for (const u of seams) {
+      for (let j = 3; j < 6; j++) skinLine(B, surfaceAt(body, u, j, sd), surfaceAt(body, u, j + 1, sd), 0.0035, [0.04, 0.04, 0.045], white);
+    }
+    if (!sp.open) {
+      for (const u of seams) {
+        const h = surfaceAt(body, u + 0.035, 5, sd);
+        B.box(h[0] + sd * 0.004, h[1] - 0.04, h[2], 0.012, 0.03, 0.13, 0, { color: [0.7, 0.72, 0.74], region: white });
+      }
+    }
+    const hu = sp.windscreen ? sp.windscreen[0] - 0.045 : 0.28;
+    for (let j = 8; j < 15; j++) skinLine(B, surfaceAt(body, hu, j, sd), surfaceAt(body, hu, j + 1, sd), 0.0035, [0.04, 0.04, 0.045], white, 0.003);
+    if (opts.chrome && sp.glass) {
+      const n = 10;
+      for (let k = 0; k < n; k++) {
+        const u0 = sp.glass[0] + ((sp.glass[1] - sp.glass[0]) * k) / n, u1 = sp.glass[0] + ((sp.glass[1] - sp.glass[0]) * (k + 1)) / n;
+        skinLine(B, surfaceAt(body, u0, 7, sd), surfaceAt(body, u1, 7, sd), 0.008, [0.78, 0.8, 0.82], white, 0.005);
+      }
+    }
+  }
+  // ---- mirrors on stalks at the foot of the A-pillar
+  if (sp.windscreen) {
+    const m = surfaceAt(body, sp.windscreen[1] - 0.025, 7, 1);
+    for (const sd of [-1, 1]) {
+      B.box(sd * (m[0] + 0.04), m[1], m[2] + 0.02, 0.07, 0.035, 0.05, 0, { color: [0.05, 0.05, 0.05], region: white });
+      B.box(sd * (m[0] + 0.12), m[1] + 0.02, m[2] + 0.02, 0.15, 0.1, 0.08, 0, { color: PAINT, region: white });
+      B.box(sd * (m[0] + 0.12), m[1] + 0.03, m[2] + 0.062, 0.12, 0.075, 0.004, 0, { color: [0.35, 0.42, 0.5], region: white });
+    }
+  }
+}
+
+export function sportsCar(A, key, opts = {}) {
   const sp = { ...BODIES[key], ...(opts.spec || {}) };
   const body = loftCar(sp);
   const B = new MeshBuilder(true);
   const Lt = lights();
   const white = A.get('white');
-  loftToBuilder(B, body, white, opts.tint || PAINT);
+  if (!opts.noBody) loftToBuilder(B, body, white, opts.tint || PAINT);
   const L = sp.L, hw = sp.W / 2;
-  // wheels sit in the arches, tyres flush with the body side
-  const tw = opts.tyreW || 0.25;
-  for (const u of sp.wheels) {
-    const z = -L / 2 + u * L;
-    for (const x of [-hw + tw / 2 + 0.05, hw - tw / 2 - 0.05]) B.wheel(x, sp.r, z, sp.r, tw, 20, [1, 1, 1], A.get('tyre'), A.get('rim'));
-  }
-  // nose: headlights high on the corners, grille and intake low in the middle
-  // lights sit on the very nose and tail faces, just proud of the skin
-  const nose = body.rows[0], nose2 = rowNear(body, 0.04);
-  const ny = Math.min(nose.pts[15][1], nose2.pts[15][1]) + 0.02, nw = nose.pts[7][0];
-  const fz = -L / 2 + 0.02;
-  for (const sd of [-1, 1]) {
-    Lt.head.box(sd * nw * 0.62, ny - 0.14, nose.z - 0.012, opts.headW || 0.4, opts.headH || 0.08, 0.06, 0, { color: [2.7, 2.6, 2.3] });
-    Lt.amber.box(sd * nw * 0.8, ny - 0.24, nose.z - 0.012, 0.1, 0.05, 0.05, 0, { color: [2.5, 1.3, 0.2] });
-  }
-  B.quad([nw * 0.42, sp.clear + 0.12, fz - 0.01], [-nw * 0.42, sp.clear + 0.12, fz - 0.01], [-nw * 0.42, sp.clear + 0.3, fz - 0.01], [nw * 0.42, sp.clear + 0.3, fz - 0.01], [0, 0, 1, 1], [1, 1, 1], A.get('grille'));
-  plate(B, A, fz - 0.005, sp.clear + 0.06 + 0.07, false);
-  // tail: lights across the top of the rear face, plate and pipes below
-  const tail = body.rows[body.rows.length - 1];
-  const ty = tail.pts[15][1], tw2 = tail.pts[7][0];
-  const rz = L / 2 - 0.01;
-  for (const sd of [-1, 1]) {
-    if (opts.roundTails) for (const k of opts.roundTails) discZ(Lt.tail, sd * tw2 * k, ty - 0.11, tail.z + 0.012, 0.075, 12, [2.6, 0.08, 0.05], 1);
-    else Lt.tail.box(sd * tw2 * 0.6, ty - 0.17, tail.z + 0.012, opts.tailW || 0.42, 0.1, 0.05, 0, { color: [2.5, 0.08, 0.04] });
-  }
-  if (opts.tailBar) Lt.tail.box(0, ty - 0.15, tail.z + 0.012, tw2 * 0.9, 0.04, 0.05, 0, { color: [1.6, 0.05, 0.03] });
-  plate(B, A, rz + 0.012, sp.clear + 0.28, true);
-  for (const x of opts.pipes || [-hw * 0.55, hw * 0.55]) {
-    discZ(B, x, sp.clear + 0.08, rz + 0.03, 0.045, 12, [0.85, 0.86, 0.88], 1, white);
-    discZ(B, x, sp.clear + 0.08, rz + 0.035, 0.03, 12, [0.03, 0.03, 0.03], 1, white);
-  }
-  // mirrors at the base of the windscreen
-  if (sp.windscreen) {
-    const r = rowNear(body, sp.windscreen[1] - 0.02);
-    const y = r.pts[7][1];
-    for (const sd of [-1, 1]) {
-      B.box(sd * (r.pts[7][0] + 0.05), y, r.z, 0.08, 0.04, 0.05, 0, { color: [0.05, 0.05, 0.05], region: white });
-      B.box(sd * (r.pts[7][0] + 0.13), y + 0.03, r.z, 0.14, 0.09, 0.07, 0, { color: PAINT, region: white });
+  if (!opts.noWheels) {
+    const tw = opts.tyreW || 0.25;
+    for (const u of sp.wheels) {
+      const z = -L / 2 + u * L;
+      for (const x of [-hw + tw / 2 + 0.05, hw - tw / 2 - 0.05]) B.wheel(x, sp.r, z, sp.r, tw, 24, [1, 1, 1], A.get('tyre'), A.get('rim'), [1.9, 1.9, 2.0]);
     }
   }
+  carDetail(A, body, sp, B, Lt, opts);
   opts.extra?.(B, body, white, Lt);
   return finish({ B, Lt }, L, sp.W, Math.max(...sp.top.map((k) => k[1])) + 0.02, opts.finish);
 }
@@ -329,7 +399,7 @@ export function sedan(A, kind = 'premio') {
   const L = kind === 'axio' ? 4.4 : kind === 'corolla' ? 4.3 : 4.6;
   return sportsCar(A, 'premio', {
     spec: { L },
-    tyreW: 0.22, tailW: kind === 'allion' ? 0.56 : 0.4, tailBar: kind === 'allion', headW: 0.42,
+    tyreW: 0.22, chrome: kind !== 'corolla', tailBar: kind === 'allion',
     extra: (B, body, white) => {
       if (kind === 'corolla') B.box(0, 1.4, 0.1, 0.6, 0.14, 0.22, 0, { color: [1, 1, 1], region: A.get('taxi_sign') });
     },
@@ -337,11 +407,11 @@ export function sedan(A, kind = 'premio') {
 }
 
 export function noah(A) {
-  return sportsCar(A, 'noah', { tyreW: 0.22, tailW: 0.2, headW: 0.4, pipes: [0.5] });
+  return sportsCar(A, 'noah', { tyreW: 0.22, chrome: true, pipes: [0.5] });
 }
 
 export function hiace(A) {
-  return sportsCar(A, 'hiace', { tyreW: 0.22, tailW: 0.2, headW: 0.36, pipes: [0.5] });
+  return sportsCar(A, 'hiace', { tyreW: 0.22, pipes: [0.5] });
 }
 
 function pradoLike(A, extraOpts = {}) {

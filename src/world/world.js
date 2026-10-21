@@ -384,7 +384,7 @@ export class World {
       }
     }
     // wrong-side runs: the ramp before the jam, barrels closing the far side
-    for (const z of tr.zones?.contra || []) {
+    for (const z of []) {
       if (inChunk(z.ramp)) {
         const s = z.ramp, hw = tr.halfWAt(s);
         const o = oppLayout(tr, s, st);

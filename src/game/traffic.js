@@ -117,7 +117,7 @@ export class Traffic {
 
   // the stretch where the jam ramp sits in the right-hand lane: keep it empty
   rampWindow(tr, s) {
-    for (const z of tr.zones?.contra || []) if (s > z.ramp - 720 && s < z.ramp + 70) return z;
+    // (the jam ramp is gone: the median is a free crossing)
     return null;
   }
 

@@ -134,8 +134,6 @@ export class Race {
       const k = Math.abs(tr.kAt(s));
       if (k > 1e-4) v = Math.min(v, Math.sqrt(55 / k));
       // jams cost everyone: over the median and back against oncoming traffic
-      const z = contraAt(tr, s);
-      if (z && s > z.ramp - 40 && s < z.end) v *= 0.72;
     }
     return v;
   }
@@ -218,8 +216,7 @@ export class Race {
   }
 
   contraBlock(tr, s) {
-    const z = contraAt(tr, s + 60);
-    return z && s < z.end;
+    return false;
   }
 
   // the rival directly ahead of / behind you, with gap in seconds

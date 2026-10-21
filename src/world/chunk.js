@@ -253,7 +253,7 @@ function placeBuildingsRow(ctx, a, b, side, xIn, opts) {
       facade: rng.pick(opts.facades || st.facades || ['apt_cream']),
       shop: opts.shops === false ? null : rng.pick(opts.shops || st.shops || ['shop_a']),
     };
-    const setback = rng.range(0, opts.setback ?? 1.2);
+    const setback = rng.range(0, opts.setback ?? 0.5);
     if (ctx.isClear(s, side, xIn + 5) || ctx.isClear(s + w, side, xIn + 5)) { s += w + 2; continue; }
     PR.building(ctx, s, side, xIn + setback, w, d, h, style, { signP: opts.signP });
     // rooftop billboard
@@ -352,15 +352,15 @@ export function sectionRuns(track, s0, s1) {
 const SIDES = {
   city(ctx, a, b, side, xIn, far = false) {
     const st = ctx.stage;
-    const sw = st.sidewalk ?? 3.2;
+    const sw = st.sidewalk ?? 2.4;
     PR.curb(ctx, a, b, side, xIn);
     PR.sidewalk(ctx, a, b, side, (s) => xIn(s) + 0.3, sw);
     const xm = xIn((a + b) / 2);
     const front = xm + 0.3 + sw;
     placeBuildingsRow(ctx, a, b, side, front, { billboards: st.billboards, bbP: st.bbP ?? 0.14 });
     // back rows: taller, sparser, no shops
-    placeBuildingsRow(ctx, a, b, side, front + 22 + ctx.rng.range(0, 8), { shops: false, heights: st.backHeights || [18, 45], wmin: 10, wmax: 22, gap: 6, towerP: st.towerP ?? 0.12 });
-    if (ctx.rng.chance(0.7)) placeBuildingsRow(ctx, a, b, side, front + 60 + ctx.rng.range(0, 30), { shops: false, heights: st.farHeights || [24, 70], wmin: 14, wmax: 26, gap: 14, towerP: 0.2 });
+    placeBuildingsRow(ctx, a, b, side, front + 11 + ctx.rng.range(0, 4), { shops: false, heights: st.backHeights || [18, 45], wmin: 10, wmax: 22, gap: 6, towerP: st.towerP ?? 0.12 });
+    if (ctx.rng.chance(0.7)) placeBuildingsRow(ctx, a, b, side, front + 32 + ctx.rng.range(0, 14), { shops: false, heights: st.farHeights || [24, 70], wmin: 14, wmax: 26, gap: 14, towerP: 0.2 });
     if (!far) {
       if (st.lampL !== false || side > 0) lampsAlong(ctx, a, b, side, (s) => xIn(s) + 0.9);
       if (st.poles !== false && side < 0) polesAlong(ctx, a, b, side, (s) => xIn(s) + 2.6, st.wireDensity ?? 1);
@@ -378,8 +378,8 @@ const SIDES = {
     PR.sidewalk(ctx, a, b, side, (s) => xIn(s) + 0.2, sw, 0.14);
     const xm = xIn((a + b) / 2);
     placeBuildingsRow(ctx, a, b, side, xm + 0.2 + sw, { gap: 0.3, setback: 0.2, heights: st.heights, wmin: 5, wmax: 10, signP: 0.95, billboards: st.billboards, bbP: 0.06 });
-    placeBuildingsRow(ctx, a, b, side, xm + sw + 14, { shops: false, gap: 0.5, heights: [12, 24], wmin: 6, wmax: 12 });
-    placeBuildingsRow(ctx, a, b, side, xm + sw + 34, { shops: false, gap: 2, heights: [15, 30], wmin: 8, wmax: 16 });
+    placeBuildingsRow(ctx, a, b, side, xm + sw + 9, { shops: false, gap: 0.5, heights: [12, 24], wmin: 6, wmax: 12 });
+    placeBuildingsRow(ctx, a, b, side, xm + sw + 22, { shops: false, gap: 2, heights: [15, 30], wmin: 8, wmax: 16 });
     polesAlong(ctx, a, b, side, (s) => xIn(s) + 0.9, st.wireDensity ?? 2.2);
     sidewalkLife(ctx, a, b, side, xm + 0.2, sw, { density: 0.12 });
   },
@@ -389,11 +389,11 @@ const SIDES = {
     PR.sidewalk(ctx, a, b, side, (s) => xIn(s) + 0.3, 2.4);
     const xm = xIn((a + b) / 2);
     PR.railing(ctx, a, b, side, xm + 2.9, 0.9, { color: [0.2, 0.45, 0.3] });
-    trees(ctx, a, b, side, xm + 5, xm + 40, st.parkTrees ?? 0.12, st.trees);
-    trees(ctx, a, b, side, xm + 40, xm + 120, 0.05, st.trees);
+    trees(ctx, a, b, side, xm + 3, xm + 22, (st.parkTrees ?? 0.12) * 1.4, st.trees);
+    trees(ctx, a, b, side, xm + 22, xm + 70, 0.05, st.trees);
     lampsAlong(ctx, a, b, side, (s) => xIn(s) + 0.9);
     sidewalkLife(ctx, a, b, side, xm + 0.3, 2.4, { density: 0.04 });
-    placeBuildingsRow(ctx, a, b, side, xm + 70 + ctx.rng.range(0, 20), { shops: false, heights: [18, 40], wmin: 10, wmax: 20, gap: 8 });
+    placeBuildingsRow(ctx, a, b, side, xm + 30 + ctx.rng.range(0, 10), { shops: false, heights: [18, 40], wmin: 10, wmax: 20, gap: 8 });
   },
   lake(ctx, a, b, side, xIn) {
     const st = ctx.stage;
@@ -428,8 +428,8 @@ const SIDES = {
   field(ctx, a, b, side, xIn) {
     const st = ctx.stage;
     const xm = xIn((a + b) / 2);
-    trees(ctx, a, b, side, xm + 6, xm + 30, st.fieldTrees ?? 0.06, st.trees);
-    trees(ctx, a, b, side, xm + 30, xm + 200, 0.05, st.trees);
+    trees(ctx, a, b, side, xm + 3, xm + 16, (st.fieldTrees ?? 0.06) * 1.4, st.trees);
+    trees(ctx, a, b, side, xm + 16, xm + 110, 0.05, st.trees);
     if (st.kilns && ctx.rng.chance(0.3)) ctx.world.landmarks.kiln(ctx, ctx.rng.range(a, b), side, xm + ctx.rng.range(80, 220));
     if (ctx.rng.chance(st.hutP ?? 0.25)) {
       const s = ctx.rng.range(a, b - 10);
@@ -450,7 +450,7 @@ const SIDES = {
       ctx.sprites.add(rng.pick(['kash0', 'kash1']), p[0], p[1], p[2], rng.range(0.8, 1.3), { flip: rng.chance(0.5) });
       if (xx < 12) ctx.obstacle(s, side * xx, 0.6, 0.6, 'soft');
     }
-    trees(ctx, a, b, side, xm + 30, xm + 220, 0.03, st.trees);
+    trees(ctx, a, b, side, xm + 14, xm + 120, 0.04, st.trees);
     if (st.fieldLamps) lampsAlong(ctx, a, b, side, (s) => xIn(s) + 1.5, { h0: 0 });
   },
   wall(ctx, a, b, side, xIn) {
@@ -459,10 +459,10 @@ const SIDES = {
     PR.sidewalk(ctx, a, b, side, (s) => xIn(s) + 0.3, 2.6);
     const xm = xIn((a + b) / 2);
     PR.boundaryWall(ctx, a, b, side, xm + 2.9);
-    trees(ctx, a, b, side, xm + 5, xm + 22, st.wallTrees ?? 0.1, st.trees);
+    trees(ctx, a, b, side, xm + 3, xm + 14, (st.wallTrees ?? 0.1) * 1.3, st.trees);
     lampsAlong(ctx, a, b, side, (s) => xIn(s) + 0.9);
     sidewalkLife(ctx, a, b, side, xm + 0.3, 2.4, { density: st.wallLife ?? 0.05 });
-    placeBuildingsRow(ctx, a, b, side, xm + 40 + ctx.rng.range(0, 15), { shops: false, heights: st.backHeights || [12, 30], wmin: 12, wmax: 24, gap: 10, facades: st.wallFacades || st.facades });
+    placeBuildingsRow(ctx, a, b, side, xm + 20 + ctx.rng.range(0, 8), { shops: false, heights: st.backHeights || [12, 30], wmin: 12, wmax: 24, gap: 10, facades: st.wallFacades || st.facades });
   },
   elevated(ctx, a, b, side, xIn) {
     const st = ctx.stage;
@@ -470,8 +470,8 @@ const SIDES = {
     lampsAlong(ctx, a, b, side, (s) => xIn(s) + 0.25, { h0: 1.1, h: 8 });
     // the city below
     const xm = xIn((a + b) / 2);
-    placeBuildingsRow(ctx, a, b, side, xm + 8, { heights: st.heights, billboards: st.billboards, bbP: 0.2 });
-    placeBuildingsRow(ctx, a, b, side, xm + 34, { shops: false, heights: st.backHeights || [18, 45], wmin: 10, wmax: 22, gap: 6 });
+    placeBuildingsRow(ctx, a, b, side, xm + 5, { heights: st.heights, billboards: st.billboards, bbP: 0.2 });
+    placeBuildingsRow(ctx, a, b, side, xm + 20, { shops: false, heights: st.backHeights || [18, 45], wmin: 10, wmax: 22, gap: 6 });
   },
   bridge(ctx, a, b, side, xIn) {
     const st = ctx.stage;
@@ -514,7 +514,7 @@ const SIDES = {
       // asphalt across the median + chevron boards at both ends
       const ga = Math.max(a, g0), gb = Math.min(b, g1);
       if (gb > ga) ctx.roadGeos.push(buildRoadStrip(ctx.track, ga, gb, (s) => xIn(s) - 0.3, (s) => xIn(s) + mw + 0.3, (s) => xIn(s) + mw / 2, () => mw / 2, () => 1));
-      for (const gs of [g0, g1]) {
+      for (const gs of []) {
         if (gs < a || gs >= b) continue;
         const p = ctx.P(gs, xIn(gs) + mw / 2, 0.2);
         ctx.B.fx.box(p[0], p[1], p[2], 0.25, 1.1, mw - 0.4, ctx.track.yawAt(gs), { color: [1, 1, 1], region: ctx.fx.get('chevron') });
@@ -541,7 +541,7 @@ const SIDES = {
     // under a jump: the city, at street level
     const st = ctx.stage;
     const xm = xIn((a + b) / 2);
-    placeBuildingsRow(ctx, a, b, side, xm + 10, { heights: st.heights, billboards: st.billboards, bbP: 0.25 });
+    placeBuildingsRow(ctx, a, b, side, xm + 6, { heights: st.heights, billboards: st.billboards, bbP: 0.25 });
     placeBuildingsRow(ctx, a, b, side, xm + 36, { shops: false, heights: st.backHeights || [18, 45], wmin: 10, wmax: 22, gap: 6 });
   },
   interior(ctx, a, b, side, xIn) {
