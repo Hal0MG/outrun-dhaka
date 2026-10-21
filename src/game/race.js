@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { clamp } from '../core/util.js';
 import { closedAt, contraAt } from '../world/zones.js';
+import { ROUTE } from '../world/stages.js';
 
 export const RIVALS = [
   { name: 'RAJA', model: 'skyline', color: '#0b0b0f', f: 0.84, tag: 'THREE-TIME CHAMPION' },
@@ -36,15 +37,16 @@ export const RIVALS = [
 
 export const FIELD = RIVALS.length + 1;
 // position needed by the end of each pyramid level (level 4 = the finish)
-export const TARGETS = [14, 10, 6, 3, 1];
+export const TARGETS = ROUTE.map((_, i) => Math.max(1, Math.round(19 - (i * 18) / (ROUTE.length - 1))));
 // rivals get a touch slower relative to you as the night goes on
-const LEVEL_PACE = [1.0, 0.99, 0.975, 0.965, 0.955];
+const LEVEL_PACE = ROUTE.map((_, i) => 1 - i * 0.003);
 const AHEAD = 380, BEHIND = 130, MAX_LIVE = 3;
 
 export class Race {
   constructor(game) {
     this.game = game;
-    this.rivals = RIVALS.map((r, i) => ({ ...r, i, prog: 0, v: 0, veh: null, cool: 0, wob: Math.random() * 10 }));
+    // pace is a fraction of your top speed; +0.07 keeps the field honest at full throttle
+    this.rivals = RIVALS.map((r, i) => ({ ...r, f: r.f + 0.07, i, prog: 0, v: 0, veh: null, cool: 0, wob: Math.random() * 10 }));
     this.active = false;
     this.position = FIELD;
     this.routeBase = 0;
@@ -120,10 +122,16 @@ export class Race {
 
   // pace of a rival at a point of the route
   paceAt(r, tr, s, refV, level) {
-    let v = refV * r.f * LEVEL_PACE[level] * (1 + Math.sin(r.wob) * 0.025);
+    let v = refV * r.f * LEVEL_PACE[Math.min(level, LEVEL_PACE.length - 1)] * (1 + Math.sin(r.wob) * 0.025);
     if (s > 0 && s < tr.length) {
       const sec = tr.sectionAt(s);
       if (sec.vcap) v = Math.min(v, sec.vcap * 0.95);
+      // set pieces are your shortcut; the field goes the long way round
+      if (sec.closed) v *= 0.8;
+      // busy and narrow streets slow everyone, not just you
+      const dens = tr.stage.traffic?.density || 15;
+      v *= 1 - Math.max(0, dens - 12) * 0.01;
+      if (tr.stage.twoWay) v *= 0.85;
       const k = Math.abs(tr.kAt(s));
       if (k > 1e-4) v = Math.min(v, Math.sqrt(55 / k));
       // jams cost everyone: over the median and back against oncoming traffic
@@ -161,8 +169,8 @@ export class Race {
       let v = this.paceAt(r, tr, s, refV, level);
       // keep the field within reach: leaders ease off, stragglers push
       const gap = r.prog - pp;
-      if (gap > 350) v *= Math.max(0.8, 1 - (gap - 350) / 5000);
-      else if (gap < -120) v *= Math.min(1.1, 1 + (-gap - 120) / 3000);
+      if (gap > 900) v *= Math.max(0.82, 1 - (gap - 900) / 6000);
+      else if (gap < -450) v *= Math.min(1.06, 1 + (-gap - 450) / 5000);
       if (!racing) v = 0;
       r.vT = v;
       if (r.veh) {

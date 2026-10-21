@@ -179,7 +179,7 @@ export function elecPole(ctx, s, x, nextS, nextX, density = 1) {
     B.cylinder(bp[0], bp[1] - 0.4, bp[2], 0.35, 0.3, 0.6, 6, [0.08, 0.08, 0.08], ctx.misc.get('tyre'));
   }
   // wires to next pole
-  const nWires = Math.round(4 + density * 5);
+  const nWires = Math.round(2 + density * 2);
   for (let k = 0; k < nWires; k++) {
     const off = -1.0 + (k / Math.max(1, nWires - 1)) * 2.0;
     const hOff = -0.5 - (k % 3) * 0.35 - ctx.rng.next() * 0.6;
@@ -277,7 +277,7 @@ export function rooftop(ctx, p, w, d, h, yaw, style) {
     }
   }
   // fairy lights strung across roofs (weddings!)
-  if (rng.chance(ctx.stage.fairyP ?? 0.12)) {
+  if (rng.chance((ctx.stage.fairyP ?? 0.12) * 0.35)) {
     const a = L(-w / 2, d / 2), b = L(w / 2, d / 2);
     const cols = [[3, 0.6, 0.2], [0.4, 3, 0.6], [0.4, 0.8, 3], [3, 2.4, 0.4], [3, 0.4, 2.4]];
     for (let k = 0; k < 4; k++) {
@@ -480,13 +480,16 @@ export function metroViaduct(ctx, s0, s1, x) {
   const B = ctx.B.misc;
   const conc = ctx.misc.get('concrete_smooth');
   const H = 13;
-  const step = 30;
+  const step = 24;
   for (let s = Math.ceil(s0 / step) * step; s < s1; s += step) {
     const yaw = ctx.track.yawAt(s);
-    const p = ctx.P(s, x, 0.2);
-    B.box(p[0], p[1], p[2], 1.8, H - 1.8, 2.2, yaw, { color: [0.86, 0.85, 0.82], region: conc, tile: [3, 3] });
+    // piers stand on the ground, whatever the road is doing, and reach right up to the deck
+    const g = ctx.P(s, x, 0, true);
+    const top = ctx.P(s, x, H - 1.0);
+    const ph = Math.max(2, top[1] - g[1] - 1.2);
+    B.box(g[0], g[1] - 0.5, g[2], 1.8, ph + 0.5, 2.2, yaw, { color: [0.86, 0.85, 0.82], region: conc, tile: [3, 3] });
     // T cap
-    B.box(p[0], p[1] + H - 2.2, p[2], 9.5, 1.2, 2.4, yaw, { color: [0.86, 0.85, 0.82], region: conc, tile: [3, 3] });
+    B.box(g[0], g[1] + ph - 0.1, g[2], 9.5, 1.3, 2.4, yaw, { color: [0.86, 0.85, 0.82], region: conc, tile: [3, 3] });
     ctx.obstacle(s, x, 1.0, 1.2, 'solid');
   }
   // deck: box beam along the route

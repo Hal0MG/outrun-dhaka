@@ -180,10 +180,29 @@ export class Traffic {
   }
 
   populate(tr, s0, s1, density) {
-    const n = Math.floor(((s1 - s0) / 1000) * density * TRAFFIC_SCALE);
-    for (let i = 0; i < n; i++) {
-      const s = this.rng.range(s0, s1);
-      if (this.spawnable(tr, s)) this.spawn(tr, s);
+    const spacing = 1000 / Math.max(1, clamp(density, 13, 20) * TRAFFIC_SCALE);
+    for (let s = s0; s < s1; s += spacing * this.rng.range(0.6, 1.4)) if (this.spawnable(tr, s)) this.spawn(tr, s);
+    this.frontTr = tr;
+    this.front = s1;
+  }
+
+  // nobody drives through anybody: a rear car caught overlapping the one ahead drops back behind it
+  separate() {
+    const L = this.list;
+    for (let i = 0; i < L.length; i++) {
+      const a = L[i];
+      if (a.wreck || a.oncoming) continue;
+      for (let j = i + 1; j < L.length; j++) {
+        const b = L[j];
+        if (b.wreck || b.oncoming || b.track !== a.track) continue;
+        const ds = b.s - a.s;
+        if (Math.abs(ds) > a.l + b.l + 0.6) continue;
+        if (Math.abs(b.x - a.x) > (a.w + b.w) * 0.92) continue;
+        const [front, rear] = ds >= 0 ? [b, a] : [a, b];
+        if (rear.enemy && (rear.enemy.role === 'rival' || rear.enemy.ramDur > 0)) continue;
+        rear.s = front.s - front.l - rear.l - 0.6;
+        rear.v = Math.min(rear.v, front.v);
+      }
     }
   }
 
@@ -253,28 +272,31 @@ export class Traffic {
   // ------------------------------------------------------------ update
   update(dt, player, world, opts = {}) {
     this.time += dt;
+    this.separate();
     const tr = player.track;
     const ps = player.s;
-    const density = (tr.stage.traffic?.density || 15) * TRAFFIC_SCALE * this.densityMul * (opts.densityMul || 1);
-    // maintain population ahead
-    let ahead = 0;
-    for (const v of this.list) if (v.track === tr && v.s > ps && v.s < ps + 950 && !v.oncoming && !v.enemy && v.special !== 'jam') ahead++;
-    const target = (density * 950) / 1000;
-    if (ahead < target && this.rng.chance(0.6)) {
-      const sp = ps + this.rng.range(700, 950);
-      const onTr = sp < tr.length ? tr : null;
-      if (onTr && !tr.sectionAt(sp).fork) { if (this.spawnable(tr, sp)) this.spawn(onTr, sp); }
+    const density = clamp(tr.stage.traffic?.density || 15, 13, 20) * TRAFFIC_SCALE * this.densityMul * (opts.densityMul || 1);
+    // keep traffic evenly spaced ahead: a moving frontier drops one car every ~spacing metres
+    const spacing = 1000 / Math.max(1, density);
+    if (this.frontTr !== tr) { this.frontTr = tr; this.front = ps + 250; }
+    for (const v of this.list) if (v.track === tr && !v.oncoming && !v.enemy && v.special !== 'jam' && v.s > this.front && v.s < ps + 1000) this.front = v.s;
+    if (this.front < ps + 200) this.front = ps + 200;
+    let guard = 0;
+    while (this.front < ps + 950 && guard++ < 4) {
+      const sp = this.front + spacing * this.rng.range(0.6, 1.4);
+      this.front = sp;
+      if (sp < tr.length) { if (!tr.sectionAt(sp).fork && this.spawnable(tr, sp)) this.spawn(tr, sp); }
       else if (!tr.isFinal) {
         const kids = world.ensureChildren(tr);
-        const k = tr.chosen || (kids ? this.rng.pick(kids) : null);
-        if (k && this.spawnable(k, sp - tr.length + 20)) this.spawn(k, sp - tr.length + 20);
+        const k = kids && kids[0];
+        if (k && this.spawnable(k, sp - tr.length)) this.spawn(k, sp - tr.length);
       }
     }
     // oncoming (two-way stages) — they share our road
     if (tr.stage.twoWay) {
       let onc = 0;
       for (const v of this.list) if (v.oncoming && v.track === tr && v.s > ps) onc++;
-      if (onc < target * 0.6 && this.rng.chance(0.5)) {
+      if (onc < density * 0.95 * 0.6 && this.rng.chance(0.5)) {
         const sp = ps + this.rng.range(600, 900);
         if (sp < tr.length - 300 && !tr.sectionAt(sp).diverge && this.spawnable(tr, sp)) {
           const n = tr.lanesAt(sp);
@@ -568,6 +590,7 @@ export class Traffic {
   damageEnemy(v, dmg, cause) {
     const en = v.enemy;
     if (!en || v.wreck || dmg <= 0) return;
+    if (cause === 'player') en.playerT = this.time;
     en.hp -= dmg;
     en.lastHit = this.time;
     this.events.push({ type: 'enemyHit', v, dmg, cause });
@@ -800,6 +823,7 @@ export class Traffic {
     }
     player.x -= push * ox * 0.55;
     v.x += push * ox * 0.45;
+    en.playerT = this.time;
     player.v *= 0.985;
     player.emit('hit', { type: 'enemy', side: true });
   }

@@ -298,8 +298,8 @@ body.touch .b-en { font-size: 12px; }
 .h-speed .nitro.full .nb b { background: linear-gradient(90deg, #22d3ee, #fff, #22d3ee); background-size: 200% 100%; animation: nitroshine 0.6s linear infinite; }
 .h-speed .nitro.on span { color: #fff; }
 @keyframes nitroshine { to { background-position: -200% 0; } }
-.h-takedown { position: absolute; left: 0; right: 0; top: 46vh; text-align: center; font-family: var(--f-shade); font-size: clamp(30px, 5.4vw, 66px); color: var(--red); text-shadow: 5px 5px 0 #000; opacity: 0; pointer-events: none; }
-.h-takedown small { display: block; font-family: var(--f-display); font-size: 0.32em; color: var(--paper); letter-spacing: 0.1em; margin-top: 4px; }
+.h-takedown { position: absolute; left: 0; right: 0; top: 24vh; text-align: center; font-family: var(--f-display); font-size: clamp(18px, 2.6vw, 32px); color: var(--red); text-shadow: 5px 5px 0 #000; opacity: 0; pointer-events: none; }
+.h-takedown small { display: block; font-family: var(--f-display); font-size: 0.5em; color: var(--paper); letter-spacing: 0.1em; margin-top: 4px; }
 .h-takedown.show { opacity: 1; animation: slam 0.5s cubic-bezier(.2,1.8,.4,1); }
 @keyframes slam { 0% { transform: scale(2.4) rotate(-8deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1) rotate(-3deg); } }
 .h-rear { position: absolute; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: 260px; height: 26px; pointer-events: none; }
@@ -345,3 +345,10 @@ body.touch .h-boss { top: calc(104px + env(safe-area-inset-top, 0px)); }
   .h-progress { left: auto; right: 12px; transform: none; width: 38vw; top: calc(78px + env(safe-area-inset-top, 0px)); }
   .h-obj { top: calc(108px + env(safe-area-inset-top, 0px)); }
 }
+/* Tuntuni speaks from the top-left, under the race panel, in a readable size */
+.h-bubble { left: max(16px, env(safe-area-inset-left, 0px)); bottom: auto; top: calc(190px + env(safe-area-inset-top, 0px)); transform: translateX(-12px); max-width: min(380px, 70vw); align-items: center; }
+.h-bubble.show { transform: none; }
+.h-bubble #tuntuni { width: 54px; height: 54px; }
+.b-bn { font-size: 17px; }
+.h-bubble.loud .b-bn { font-size: 20px; }
+body.touch .h-bubble { top: calc(168px + env(safe-area-inset-top, 0px)); left: 10px; max-width: 70vw; }

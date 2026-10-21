@@ -9,11 +9,11 @@ import { LANE_W } from './track.js';
 
 export const CONTRA = { rampBefore: 70, jamLead: 10, gapAfter: 40, gapLen: 150, taper: 70 };
 
-export function buildZones(tr, stage, off) {
+export function buildZones(tr, stage, M) {
   const Z = { contra: [], stalls: [], closed: [], ramps: [] };
   for (const e of stage.events || []) {
     if (e.type === 'jam') {
-      const s = e.s + off, len = e.len || 160;
+      const s = M(e.s), len = M(e.s + (e.len || 160)) - s;
       const median = (tr.sectionAt(s).R || stage.R) === 'median';
       if (median && !stage.twoWay) {
         const z = {
@@ -26,7 +26,7 @@ export function buildZones(tr, stage, off) {
       }
     }
   }
-  for (const st of stage.stalls || []) Z.stalls.push({ s0: st[0] + off, s1: st[1] + off, side: st[2] || -1 });
+  for (const st of stage.stalls || []) Z.stalls.push({ s0: M(st[0]), s1: M(st[1]), side: st[2] || -1 });
   for (const sec of tr.sections) {
     if (sec.closed) Z.closed.push({ s0: sec.s0 - (sec.closeLead ?? 0), s1: sec.s1 });
   }

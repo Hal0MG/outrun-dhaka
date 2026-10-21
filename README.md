@@ -21,15 +21,11 @@ Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · SHIFT/Z s
 
 ## The route
 
-```
-                 Dhanmondi
-           Shahbag      Manik Mia
-     Old Dhaka   Kawran Bazar   Hatirjheel
- Sadarghat   Motijheel   Gulshan   Mirpur
-Padma   CTG Highway   300 Feet   Airport   Savar
-```
+One road through all fifteen districts, dusk to dawn:
 
-Each stage ends in a fork: keep left or right. Each exit has its own ending; winning once unlocks the Rickshaw 9000. FREE DRIVE has no rivals and no clock.
+Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan → Old Dhaka → Sadarghat → Motijheel → Mirpur → Airport Road → 300 Feet → CTG Highway → Savar → Padma Bridge (finish)
+
+Each district has a target position; the target tightens from P19 to P1. FREE DRIVE has no rivals and no clock.
 
 ## Build
 

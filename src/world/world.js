@@ -23,6 +23,9 @@ export const FORK_LANES = 3;
 export const GATE_S = 430;
 export const FORK_OFF = (FORK_LANES * LANE_W) / 2;
 const VIEW_AHEAD = 1150;
+// ordinary road is authored long; play it shorter so stages fly by (set pieces keep their size)
+export const STAGE_SCALE = 0.5;
+const isPlain = (sec) => !(sec.closed || sec.env || sec.surface || sec.hardK || sec.gap || sec.jump || sec.rides || sec.crests || sec.endRamp || sec.lift);
 const KEEP_BEHIND = 160;
 
 export class World {
@@ -60,9 +63,9 @@ export class World {
     M.misc = makeAtlasMaterial(A.misc);
     M.fx = makeAtlasMaterial(A.fx);
     M.fxDouble = makeAtlasMaterial(A.fx, { side: THREE.DoubleSide });
-    M.sign = makeAtlasMaterial(A.signs, { selfEmissive: 1.4, glowUniform: shared.uSignGlow, side: THREE.DoubleSide });
+    M.sign = makeAtlasMaterial(A.signs, { selfEmissive: 0.9, glowUniform: shared.uSignGlow, side: THREE.DoubleSide });
     M.lamp = makeGlowMaterial(1);
-    M.neon = makeGlowMaterial(1);
+    M.neon = makeGlowMaterial(0.5); // neon is a detail, not the art style
     M.always = makeGlowMaterial(1);
     M.wire = new THREE.LineBasicMaterial({ vertexColors: true, fog: true });
     const gtex = groundDetailTexture();
@@ -97,25 +100,35 @@ export class World {
     const defaults = (s) => ({ ...s });
     const contentOffset = isFirst ? 0 : DIVERGE;
     if (!isFirst) {
-      const inner = side < 0 ? 'R' : 'L';
-      const d = { len: DIVERGE, k: side * 0.0033, dy: 0, lanes: stage.lanes, laneEase: 0.8, diverge: true };
-      d[inner] = 'gore';
-      // outer side keeps the stage's look, except medians start after the gore
-      const outer = side < 0 ? 'L' : 'R';
-      const ot = stage[outer];
-      d[outer] = ot === 'median' ? 'city' : (ot === 'bridge' || ot === 'elevated' ? 'city' : ot);
-      if (d.L === 'cityLow') d.L = 'city';
-      if (d.R === 'cityLow') d.R = 'city';
+      // the road simply carries on into the next district
+      const d = { len: DIVERGE, k: 0.0022 * (hashStr(stageId) % 2 ? 1 : -1), dy: 0, lanes: stage.lanes, laneEase: 0.8, diverge: true };
+      const side2 = (t) => (t === 'median' || t === 'bridge' || t === 'elevated' || t === 'cityLow' || t === 'lake' || t === 'river' ? 'city' : t);
+      d.L = side2(stage.L); d.R = side2(stage.R);
       secs.push(d);
     }
-    for (const s of stage.sections) secs.push(defaults(s));
+    // authored sections, shortened, with bends and crests worked into the long plain straights
+    const map = [];
+    let aCur = 0, bCur = 0, flip = hashStr(stageId) % 2 ? 1 : -1;
+    for (const s0 of stage.sections) {
+      const sc = defaults(s0);
+      const plain = isPlain(sc);
+      if (plain) {
+        sc.len = Math.max(60, Math.round(sc.len * STAGE_SCALE));
+        const water = sc.L === 'lake' || sc.L === 'river' || sc.R === 'lake' || sc.R === 'river' || sc.L === 'bridge' || sc.R === 'bridge' || stage.L === 'bridge';
+        // a sweeping bend, never more than ~50 degrees in one section (so long straights can't loop)
+        if (!sc.k && sc.len > 90 && !sc.fork && !water) { sc.k = Math.min(0.0034, 0.85 / (sc.len * 1.7)) * flip; flip = -flip; }
+        if (!sc.dy && !water && sc.elev == null && !stage.flat) sc.dy = 4 * (hashStr(stageId + map.length) % 2 ? 1 : -1);
+      }
+      map.push([aCur, aCur + s0.len, bCur, bCur + sc.len]);
+      aCur += s0.len; bCur += sc.len;
+      secs.push(sc);
+    }
     const isFinal = !!stage.final;
     if (!isFinal) {
       const lastL = stage.L === 'median' ? 'city' : stage.L;
       const fl = (lastL === 'lake' || lastL === 'river' || lastL === 'bridge' || lastL === 'elevated' || lastL === 'cityLow') ? (lastL === 'cityLow' ? 'city' : lastL === 'elevated' ? 'city' : lastL) : lastL;
       const fr = stage.R === 'median' || stage.R === 'elevated' || stage.R === 'cityLow' ? 'city' : stage.R;
-      secs.push({ len: 120, k: 0, dy: 0, lanes: stage.lanes, L: fl, R: fr, elev: 0, preFork: true });
-      secs.push({ len: FORK_LEN, k: 0, dy: 0, lanes: FORK_LANES * 2, L: fl, R: fr, elev: 0, fork: true, hardK: true });
+      secs.push({ len: 160, k: 0, dy: 0, lanes: stage.lanes, L: fl, R: fr, elev: 0, preFork: true });
     } else {
       const last = stage.sections[stage.sections.length - 1];
       secs.push({ len: 700, k: 0, dy: 0, goalRun: true, L: last.L, R: last.R, far: last.far, elev: last.elev });
@@ -124,8 +137,8 @@ export class World {
     if (parent) {
       const pe = parent.length;
       const yaw = parent.yawAt(pe);
-      const p = parent.point(pe, side * (FORK_LANES * LANE_W) / 2, 0, new THREE.Vector3());
-      start = { x: p.x, z: p.z, yaw, gy: parent.groundAt(pe), elev: parent.elevAt(pe), lanes: FORK_LANES };
+      const p = parent.point(pe, 0, 0, new THREE.Vector3());
+      start = { x: p.x, z: p.z, yaw, gy: parent.groundAt(pe), elev: parent.elevAt(pe), lanes: parent.lanesAt(pe) };
     } else {
       start = { x: 0, z: 0, yaw: 0, gy: 0, elev: 0, lanes: stage.lanes };
     }
@@ -136,7 +149,13 @@ export class World {
     tr.isFinal = isFinal;
     tr.isFirst = isFirst;
     tr.level = stage.level;
-    tr.contentLength = secs.reduce((a, s) => a + s.len, 0) - (isFinal ? 700 : 120 + FORK_LEN) - contentOffset;
+    tr.contentLength = bCur;
+    // authored stage distance -> track distance
+    tr.mapS = (a) => {
+      for (const [a0, a1, b0, b1] of map) if (a <= a1) return contentOffset + b0 + (a1 > a0 ? (Math.max(a, a0) - a0) / (a1 - a0) : 0) * (b1 - b0);
+      const last = map[map.length - 1];
+      return contentOffset + (last ? last[3] + (a - last[1]) : a);
+    };
     tr.goalS = isFinal ? tr.length - 700 : null;
     tr.gateS = isFirst ? 40 : GATE_S;
     // mean heading (for the sun)
@@ -144,12 +163,12 @@ export class World {
     for (let i = 0; i < tr.n; i += 10) ym += tr.yaw[i];
     tr.meanYaw = ym / Math.ceil(tr.n / 10);
     // reserved zones for landmarks
-    tr.clear = (stage.landmarks || []).filter((l) => l.clear).map((l) => ({ s0: l.clear[0] + contentOffset, s1: l.clear[1] + contentOffset, side: l.side }));
-    tr.zones = buildZones(tr, stage, contentOffset);
+    tr.clear = (stage.landmarks || []).filter((l) => l.clear).map((l) => ({ s0: tr.mapS(l.clear[0]), s1: tr.mapS(l.clear[1]), side: l.side }));
+    tr.zones = buildZones(tr, stage, tr.mapS);
     // features
-    const zebras = (stage.zebras || []).map((z) => z + contentOffset);
-    const alp = (stage.alpana || []).map(([a, b]) => [a + contentOffset, b + contentOffset]);
-    const pud = (stage.puddles || []).map(([a, b]) => [a + contentOffset, b + contentOffset]);
+    const zebras = (stage.zebras || []).map((z) => tr.mapS(z));
+    const alp = (stage.alpana || []).map(([a, b]) => [tr.mapS(a), tr.mapS(b)]);
+    const pud = (stage.puddles || []).map(([a, b]) => [tr.mapS(a), tr.mapS(b)]);
     const featRng = new RNG(hashStr(id) + 77);
     const puddleNoise = [];
     for (let i = 0; i < tr.n; i++) puddleNoise.push(featRng.next());
@@ -174,7 +193,8 @@ export class World {
     if (tr.children || tr.isFinal) return tr.children;
     const kids = childrenOf(tr.stageId);
     if (!kids) return null;
-    tr.children = [this.makeTrack(kids[0], tr, -1), this.makeTrack(kids[1], tr, 1)];
+    const next = this.makeTrack(kids[0], tr, 0);
+    tr.children = [next, next];
     // gantry texture for the fork
     const L = STAGES[kids[0]], R = STAGES[kids[1]];
     const tex = new THREE.CanvasTexture(makeGantryTexture({ bn: L.bn, en: L.name }, { bn: R.bn, en: R.name }));
@@ -274,12 +294,9 @@ export class World {
   // called when the player crosses a fork; returns the child track and lateral rebase
   commitFork(track, x) {
     const kids = this.ensureChildren(track);
-    const side = x < 0 ? -1 : 1;
-    const child = side < 0 ? kids[0] : kids[1];
+    const child = kids[0];
     track.chosen = child;
-    const other = side < 0 ? kids[1] : kids[0];
-    other.abandoned = true;
-    return { child, xNew: x - side * (FORK_LANES * LANE_W) / 2, side };
+    return { child, xNew: x, side: 0 };
   }
 
   // remove tracks that are no longer reachable
@@ -301,11 +318,11 @@ export class World {
 
   populateChunk(ctx) {
     const tr = ctx.track, st = ctx.stage;
-    const off = tr.contentOffset;
+    const M = tr.mapS;
     const inChunk = (s) => s >= ctx.s0 && s < ctx.s1;
     // landmarks
     for (const l of st.landmarks || []) {
-      const s = l.s + off;
+      const s = M(l.s);
       if (!inChunk(s)) continue;
       const fn = LANDMARKS[l.type];
       if (!fn) continue;
@@ -314,19 +331,19 @@ export class World {
       else fn(ctx, s, l.side, l.dist, l.opts);
     }
     for (const fb of st.footbridges || []) {
-      const s = fb + off;
+      const s = M(fb);
       if (!inChunk(s)) continue;
       const R = ctx.sideType(s, 1);
       const hwR = R === 'median' ? tr.halfWAt(s) + (st.medianW || 2.6) + st.lanes * LANE_W : tr.halfWAt(s);
       PR.footbridge(ctx, s, tr.halfWAt(s), hwR, { ads: [ctx.rng.pick(st.billboards || ['gfun']), ctx.rng.pick(st.billboards || ['tea']), 'pathaw'] });
     }
     for (const ms of st.metroStations || []) {
-      const s = ms + off;
+      const s = M(ms);
       if (!inChunk(s)) continue;
       LANDMARKS.metroStation(ctx, s, tr.halfWAt(s), tr.halfWAt(s) + (st.medianW || 2.6) + st.lanes * LANE_W);
     }
     for (const b of st.banners || []) {
-      const s = b.s + off;
+      const s = M(b.s);
       if (!inChunk(s)) continue;
       const R = ctx.sideType(s, 1);
       const hwR = R === 'median' ? tr.halfWAt(s) + (st.medianW || 2.6) + st.lanes * LANE_W : tr.halfWAt(s);
@@ -334,7 +351,7 @@ export class World {
     }
     // pedestrians waiting at zebra crossings
     for (const z of st.zebras || []) {
-      const s = z + off + 2;
+      const s = M(z) + 2;
       if (!inChunk(s)) continue;
       for (let i = 0; i < 4; i++) {
         const p = ctx.P(s + ctx.rng.range(-1.5, 1.5), -(tr.halfWAt(s) + 0.8 + ctx.rng.next()), 0.18);
@@ -383,7 +400,7 @@ export class World {
     }
     // ramps for the helicopter fight
     for (const r of st.ramps || []) {
-      const s = r.s + off;
+      const s = M(r.s);
       if (!inChunk(s)) continue;
       const hw = tr.halfWAt(s);
       const x = r.x != null ? r.x * hw : 0;
@@ -394,7 +411,7 @@ export class World {
       const s = tr.gateS;
       const R = ctx.sideType(s, 1);
       const hwR = R === 'median' ? tr.halfWAt(s) + (st.medianW || 2.6) + st.lanes * LANE_W : tr.halfWAt(s);
-      const lines = tr.isFirst ? ['আউটরান ঢাকা', 'START · DHANMONDI'] : ['চেকপয়েন্ট', 'CHECKPOINT · ' + st.name.toUpperCase()];
+      const lines = tr.isFirst && tr.stageId === 'dhanmondi' ? ['আউটরান ঢাকা', 'START · DHANMONDI'] : ['চেকপয়েন্ট', 'CHECKPOINT · ' + st.name.toUpperCase()];
       if (tr.sectionAt(s).env) { /* set pieces have their own entrance */ }
       PR.festiveGate(ctx, s, tr.halfWAt(s), hwR, bannerMaterial(lines, tr.isFirst ? { c1: '#c8102e', c2: '#5c0716' } : { c1: '#0f7a43', c2: '#04301a' }));
       if (tr.isFirst) {

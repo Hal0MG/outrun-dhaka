@@ -155,6 +155,7 @@ export class Game {
     this.bounced = 0;
     this.chainT = 0;
     this.chain = 0;
+    this.say.reset();
     this.racing = mode === 'arcade';
     if (this.racing) {
       this.race.start();
@@ -235,7 +236,7 @@ export class Game {
     const P = this.player;
     if (P.air && P.air.slow && this.state === 'race' && this.settings.slowmo !== false) {
       const u = P.airU();
-      if (u > 0.08 && u < 0.9) tsT = Math.min(tsT, P.air.slow);
+      if (u > 0.08 && u < 0.9) tsT = Math.min(tsT, Math.max(0.72, P.air.slow));
     }
     this.ts = damp(this.ts, tsT, tsT < this.ts ? 14 : 5, dtReal);
     const dt = dtReal * this.ts;
@@ -273,7 +274,7 @@ export class Game {
       if (this.racing) this.race.update(dt);
       this.bosses.update(dt, P, this.R.camera);
       this.handleBossEvents();
-      this.peds.update(dt, P, this.world, st !== 'countdown');
+      this.peds.update(dt, P, this.world, st !== 'countdown' && st !== 'story', this.traffic.list);
       this.handlePedEvents();
       this.world.stream(P.track, P.s, 2, cinematic === 'ending' ? 300 : 160);
       this.world.update(dt, this.time);
@@ -586,16 +587,15 @@ export class Game {
     const off = tr.contentOffset;
     for (const l of tr.stage.lines || []) {
       const key = tr.id + ':' + l.id + ':' + l.s;
-      if (!this.firedLines.has(key) && P.s >= l.s + off) {
+      if (!this.firedLines.has(key) && P.s >= tr.mapS(l.s)) {
         this.firedLines.add(key);
         this.say.say(l.id, true);
       }
     }
     if (!tr.isFinal && P.s > tr.length - 520 && !tr.forkSaid) {
       tr.forkSaid = true;
-      this.say.say('fork', true);
       const kids = this.world.ensureChildren(tr);
-      if (kids) this.hud.warn(`◀ ${kids[0].stage.name.toUpperCase()} &nbsp;|&nbsp; ${kids[1].stage.name.toUpperCase()} ▶`, 5);
+      if (kids) this.hud.warn(`NEXT · ${kids[0].stage.name.toUpperCase()}`, 3);
     }
     this.stageEvents(dt);
     this.railTrains(dt);
@@ -612,16 +612,16 @@ export class Game {
     this.planeMode = false;
     for (const [i, e] of (tr.stage.events || []).entries()) {
       const key = tr.id + ':' + i;
-      const s = (e.s ?? e.s0) + off;
+      const s = tr.mapS(e.s ?? e.s0);
       if (e.type === 'jam') {
-        if (P.s > s - 560 && fire(key)) T.spawnJam(tr, s, e.len || 150);
+        if (P.s > s - 560 && fire(key)) T.spawnJam(tr, s, tr.mapS((e.s ?? 0) + (e.len || 150)) - s);
         if (P.s > s - 330 && P.s < s - 120 && fire(key + 'w')) {
           const z = contraAt(tr, s);
           this.hud.warn(z ? 'JAM AHEAD · RAMP ON THE RIGHT ▶' : 'JAM AHEAD · FIND A GAP', 3.5);
           this.say.say(z ? 'jamRamp' : 'jam', true);
         }
       } else if (e.type === 'loadshed') {
-        const a = s, b = s + (e.len || 600);
+        const a = s, b = tr.mapS((e.s ?? 0) + (e.len || 600));
         if (P.s > a && P.s < b) {
           outageT = 1;
           if (fire(key)) {
@@ -666,7 +666,7 @@ export class Game {
         }
       } else if (e.type === 'boss') {
         if (P.s > s && fire(key)) {
-          if (e.id === 'heli') this.bosses.startHeli(tr, P.s + 40, { end: (e.end ?? tr.length - 300) + off, fromX: e.fromX });
+          if (e.id === 'heli') this.bosses.startHeli(tr, P.s + 40, { end: e.end != null ? tr.mapS(e.end) : tr.length - 300, fromX: e.fromX });
           else if (e.id === 'bus') this.bosses.startBuses(tr, P.s);
         }
       } else if (e.type === 'racers') {
@@ -676,9 +676,9 @@ export class Game {
           this.say.say('racersNew', true);
         }
       } else if (e.type === 'kites') {
-        if (P.s > (e.s0 + off) - 400 && fire(key)) this.pieces.spawnKites(tr, e.s0 + off, e.s1 + off, this.world.mats.sprite);
+        if (P.s > tr.mapS(e.s0) - 400 && fire(key)) this.pieces.spawnKites(tr, tr.mapS(e.s0), tr.mapS(e.s1), this.world.mats.sprite);
       } else if (e.type === 'fireworks') {
-        if (P.s > e.s0 + off && P.s < e.s1 + off) {
+        if (P.s > tr.mapS(e.s0) && P.s < tr.mapS(e.s1)) {
           this.fwT = (this.fwT || 0) - dt;
           if (this.fwT <= 0) {
             this.fwT = 0.5 + fx.next() * 1.2;
@@ -688,7 +688,7 @@ export class Game {
           }
         }
       } else if (e.type === 'firebreathers') {
-        if (P.s > e.s0 + off && P.s < e.s1 + off) {
+        if (P.s > tr.mapS(e.s0) && P.s < tr.mapS(e.s1)) {
           this.fbT = (this.fbT || 0) - dt;
           if (this.fbT <= 0) {
             this.fbT = 1.5 + fx.next() * 2.5;
@@ -698,12 +698,12 @@ export class Game {
           }
         }
       } else if (e.type === 'crowd') {
-        if (P.s > e.s0 + off && P.s < e.s1 + off) {
+        if (P.s > tr.mapS(e.s0) && P.s < tr.mapS(e.s1)) {
           this.crowdT = (this.crowdT || 0) - dt;
           if (this.crowdT <= 0) { this.crowdT = 3.2; audio.crowdRoar(0.22); }
         }
       } else if (e.type === 'planes') {
-        if (P.s > e.s0 + off && P.s < e.s1 + off) this.planeMode = true;
+        if (P.s > tr.mapS(e.s0) && P.s < tr.mapS(e.s1)) this.planeMode = true;
       } else if (e.type === 'railTrain') {
         if (P.s > s && fire(key)) {
           this.pieces.railTrain(tr, P.s + (e.ahead || 560), e.lane * LANE_W / 2, e.speed || 19);
@@ -876,12 +876,15 @@ export class Game {
       const pos = v.track.point(v.s, v.x, 0.8, new THREE.Vector3());
       if (e.type === 'takedown') {
         const rv = v.rival ? this.race.onWreck(v) : null;
-        audio.takedown();
-        this.cam.kick(0.5);
-        for (let i = 0; i < 26; i++) this.particles.smoke(pos, new THREE.Vector3(), 1.6, [0.3, 0.28, 0.27]);
+        audio.thud();
+        for (let i = 0; i < 12; i++) this.particles.smoke(pos, new THREE.Vector3(), 1.6, [0.3, 0.28, 0.27]);
         for (let i = 0; i < 10; i++) this.particles.sparks(pos, new THREE.Vector3(fx.next() - 0.5, 0.5, fx.next() - 0.5));
         this.particles.flame(pos.x, pos.y, pos.z);
-        if (!racing || v.enemy.role === 'bossbus') continue;
+        // only wrecks you caused get the big moment; enemies crashing on their own just crash
+        const mine = e.cause === 'player' || this.traffic.time - (v.enemy.playerT ?? -99) < 3;
+        if (!racing || v.enemy.role === 'bossbus' || !mine) continue;
+        audio.takedown();
+        this.cam.kick(0.35);
         const E = v.enemy.E;
         this.takedowns++;
         this.chain = this.chainT > 0 ? this.chain + 1 : 1;
@@ -892,8 +895,6 @@ export class Game {
         const how = e.cause === 'wall' ? 'INTO THE WALL' : e.cause === 'traffic' ? 'INTO TRAFFIC' : e.cause === 'enemy' ? 'FRIENDLY FIRE' : e.cause === 'barrier' ? 'INTO THE BARRIER' : 'RAMMED';
         if (this.timeLeft !== Infinity && E.time) { this.timeLeft += E.time; this.hud.timeAdded(); }
         this.hud.takedown(this.chain > 1 ? `TAKEDOWN ×${this.chain}!` : rv ? 'RIVAL WRECKED!' : 'TAKEDOWN!', `${rv ? rv.name : E.label} · ${how} · +${bn(pts.toLocaleString('en-US'))}${E.time ? ` · +${E.time} SEC` : ''}`);
-        this.slowmo(0.4, 0.55);
-        this.flashT = 0.25;
         if (fx.next() < 0.6) this.say.say('takedown', true);
       } else if (e.type === 'tipped') {
         audio.smash(true);
@@ -1100,7 +1101,7 @@ export class Game {
     shared.uSun.value.copy(S.sun).multiplyScalar(S.sunI * S.sunVis * clamp(S.sunDir.y + 0.35, 0, 1) * 0.55);
     shared.uLamps.value = S.lamps;
     shared.uGlow.value = S.glow;
-    shared.uSignGlow.value = S.glow * 0.75 * (1 - (this.outage || 0) * 0.85) + 0.04;
+    shared.uSignGlow.value = S.glow * 0.42 * (1 - (this.outage || 0) * 0.85) + 0.04;
     shared.uSpriteLight.value.copy(S.amb).multiplyScalar(S.ambI * 0.95).add(this._c1 = (this._c1 || new THREE.Color()).copy(S.sun).multiplyScalar(S.sunI * S.sunVis * 0.4));
     if (rk > 0) shared.uSpriteLight.value.lerp(this._inAmb, rk * 0.8);
     shared.uLampAdd.value.copy(shared.uLampCol.value).multiplyScalar(S.lamps * 0.75);
@@ -1119,7 +1120,7 @@ export class Game {
     M.lamp.color.setScalar(0.12 + S.lamps * 0.95);
     M.neon.color.setScalar(0.15 + S.glow * 0.9);
     M.always.color.setScalar(0.6 + this.night * 0.5);
-    this.R.bloom.strength = 0.5 + this.night * 0.3;
+    this.R.bloom.strength = 0.28 + this.night * 0.14;
     this.R.bloom.threshold = 0.92;
     this.R.renderer.toneMappingExposure = 1.0 + this.night * 0.08;
     const fd = this.world.farDisc;

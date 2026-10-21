@@ -232,7 +232,7 @@ export class Menus {
       'You lost <b>Golden Bhai</b>’s shipment of ilish in the Buriganga. All of it. He wants <b>৳5 crore</b> by sunrise.',
       'There is exactly one way to make that kind of money in one night: <b>the Dhaka Run</b>. Twenty-four drivers, Dhanmondi to the edge of the city, no rules, winner takes everything.',
       '<b>RAJA</b> has won it three years running in a black Skyline. Nobody has ever started from the back and won. You are starting from the back.',
-      `Reach <b>P${TARGETS[0]}</b> by the end of Dhanmondi, then keep climbing. Finish first or don’t come home.`,
+      `Reach <b>P${TARGETS[0]}</b> by the end of Dhanmondi, then keep climbing through all fifteen districts to the Padma Bridge. Finish first or don’t come home.`,
     ];
     $('storyLines').innerHTML = lines.map((l) => `<p>${l}</p>`).join('');
     const grid = RIVALS.map((r, i) => `<span><i>P${i + 1}</i>${r.name}</span>`);

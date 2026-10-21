@@ -65,7 +65,7 @@ export function makeAtlasMaterial(atlas, opts = {}) {
         }`)
       .replace('#include <map_fragment>', 'vec4 sampledDiffuseColor = atlasSample(map); diffuseColor *= sampledDiffuseColor;')
       .replace('#include <emissivemap_fragment>', hasE
-        ? 'vec4 emissiveColor = atlasSample(emissiveMap); totalEmissiveRadiance *= emissiveColor.rgb * uGlowF * 1.05;'
+        ? 'vec4 emissiveColor = atlasSample(emissiveMap); totalEmissiveRadiance *= emissiveColor.rgb * uGlowF * 0.62;'
         : (selfE ? `totalEmissiveRadiance = sampledDiffuseColor.rgb * uGlowF * ${selfE.toFixed(2)};` : ''));
   };
   m.customProgramCacheKey = () => 'atlas' + (hasE ? 'E' : '') + (selfE ? 'S' : '');

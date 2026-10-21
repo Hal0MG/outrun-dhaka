@@ -17,15 +17,9 @@ export const PYRAMID = [
 ];
 
 // hour ranges per pyramid level (continuous axis, 24+ = after midnight)
-export const LEVEL_TIME = [
-  [17.35, 18.05],
-  [18.05, 18.95],
-  [18.95, 21.6],
-  [21.6, 28.3],
-  [28.55, 30.35],
-];
 
-export const CHECKPOINT_BONUS = [0, 70, 74, 72, 68];
+
+
 
 const CITY_FACADES = ['apt_cream', 'apt_pink', 'apt_mint', 'apt_yellow', 'apt_white', 'apt_blue', 'apt_tile', 'apt_tile2', 'apt_raw'];
 const OLD_FACADES = ['old_ochre', 'old_blue', 'old_pink', 'brick', 'apt_raw', 'old_ochre'];
@@ -589,19 +583,29 @@ export const ENDINGS = {
   },
 };
 
-// children of a stage in the pyramid
+// ------------------------------------------------------------------ the single route
+// One road through every stage, dusk to dawn, ending on the Padma Bridge.
+export const ROUTE = [
+  'dhanmondi', 'shahbag', 'manikmia', 'kawranBazar', 'hatirjheel', 'gulshan', 'oldDhaka', 'sadarghat',
+  'motijheel', 'mirpur', 'airport', 'purbachal', 'highway', 'savar', 'padma',
+];
+const H0 = 17.35, H1 = 30.35;
+ROUTE.forEach((id, i) => {
+  const st = STAGES[id];
+  st.level = i;
+  st.final = i === ROUTE.length - 1;
+});
+// hour range per leg of the route (continuous axis, 24+ = after midnight)
+export const LEVEL_TIME = ROUTE.map((_, i) => [H0 + (i / ROUTE.length) * (H1 - H0), H0 + ((i + 1) / ROUTE.length) * (H1 - H0)]);
+export const CHECKPOINT_BONUS = ROUTE.map((_, i) => (i === 0 ? 0 : 40));
+
+// the next stage along the route (kept as a pair for the old fork plumbing)
 export function childrenOf(id) {
-  for (let lv = 0; lv < PYRAMID.length - 1; lv++) {
-    const i = PYRAMID[lv].indexOf(id);
-    if (i >= 0) return [PYRAMID[lv + 1][i], PYRAMID[lv + 1][i + 1]];
-  }
-  return null;
+  const i = ROUTE.indexOf(id);
+  if (i < 0 || i >= ROUTE.length - 1) return null;
+  return [ROUTE[i + 1], ROUTE[i + 1]];
 }
 
 export function columnOf(id) {
-  for (let lv = 0; lv < PYRAMID.length; lv++) {
-    const i = PYRAMID[lv].indexOf(id);
-    if (i >= 0) return [lv, i];
-  }
-  return [0, 0];
+  return [Math.max(0, ROUTE.indexOf(id)), 0];
 }

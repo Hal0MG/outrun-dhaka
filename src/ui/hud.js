@@ -1,7 +1,7 @@
 // HUD: the in-race overlay. Written to the DOM at a throttled rate.
 
 import { bn, fmtTime, clamp } from '../core/util.js';
-import { PYRAMID, STAGES } from '../world/stages.js';
+import { ROUTE, STAGES } from '../world/stages.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -147,7 +147,7 @@ export class HUD {
 
   setStage(stage, big = true) {
     this.stageBn.textContent = stage.name.toUpperCase();
-    this.stageEn.textContent = 'STAGE ' + (stage.level + 1);
+    this.stageEn.textContent = `STAGE ${stage.level + 1} / ${ROUTE.length}`;
     this.stageSub.textContent = stage.sub;
     if (big) {
       this.stage.classList.add('big');
@@ -299,50 +299,42 @@ export class HUD {
     this.drawMap(this.mapCv, this.path, 0);
   }
 
-  // OutRun-style route map (shared with the ending postcard)
+  // route map: the fifteen districts as a snaking line of stops (shared with the ending postcard)
   drawMap(cv, path, blink, opts = {}) {
     const c = cv.getContext('2d');
     const W = cv.width, H = cv.height;
     c.clearRect(0, 0, W, H);
-    const pos = (lv, i) => {
-      const n = PYRAMID[lv].length;
-      const x = W / 2 + (i - (n - 1) / 2) * (W / 5.4);
-      const y = 12 + lv * ((H - 24) / 4);
-      return [x, y];
+    const cols = 5, rows = Math.ceil(ROUTE.length / cols);
+    const pos = (i) => {
+      const r = Math.floor(i / cols), k = i % cols;
+      const col = r % 2 ? cols - 1 - k : k;
+      return [14 + col * ((W - 28) / (cols - 1)), 14 + r * ((H - 28 - (opts.labels ? 10 : 0)) / Math.max(1, rows - 1))];
     };
-    c.lineWidth = opts.big ? 3 : 2;
-    for (let lv = 0; lv < 4; lv++) {
-      for (let i = 0; i < PYRAMID[lv].length; i++) {
-        const [x, y] = pos(lv, i);
-        for (const j of [i, i + 1]) {
-          const [x2, y2] = pos(lv + 1, j);
-          const on = path[lv] === PYRAMID[lv][i] && path[lv + 1] === PYRAMID[lv + 1][j];
-          c.strokeStyle = on ? '#ffb000' : 'rgba(255,241,210,0.25)';
-          c.lineWidth = on ? (opts.big ? 5 : 3.5) : (opts.big ? 2 : 1.5);
-          c.beginPath(); c.moveTo(x, y); c.lineTo(x2, y2); c.stroke();
-        }
-      }
+    const at = path.length - 1;
+    const cur = ROUTE.indexOf(path[at]);
+    for (let i = 0; i < ROUTE.length - 1; i++) {
+      const [x, y] = pos(i), [x2, y2] = pos(i + 1);
+      c.strokeStyle = i < cur ? '#ffb000' : 'rgba(255,241,210,0.25)';
+      c.lineWidth = i < cur ? (opts.big ? 5 : 3) : (opts.big ? 2 : 1.5);
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x2, y2); c.stroke();
     }
-    for (let lv = 0; lv < 5; lv++) {
-      for (let i = 0; i < PYRAMID[lv].length; i++) {
-        const [x, y] = pos(lv, i);
-        const id = PYRAMID[lv][i];
-        const visited = path[lv] === id;
-        const current = visited && lv === path.length - 1;
-        c.fillStyle = current ? (blink ? '#e4252b' : '#ffe14a') : visited ? '#19a84a' : 'rgba(11,10,26,0.85)';
-        c.strokeStyle = '#000';
-        c.lineWidth = 2;
-        c.beginPath();
-        c.arc(x, y, opts.big ? 7 : 5, 0, Math.PI * 2);
-        c.fill(); c.stroke();
-        if (opts.labels) {
-          c.font = `400 ${opts.big ? 9 : 8}px "Bungee", sans-serif`;
-          c.textAlign = 'center';
-          c.fillStyle = visited ? (opts.ink || '#1a0f08') : 'rgba(26,15,8,0.45)';
-          c.fillText(STAGES[id].short || STAGES[id].name, x, y + (opts.big ? 20 : 15));
-        }
+    ROUTE.forEach((id, i) => {
+      const [x, y] = pos(i);
+      const visited = i <= cur;
+      const current = i === cur;
+      c.fillStyle = current ? (blink ? '#e4252b' : '#ffe14a') : visited ? '#19a84a' : 'rgba(11,10,26,0.85)';
+      c.strokeStyle = '#000';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(x, y, opts.big ? 6 : (current ? 5 : 4), 0, Math.PI * 2);
+      c.fill(); c.stroke();
+      if (opts.labels) {
+        c.font = `400 ${opts.big ? 8 : 7}px "Bungee", sans-serif`;
+        c.textAlign = 'center';
+        c.fillStyle = visited ? (opts.ink || '#1a0f08') : 'rgba(26,15,8,0.45)';
+        c.fillText(STAGES[id].short || STAGES[id].name, x, y + (opts.big ? 16 : 13));
       }
-    }
+    });
   }
 
   update(dt, d) {
@@ -396,7 +388,8 @@ export class HUD {
     }
     this.prog.style.width = (clamp(d.progress, 0, 1) * 100).toFixed(1) + '%';
     if (L.stageIdx !== d.stageIndex) {
-      this.pips.forEach((p, i) => { p.className = i < d.stageIndex ? 'done' : i === d.stageIndex ? 'now' : ''; });
+      const pi = Math.floor((d.stageIndex * 5) / ROUTE.length);
+      this.pips.forEach((p, i) => { p.className = i < pi ? 'done' : i === pi ? 'now' : ''; });
       L.stageIdx = d.stageIndex;
     }
     // timers

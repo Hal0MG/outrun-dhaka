@@ -128,7 +128,7 @@ export class Peds {
     }
   }
 
-  update(dt, player, world, active) {
+  update(dt, player, world, active, traffic = null) {
     this.time += dt;
     const P = player;
     const tr = P.track;
@@ -142,7 +142,7 @@ export class Peds {
         const sec = tr.sectionAt(Math.min(s, tr.length));
         if (s < tr.length - 300 && !sec.env && !sec.fork && !sec.diverge && (sec.surface || 'asphalt') === 'asphalt' && (sec.elev ?? 0) < 1 && tr.elevAt(s) < 1) {
           let sp = s;
-          for (const fb of tr.stage.footbridges || []) { const fs = fb + tr.contentOffset; if (Math.abs(fs - s) < 120 && this.rng.chance(0.6)) sp = fs + this.rng.range(-3, 3); }
+          for (const fb of tr.stage.footbridges || []) { const fs = tr.mapS(fb); if (Math.abs(fs - s) < 120 && this.rng.chance(0.6)) sp = fs + this.rng.range(-3, 3); }
           this.crossing(tr, sp, this.rng.int(1, 4));
         }
       }
@@ -172,7 +172,19 @@ export class Peds {
           if (p.panic < 0.45) { p.state = 'run'; p.vx = (p.x > P.x ? 1 : -1) * this.rng.range(3, 4.5); }
           else if (p.panic < 0.8) { p.state = 'freeze'; p.vx = 0; p.t = 0; }
         }
-        p.x += p.vx * dt;
+        // wait for traffic instead of walking through it; step aside if a car is on top of you
+        let wait = false;
+        if (traffic && p.state === 'walk') {
+          for (const v of traffic) {
+            if (v.track !== p.track || v.wreck) continue;
+            const d = p.s - v.s;
+            const dx = Math.abs(v.x - p.x);
+            if (Math.abs(d) < v.l + 0.4 && dx < v.w + 0.35) { p.x += Math.sign(p.x - v.x || 1) * 3 * dt; wait = true; break; }
+            const ahead = v.oncoming ? -d : d;
+            if (ahead > -v.l && ahead < 10 + v.v * 0.9 && Math.abs(v.x - (p.x + p.vx * 0.8)) < v.w + 0.8) { wait = true; break; }
+          }
+        }
+        if (!wait) p.x += p.vx * dt;
         if (p.state !== 'idle' && Math.abs(p.x) > hw + 4) { this.list.splice(i, 1); continue; }
       } else if (p.state === 'freeze') {
         p.rot = Math.sin(p.t * 30) * 0.08;
