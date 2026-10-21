@@ -485,7 +485,7 @@ export class Game {
       P.x = xNew;
       this.sky.setSkyline(child.stage.skyline || 'midrise');
       this.applyStageAtmo(child);
-      this.areaMusic(child.stage, 6);
+      this.areaMusic(child.stage, 1.8);
       this.hud.setStage(child.stage, this.kind);
     }
     if (tr.parent && P.s > 560 && !tr.gcDone) {

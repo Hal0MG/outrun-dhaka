@@ -28,7 +28,7 @@ Every car drives the same; pick the body you like.
 
 The clock is what counts: a circuit has gold, silver and bronze times, and your best time and medal are saved per race and shown on the map. Every car you pass tops up the tank (and every fifth gives a nitro charge), so a tank that burns about a lap's worth means you have to keep overtaking. On divided roads, stretches of ROAD WORKS close our carriageway and push everyone onto the opposite one, against oncoming traffic; driving the wrong way pays in nitro and fuel.
 
-Music is Bengali folk and film music on tabla, dhol, harmonium, tanpura, sitar, ektara, bansuri and shehnai. Music and sound effects have separate volume, reverb and compression. Winning any race unlocks the Rickshaw 9000 in the garage.
+Music is five original tracks on Bengali scales (Yaman, Kafi, Bhairav, Khamaj, Bilawal) with tabla, bansuri and ektara, changing with each district. Music and sound effects have separate volume, reverb and compression. Winning any race unlocks the Rickshaw 9000 in the garage.
 
 ## Build
 
