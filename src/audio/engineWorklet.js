@@ -101,7 +101,7 @@ class EngineProcessor extends AudioWorkletProcessor {
       const y2 = y1 + this.fb2 * this.lp2;
       this.d2[this.i2] = y2; this.i2 = (this.i2 + 1) & 8191;
       // tailpipe: two-pole lowpass that opens up under load and at high revs
-      const cut = Math.min(0.9, 0.06 + this.bright * 0.25 + thr * 0.22 + (rpm / this.red) * 0.3);
+      const cut = Math.min(0.6, 0.03 + this.bright * 0.15 + thr * 0.1 + (rpm / this.red) * 0.16);
       this.muf += (y2 - this.muf) * cut;
       this.muf2 += (this.muf - this.muf2) * cut;
       let s = this.muf2;
@@ -130,11 +130,11 @@ registerProcessor('engine-proc', EngineProcessor);
 // Engine characters. rpm range, gears, and the exhaust model.
 export const ENGINES = {
   // flat-twelve wedge: twelve even pulses, short headers, a howl at the top
-  v12: { idle: 950, red: 8400, gears: 6, cfg: { imbalance: 0.08, cyl: 12, stroke: 4, header: 0.42, muffler: 1.3, fb1: 0.5, fb2: 0.32, pulse: 0.0007, grit: 0.25, bright: 0.75, intake: 0.22, whine: 0.012, crackle: 0.35, drive: 1.5 } },
+  v12: { idle: 950, red: 8400, gears: 6, cfg: { imbalance: 0.32, cyl: 12, stroke: 4, header: 0.8, muffler: 2.6, fb1: 0.5, fb2: 0.55, pulse: 0.0026, grit: 0.12, bright: 0.25, intake: 0.12, whine: 0.004, crackle: 0.35, drive: 1.1 } },
   // the uncle Premio: buzzy four, long quiet exhaust
-  i4: { idle: 750, red: 6800, gears: 5, cfg: { imbalance: 0.12, cyl: 4, stroke: 4, header: 0.75, muffler: 2.3, fb1: 0.46, fb2: 0.42, pulse: 0.0011, grit: 0.35, bright: 0.35, intake: 0.35, whine: 0.008, crackle: 0.1, drive: 1.9 } },
+  i4: { idle: 750, red: 6800, gears: 5, cfg: { imbalance: 0.12, cyl: 4, stroke: 4, header: 0.95, muffler: 2.9, fb1: 0.48, fb2: 0.5, pulse: 0.0018, grit: 0.18, bright: 0.15, intake: 0.2, whine: 0.003, crackle: 0.12, drive: 1.3 } },
   // single-cylinder two-stroke three-wheeler: rattly, nasal, ring-ding-ding
-  cng: { idle: 1700, red: 7600, gears: 4, cfg: { cyl: 1, stroke: 2, header: 0.33, muffler: 0.9, fb1: 0.62, fb2: 0.3, pulse: 0.0016, grit: 0.55, bright: 0.6, intake: 0.2, whine: 0.004, crackle: 0.5, drive: 2.4 } },
+  cng: { idle: 1700, red: 7600, gears: 4, cfg: { cyl: 1, stroke: 2, header: 0.5, muffler: 1.4, fb1: 0.58, fb2: 0.4, pulse: 0.0022, grit: 0.35, bright: 0.35, intake: 0.15, whine: 0.002, crackle: 0.5, drive: 1.7 } },
   // Rickshaw 9000: cross-plane V8 burble under the jet
-  jet: { idle: 800, red: 7200, gears: 6, cfg: { cyl: 8, stroke: 4, offs: [0, 0.09, 0.25, 0.34, 0.5, 0.59, 0.75, 0.84], imbalance: 0.22, header: 0.6, muffler: 1.7, fb1: 0.5, fb2: 0.4, pulse: 0.0012, grit: 0.3, bright: 0.45, intake: 0.3, whine: 0.006, crackle: 0.45, drive: 1.8 } },
+  jet: { idle: 800, red: 7200, gears: 6, cfg: { cyl: 8, stroke: 4, offs: [0, 0.09, 0.25, 0.34, 0.5, 0.59, 0.75, 0.84], imbalance: 0.28, header: 0.85, muffler: 2.6, fb1: 0.5, fb2: 0.5, pulse: 0.0018, grit: 0.15, bright: 0.2, intake: 0.15, whine: 0.003, crackle: 0.45, drive: 1.2 } },
 };

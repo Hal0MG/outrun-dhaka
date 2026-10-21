@@ -65,8 +65,8 @@ export class AudioEngine {
       const eng = ENGINES[this.engineKind] || ENGINES.v12;
       const W = new AudioWorkletNode(ctx, 'engine-proc', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: eng.cfg });
       // body: a little low-end weight and a presence bump, like a mic behind the car
-      const low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 140; low.gain.value = 5;
-      const pres = ctx.createBiquadFilter(); pres.type = 'peaking'; pres.frequency.value = 1800; pres.Q.value = 0.8; pres.gain.value = 2.5;
+      const low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 160; low.gain.value = 9;
+      const pres = ctx.createBiquadFilter(); pres.type = 'peaking'; pres.frequency.value = 2600; pres.Q.value = 0.7; pres.gain.value = -5;
       const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 28;
       W.connect(hp).connect(low).connect(pres).connect(this.eng);
       const send = ctx.createGain(); send.gain.value = 0.08;
