@@ -2,6 +2,7 @@
 
 import { bn, fmtTime, clamp } from '../core/util.js';
 import { ROUTE, STAGES } from '../world/stages.js';
+import { audio } from '../audio/audio.js';
 import { drawDhaka } from './dhakamap.js';
 
 const $ = (id) => document.getElementById(id);
@@ -34,6 +35,7 @@ export class HUD {
     this.needEl = $('hNeed');
     this.gapA = $('hGapA');
     this.gapB = $('hGapB');
+    this.parEl = $('hPar');
     this.tagsEl = $('hTags');
     this.fuelEl = $('hFuel');
     this.fuelBar = $('hFuelBar');
@@ -147,6 +149,7 @@ export class HUD {
 
   // Tuntuni's speech bubble; bubbleAt() keeps it on the car
   speak(text) {
+    audio.talk(text);
     this.bubbleText.textContent = text;
     this.bubble.classList.add('show');
     this.speakT = Math.max(2.2, text.length * 0.07);
@@ -242,8 +245,18 @@ export class HUD {
   update(dt, d) {
     this.t += dt;
     const L = this.last;
-    if (L.pos !== d.pos) { this.time.textContent = bn(d.pos); L.pos = d.pos; }
-    if (L.field !== d.field) { this.ofEl.textContent = '/' + d.field; L.field = d.field; }
+    // the clock is the headline; where you are in the field is the small print under it
+    if (this.t - (L.rtT || 0) > 0.05) { this.time.textContent = fmtTime(d.raceT); L.rtT = this.t; }
+    const posTxt = `P${d.pos} / ${d.field}`;
+    if (L.posTxt !== posTxt) { this.ofEl.textContent = posTxt; L.posTxt = posTxt; }
+    // the next medal to beat
+    let par = '', cls = '';
+    if (d.par) {
+      const k = d.par.findIndex((p) => d.raceT < p);
+      if (k >= 0) { par = `${['GOLD', 'SILVER', 'BRONZE'][k]} ${fmtTime(d.par[k], 0)}`; cls = ['gold', 'silver', 'bronze'][k]; }
+      else { par = 'NO MEDAL'; cls = ''; }
+    }
+    if (L.par !== par) { this.parEl.textContent = par; this.parEl.className = 'par ' + cls; L.par = par; }
     // objective: the lap on a circuit, the next knockout gate on the Run
     let need, ok;
     if (this.kind === 'circuit') {

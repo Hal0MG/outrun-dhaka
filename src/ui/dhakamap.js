@@ -99,12 +99,11 @@ export function drawDhaka(cv, opts = {}) {
     c.lineWidth = small ? 1.5 : sel ? 5 : 3;
     c.strokeStyle = INK;
     c.stroke();
-    const best = opts.best?.[id];
-    if (best && !small) {
-      c.fillStyle = best === 1 ? '#ffb000' : best <= 3 ? '#c0c4cc' : '#19a84a';
+    // a medal pin for the best medal won here
+    const medal = opts.best?.[id];
+    if (medal && !small) {
+      c.fillStyle = medal === 1 ? '#ffb000' : medal === 2 ? '#c0c4cc' : '#c98a52';
       c.beginPath(); c.arc(x + r * 0.95, y - r * 0.95, 8, 0, Math.PI * 2); c.fill(); c.stroke();
-      c.fillStyle = INK; c.font = '400 10px "Bungee", sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText(String(best), x + r * 0.95, y - r * 0.95 + 1);
     }
     if (opts.labels) {
       c.font = `400 ${sel ? 17 : 14}px "Bungee", sans-serif`;

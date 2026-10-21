@@ -116,7 +116,7 @@ button { font: inherit; color: inherit; }
   background-image: radial-gradient(circle, var(--red) 2.5px, transparent 3px); background-size: 14px 14px; background-position: 3px 3px; background-color: var(--paper); }
 .h-time .lbl { font-family: var(--f-display); font-size: 12px; letter-spacing: 0.15em; background: var(--paper); display: inline-block; padding: 0 6px; }
 .h-time .lbl i { font-style: normal; font-family: var(--f-bn); font-size: 15px; color: var(--red); letter-spacing: 0; }
-.h-time .big { font-family: var(--f-display); font-size: 54px; line-height: 0.95; color: var(--red); -webkit-text-stroke: 2px #000; paint-order: stroke fill; text-shadow: 3px 3px 0 #000; background: var(--paper); padding: 0 8px; margin: 0 -6px; font-variant-numeric: tabular-nums; }
+.h-time .big { font-family: var(--f-display); font-size: 34px; line-height: 0.95; color: var(--red); -webkit-text-stroke: 2px #000; paint-order: stroke fill; text-shadow: 3px 3px 0 #000; background: var(--paper); padding: 0 8px; margin: 0 -6px; font-variant-numeric: tabular-nums; }
 .h-time.low { animation: lowtime 0.5s steps(2) infinite; }
 .h-time.low .big { color: var(--marigold); }
 @keyframes lowtime { 50% { background-color: var(--red); } }
@@ -203,7 +203,7 @@ body.touch .h-radio, body.touch #hMap { display: none; }
 
 @media (max-width: 700px) {
   .h-time { transform: rotate(-2deg) scale(0.78); transform-origin: left top; }
-  .h-time .big { font-size: 46px; }
+  .h-time .big { font-size: 30px; }
   .h-score .row { font-size: 18px; }
   .h-progress { top: calc(100px + env(safe-area-inset-top, 0px)); width: 56vw; }
   .h-combo { right: 4vw; top: 34vh; }
@@ -220,9 +220,8 @@ body.touch .h-radio, body.touch #hMap { display: none; }
 @keyframes slam { 0% { transform: scale(2.4) rotate(-8deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1) rotate(-3deg); } }
 
 /* ---------------------------------------------------------------- THE RUN */
-.h-time .of { font-family: var(--f-display); font-size: 13px; letter-spacing: 0.1em; margin-top: 1px; }
+.h-time .of { font-family: var(--f-display); font-size: 14px; letter-spacing: 0.1em; margin-top: 1px; }
 .h-time.up { animation: addtime 0.6s ease-out; }
-.h-time.down .big { color: #6b6f78; }
 .h-obj { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: calc(118px + env(safe-area-inset-top, 0px)); font-family: var(--f-display); font-size: 12px; letter-spacing: 0.06em; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
 .h-obj .need { background: var(--marigold); color: #000; border: 2px solid #000; box-shadow: 3px 3px 0 #000; padding: 2px 8px; }
 .h-obj .need.ok { background: #19a84a; color: #fff; }
@@ -286,3 +285,7 @@ body.touch .h-hct { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .bubble::after { content: ""; position: absolute; left: 22px; bottom: -14px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 13px solid #000; }
 body.touch .bubble { font-size: 14px; }
 body.touch #tuntuni { width: 40px; height: 40px; }
+.h-obj .par { font-size: 11px; letter-spacing: 0.1em; color: var(--paper); text-shadow: 2px 2px 0 #000; padding-left: 2px; }
+.h-obj .par.gold { color: #ffc400; }
+.h-obj .par.silver { color: #d4dae0; }
+.h-obj .par.bronze { color: #d98a4e; }

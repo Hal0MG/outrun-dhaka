@@ -26,16 +26,24 @@ export class AudioEngine {
     if (!AC) return;
     const ctx = (this.ctx = new AC({ latencyHint: 'interactive' }));
     this.master = ctx.createGain();
+    // the master only stops clipping. Music and sound effects each have their own bus, compressor and reverb,
+    // so loud effects never squash the music and each slider moves only its own sound (reverb included)
+    this.limiter = ctx.createDynamicsCompressor();
+    this.limiter.threshold.value = -2;
+    this.limiter.knee.value = 0;
+    this.limiter.ratio.value = 20;
+    this.limiter.attack.value = 0.003;
+    this.limiter.release.value = 0.12;
+    this.master.connect(this.limiter).connect(ctx.destination);
     this.comp = ctx.createDynamicsCompressor();
     this.comp.threshold.value = -14;
     this.comp.ratio.value = 4;
-    this.master.connect(this.comp).connect(ctx.destination);
     this.music = ctx.createGain();
     this.sfx = ctx.createGain();
     this.amb = ctx.createGain();
     this.eng = ctx.createGain();
     this.music.connect(this.master);
-    this.sfx.connect(this.master);
+    this.sfx.connect(this.comp).connect(this.master);
     this.amb.connect(this.sfx);
     this.eng.connect(this.sfx);
     // reverb
@@ -43,7 +51,12 @@ export class AudioEngine {
     this.reverb.buffer = this.impulse(2.6, 2.2);
     this.revIn = ctx.createGain();
     this.revIn.gain.value = 1;
-    this.revIn.connect(this.reverb).connect(this.master);
+    this.revIn.connect(this.reverb).connect(this.sfx);
+    // the music's own reverb, returned into the music bus
+    this.reverbM = ctx.createConvolver();
+    this.reverbM.buffer = this.reverb.buffer;
+    this.revInM = ctx.createGain();
+    this.revInM.connect(this.reverbM).connect(this.music);
     this.sfxRev = ctx.createGain();
     this.sfxRev.gain.value = 0.25;
     this.sfxRev.connect(this.reverb);
@@ -687,6 +700,49 @@ export class AudioEngine {
   }
 
   // UI ------------------------------------------------------------------
+  // Tuntuni talking: a little voiced babble, one syllable-blip per letter, no words (like a game character's
+  // chatter). Vowels are longer and brighter, a trailing '?' lifts the pitch, '!' is more excited.
+  talk(text) {
+    if (!this.ctx || !this.ready) return;
+    const ctx = this.ctx;
+    const letters = text.replace(/[^A-Za-z!?., '’]/g, '');
+    const excited = /!/.test(text);
+    const asks = text.trim().endsWith('?');
+    const base = excited ? 470 : 410;
+    let t = ctx.currentTime + 0.03;
+    let n = 0;
+    // a soft pop as the bubble appears
+    this.tone('sine', excited ? 980 : 780, 0.05, 0.045, { lp: 3000 });
+    for (let i = 0; i < letters.length && n < 36; i++) {
+      const ch = letters[i].toLowerCase();
+      if (ch === ' ') { t += 0.045; continue; }
+      if ('.,!?'.includes(ch)) { t += 0.13; continue; }
+      if (ch === "'" || ch === '’') continue;
+      const code = ch.charCodeAt(0) - 96;
+      const vowel = 'aeiouy'.includes(ch);
+      const lift = asks && i > letters.length - 9 ? 1 + (i - (letters.length - 9)) * 0.025 : 1;
+      const f0 = base * (1 + (((code * 7) % 11) - 5) * 0.04 + (vowel ? 0.07 : 0)) * lift;
+      const dur = vowel ? 0.08 : 0.045;
+      const o = ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.linearRampToValueAtTime(f0 * (excited ? 1.1 : 1.04), t + dur);
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = vowel ? 650 + ((code * 37) % 900) : 1900;
+      bp.Q.value = 2.2;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vowel ? 0.2 : 0.09, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+      o.connect(bp).connect(g).connect(this.sfx);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+      t += vowel ? 0.064 : 0.05;
+      n++;
+    }
+  }
+
   blip(f = 880) { this.tone('square', f, 0.06, 0.06, { lp: 3000 }); }
   confirm() { this.tone('square', 660, 0.08, 0.07, { lp: 3000 }); this.tone('square', 990, 0.12, 0.07, { lp: 3000, delay: 0.07 }); }
   back() { this.tone('square', 440, 0.1, 0.06, { lp: 2000, to: 330 }); }

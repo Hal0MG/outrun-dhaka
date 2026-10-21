@@ -1,6 +1,6 @@
 // Traffic: Dhaka's ordinary road users (rickshaws, CNGs, buses, cars, police
-// and RAB pickups, regular jams) and plenty of them: the road is meant to be
-// chaotic. They are scenery that moves: nothing here ever slows a racer down.
+// and RAB pickups) and plenty of them: the road is meant to be
+// busy. They are scenery that moves: nothing here ever slows a racer down.
 // Anything a racer (you or a rival) runs into is flung off the road and gone a
 // moment later. Bikes, CNGs and e-rickshaws weave between lanes.
 //
@@ -8,11 +8,12 @@
 // road can cross district tracks.
 
 import { LANE_W } from '../world/track.js';
+import { oppLayout } from '../world/zones.js';
 import * as THREE from 'three';
 import { clamp, RNG } from '../core/util.js';
 
 const MAX_CARS = 28; // moving cars on the road ahead at once
-const MAX_JAM = 9;
+const MAX_ONCOMING = 9; // coming the other way on the opposite carriageway
 const SPAWN_AHEAD = [220, 820];
 const KEEP_BEHIND = 70, KEEP_AHEAD = 950;
 const CAR_COLORS = ['#f2f2ee', '#c9ccd0', '#1c1c1e', '#8a1d22', '#2b4a6b', '#e8e2d0', '#5a5a5e', '#d8d2c0', '#3a4a3a'];
@@ -34,7 +35,6 @@ const TYPES = {
   police: { models: ['policeHilux'], speed: [28, 36], weight: 0.35, beacon: true },
   rab: { models: ['rab'], speed: [30, 38], weight: 0.25, beacon: true },
 };
-const JAM_TYPES = { car: 5, rickshaw: 3, cng: 3, bus: 1.5, micro: 1, suv: 1 };
 
 export class Traffic {
   constructor(game) {
@@ -43,7 +43,6 @@ export class Traffic {
     this.cars = [];
     this.events = [];
     this.cool = 0;
-    this.jamAt = 0;
     this.factor = 1; // (how busy the streets are; the pedestrians read it)
   }
 
@@ -51,7 +50,6 @@ export class Traffic {
     this.cars.length = 0;
     this.events.length = 0;
     this.cool = 1;
-    this.jamAt = 0;
   }
 
   make(type, G, x, v, opts = {}) {
@@ -64,7 +62,7 @@ export class Traffic {
       type, model, md, G, x, v, w: md.wid / 2, l: md.len / 2, track: null, s: 0,
       weave: T.weave || 0, weaveT: this.rng.range(1, 5), tx: x,
       color: color ? new THREE.Color(1, 1, 1) : new THREE.Color(this.rng.pick(T.colors)),
-      brake: !!opts.brake, beacon: !!T.beacon, wreck: null, yaw: 0, roll: 0, pitch: 0, lift: 0, still: !!opts.still,
+      brake: !!opts.brake, beacon: !!T.beacon, wreck: null, yaw: opts.dir < 0 ? Math.PI : 0, roll: 0, pitch: 0, lift: 0, still: !!opts.still, dir: opts.dir || 1,
     };
     // the plain-bodied models (rickshaws, buses...) carry their own paint: tint them a little
     if (!T.colors && !color) car.color.setScalar(this.rng.range(0.85, 1.05));
@@ -103,35 +101,25 @@ export class Traffic {
     this.make(type, G, x, this.rng.range(T.speed[0], T.speed[1]));
   }
 
-  // a queue of stopped cars across most of the road, one lane left open, a police pickup at its head
-  spawnJam(PG) {
+  // a car coming the other way on the opposite carriageway of a divided road
+  spawnOncoming(PG) {
     const race = this.game.race;
-    const G0 = PG + 560;
-    const L = race.locate(G0);
-    if (!L || L.tr.isFinal || L.s > L.tr.length - 260) return;
+    const G = PG + this.rng.range(300, 820);
+    const L = race.locate(G);
+    if (!L) return;
     const tr = L.tr;
     const sc = Math.min(L.s, tr.length);
-    const lanes = Math.round(tr.lanesAt(sc));
-    if (lanes < 3) return;
-    const hw = tr.halfWAt(sc);
-    const open = this.rng.int(0, lanes - 1);
-    const types = this.rng;
-    let made = 0;
-    for (let l = 0; l < lanes && made < MAX_JAM; l++) {
-      if (l === open) continue;
-      const rows = this.rng.int(2, 4);
-      for (let k = 0; k < rows; k++) {
-        const type = types.weighted(JAM_TYPES);
-        const G = G0 + k * this.rng.range(9, 13) + this.rng.range(-1, 1);
-        const x = -hw + LANE_W * (l + 0.5) + this.rng.range(-0.5, 0.5);
-        const md = this.game.fleet.md(TYPES[type].models[0]);
-        if (!this.free(G, x, md.len / 2, md.wid / 2)) continue;
-        if (this.make(type, G, x, 0, { brake: true, still: true })) made++;
-      }
-    }
-    // the checkpoint: a police pickup across the head of the queue
-    const x = -hw + LANE_W * ((open + 1) % lanes + 0.5);
-    this.make('police', G0 - 12, x, 0, { brake: true, still: true });
+    if (tr.isFinal && L.s > tr.goalS - 100) return;
+    if (L.s > tr.length - 80 && !tr.isFinal) return;
+    if (this.game.world.sideTypeAt(tr, sc, 1) !== 'median') return;
+    const o = oppLayout(tr, sc, tr.stage);
+    const lanes = Math.max(1, Math.round((tr.stage.lanes * LANE_W) / LANE_W));
+    const type = this.rng.weighted({ car: 4, rickshaw: 1.5, cng: 3, bus: 1.5, suv: 1.5, micro: 1.2, truck: 1, bike: 1 });
+    const T = TYPES[type];
+    const x = o.near + LANE_W * (this.rng.int(0, lanes - 1) + 0.5) + this.rng.range(-0.4, 0.4);
+    const md = this.game.fleet.md(T.models[0]);
+    if (!this.free(G, x, md.len / 2, md.wid / 2)) return;
+    this.make(type, G, x, this.rng.range(T.speed[0], T.speed[1]) + 4, { dir: -1 });
   }
 
   fling(car, m) {
@@ -168,11 +156,10 @@ export class Traffic {
     const PG = race.playerG();
     this.cool -= dt;
     if (go) {
-      const alive = this.cars.reduce((n, c) => n + (c.wreck || c.still ? 0 : 1), 0);
+      const alive = this.cars.reduce((n, c) => n + (c.wreck || c.still || c.dir < 0 ? 0 : 1), 0);
+      const onc = this.cars.reduce((n, c) => n + (c.dir < 0 && !c.wreck ? 1 : 0), 0);
+      if (onc < MAX_ONCOMING && this.rng.chance(dt * 2.5)) this.spawnOncoming(PG);
       if (alive < MAX_CARS && this.cool <= 0) { this.spawn(PG); if (alive < MAX_CARS - 4) this.spawn(PG); this.cool = this.rng.range(0.1, 0.3); }
-      // a jam every kilometre or two
-      if (!this.jamAt) this.jamAt = PG + 1100;
-      if (PG > this.jamAt) { this.jamAt = PG + this.rng.range(1200, 1900); this.spawnJam(PG); }
     }
     for (let i = this.cars.length - 1; i >= 0; i--) {
       const c = this.cars[i];
@@ -194,12 +181,12 @@ export class Traffic {
         let v = c.v;
         if (!c.still) {
           for (const o of this.cars) {
-            if (o === c || o.wreck || Math.abs(o.x - c.x) > c.w + o.w + 0.8) continue;
-            const gap = o.G - c.G - o.l - c.l;
+            if (o === c || o.wreck || o.dir !== c.dir || Math.abs(o.x - c.x) > c.w + o.w + 0.8) continue;
+            const gap = (o.G - c.G) * c.dir - o.l - c.l;
             if (gap > 0 && gap < 12 && o.v < v) v = o.v;
           }
-          c.G += v * dt;
-          this.weave(c, dt);
+          c.G += v * dt * c.dir;
+          if (c.dir > 0) this.weave(c, dt);
         }
         // hit by a racer
         for (const m of movers) {

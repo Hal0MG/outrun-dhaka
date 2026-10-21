@@ -17,6 +17,7 @@ import { Peds } from './peds.js';
 import { Stalls, DEBRIS } from './stalls.js';
 import { Dialogue } from '../ui/dialogue.js';
 import { Ambience } from './ambience.js';
+import { contraAt } from '../world/contra.js';
 import { Particles } from './particles.js';
 import { Weather } from './weather.js';
 import { loadCarAssets } from './carassets.js';
@@ -140,6 +141,7 @@ export class Game {
     this.say.reset();
     this._lowFuel = false;
     this.raceT = 0;
+    this._warned = new Set();
     this.hud.setStage(tr.stage, kind);
     this.hud.show(true);
     this.cam.mode = 'chase';
@@ -163,6 +165,16 @@ export class Game {
     if (n === laps) setTimeout(() => this.say.say('tipLastLap', 1, false, 9999), 3200);
   }
 
+  onPass(n, nitro) {
+    this.hud.combo(n > 1 ? `PASSED ×${n}` : 'PASSED', nitro ? '+FUEL · +NITRO' : '+FUEL');
+    audio.blip(1000 + Math.min(n, 5) * 120);
+  }
+
+  onWrongWay(nitro) {
+    this.hud.combo('WRONG WAY', nitro ? '+NITRO · +FUEL' : '+FUEL');
+    audio.blip(1500);
+  }
+
   onKnockout(cut, knocked) {
     this.hud.takedown('KNOCKOUT', `${knocked} OUT · TOP ${cut} GO ON`, 2.6);
     audio.checkpoint();
@@ -171,14 +183,14 @@ export class Game {
 
   onPosition(pos, prev) {
     this.hud.position(pos, pos < prev);
-    if (pos < prev) { audio.blip(1400); this.say.say(pos === 1 ? 'lead' : 'pass', pos === 1 ? 1 : 0.7); }
-    else this.say.say('passed', 0.5);
+    if (pos < prev) { audio.blip(1400); this.say.say(pos === 1 ? 'lead' : 'pass', pos === 1 ? 1 : 0.3); }
+    else this.say.say('passed', 0.2);
   }
 
   onPickup(p) {
     if (p.kind === 'coin') audio.tone('square', 1500 + (this.race.coins % 5) * 120, 0.07, 0.05, { lp: 5000 });
-    else if (p.kind === 'fuel') { audio.checkpoint(); this.hud.combo('FUEL', '+TANK'); this.say.say('fuel', 0.8); }
-    else if (p.kind === 'nitro') { audio.blip(1800); this.hud.combo('NITRO', '+1 CHARGE'); this.say.say('nitroPick', 0.7); }
+    else if (p.kind === 'fuel') { audio.checkpoint(); this.hud.combo('FUEL', '+TANK'); this.say.say('fuel', 0.4); }
+    else if (p.kind === 'nitro') { audio.blip(1800); this.hud.combo('NITRO', '+1 CHARGE'); this.say.say('nitroPick', 0.35); }
   }
 
   onFinish(res) {
@@ -216,7 +228,8 @@ export class Game {
       autopilot = { throttle: 0, steer: 0, brake: 1 };
       cinematic = st === 'garage' ? 'garage' : 'title';
     } else if (st === 'countdown') {
-      autopilot = { throttle: 0, steer: 0, brake: 1 };
+      // the rolling start: hold the formation speed until GO
+      autopilot = { throttle: P.v < 22 ? 1 : 0, steer: 0, brake: P.v > 26 ? 0.6 : 0 };
       this.updateCountdown(dt);
     } else if (st === 'goal') {
       autopilot = { throttle: 0, steer: -P.x * 0.08, brake: P.v > 2 ? 0.75 : 1 };
@@ -298,13 +311,13 @@ export class Game {
       if (e.by !== 'player') continue;
       audio.thud();
       this.cam.kick(0.12);
-      this.say.say('hitTraffic', 0.6);
+      this.say.say('hitTraffic', 0.2);
     }
     this.traffic.events.length = 0;
     for (const e of this.peds.events) {
       if (e.by !== 'player') continue;
       audio.boing();
-      this.say.say('ped', 0.8);
+      this.say.say('ped', 0.35);
     }
     this.peds.events.length = 0;
     for (const e of this.stalls.events) {
@@ -312,7 +325,7 @@ export class Game {
       const [cols, n] = DEBRIS[b.kind] || DEBRIS.crate;
       this.burst(b.tr.point(b.s, b.x, 0.9, this._bv), cols, n);
       audio.smash(b.kind.startsWith('stall'));
-      if (e.by === 'player') { this.cam.kick(0.08); this.say.say('smash', 0.7); }
+      if (e.by === 'player') { this.cam.kick(0.08); this.say.say('smash', 0.4); }
     }
     this.stalls.events.length = 0;
     if (P.scrape && P.v > 20) this.say.say('scrape', 0.02);
@@ -326,29 +339,26 @@ export class Game {
     const vr = P.v / P.vmax;
     this.raceT = (this.raceT || 0) + dt;
     const kAt = (d) => Math.abs(tr.kAt(Math.min(P.s + d, tr.length)));
-    // how pickups work, once, early
-    if (this.raceT > 7) say.say('tipPickups', 1, false, 9999);
-    // nitro in hand with a straight ahead
-    if (P.nitro >= 1 && !P.boosting && vr > 0.7 && R.position > 1 && Math.max(kAt(60), kAt(140), kAt(220)) < 0.0015) say.say('tipNitro', 1, false, 28);
-    // a sharp bend at speed
-    if (vr > 0.9 && !P.boosting && kAt(95) > 0.0075) say.say('tipBend', 1, false, 22);
-    // fuel getting low, a can on the way
-    if (P.fuel < 0.5) say.say('tipFuel', 1, false, 30);
-    // sat on the verge
-    if (P.offroad > 0.85 && P.v > 35) this._grass = (this._grass || 0) + dt; else this._grass = 0;
-    if (this._grass > 1.2) say.say('tipGrass', 1, false, 25);
-    // a car right ahead in your lane
-    const PG = R.playerG();
-    for (const r of R.rivals) {
-      const d = r.G - PG;
-      if (!r.out && d > 4 && d < 26 && Math.abs(r.x - P.x) < 2.3 && vr > 0.6) { say.say('tipOvertake', 1, false, 24); break; }
+    // road works ahead: cross to the other carriageway (it pays, too)
+    const zone = contraAt(tr, P.s, 380);
+    this._warned = this._warned || new Set();
+    if (zone && !this._warned.has(zone.id)) {
+      this._warned.add(zone.id);
+      this.hud.takedown('ROAD WORKS', 'CROSS OVER · THE WRONG WAY PAYS', 2.6);
+      say.sayText('contra', 'Road works! Take the other side, it pays.', 25);
     }
-    // racing line
-    if (this.raceT > 25 && kAt(70) > 0.004) say.say('tipDraft', 0.5, false, 60);
+    // how pickups work, once, early
+    if (this.raceT > 8) say.say('tipPickups', 1, false, 9999);
+    // advice is rare: a few well-timed words, not a running commentary
+    if (P.nitro >= 1 && !P.boosting && vr > 0.7 && R.position > 1 && Math.max(kAt(60), kAt(140), kAt(220)) < 0.0015) say.say('tipNitro', 0.6, false, 90);
+    if (vr > 0.9 && !P.boosting && kAt(95) > 0.0075) say.say('tipBend', 0.5, false, 80);
+    if (P.fuel < 0.3) say.say('tipFuel', 1, false, 90);
+    if (P.offroad > 0.85 && P.v > 35) this._grass = (this._grass || 0) + dt; else this._grass = 0;
+    if (this._grass > 1.5) say.say('tipGrass', 1, false, 70);
     // the next knockout gate
     const ko = R.nextKnockout();
     if (ko && ko.d != null && ko.d < 1400 && R.position > ko.cut - 3) {
-      say.sayText('ko', R.position > ko.cut ? `The cut-off is top ${ko.cut} and we’re ${R.position}th. Push!` : `Cut-off is top ${ko.cut}. Stay ahead of the pack!`, 30);
+      say.sayText('ko', R.position > ko.cut ? `The cut-off is top ${ko.cut} and we’re ${R.position}th. Push!` : `Cut-off is top ${ko.cut}. Stay ahead of the pack!`, 120);
     }
   }
 
@@ -458,7 +468,7 @@ export class Game {
     if (I.horn && !this.horning) { this.horning = true; audio.horn(audio.engineKind, true); }
     else if (!I.horn && this.horning) { this.horning = false; audio.horn(audio.engineKind, false); }
     if (P.boosting && !this._wasBoost) { audio.nitro(); this.backfire = 0.15; }
-    if (!P.boosting && this._wasBoost && P.nitro < 1) this.say.say('nitroOut', 1);
+    if (!P.boosting && this._wasBoost && P.nitro < 1) this.say.say('nitroOut', 0.5, false, 45);
     this._wasBoost = P.boosting;
     if (P.fuel < 0.2 && !this._lowFuel) { this._lowFuel = true; this.say.say('fuelLow', 1, true); }
     else if (P.fuel > 0.4) this._lowFuel = false;
@@ -488,11 +498,11 @@ export class Game {
   handlePlayerEvents() {
     const P = this.player;
     for (const e of P.events) {
-      if (e.type === 'nitro') this.say.say('nitro', 0.6);
-      else if (e.type === 'nitroEmpty') this.say.say('nitroOut', 1);
+      if (e.type === 'nitro') this.say.say('nitro', 0.25);
+      else if (e.type === 'nitroEmpty') this.say.say('nitroOut', 1, false, 45);
       else if (e.type === 'hit') {
         audio.hit();
-        this.say.say('hitRival', 0.7);
+        this.say.say('hitRival', 0.25);
         this.cam.kick(e.hard ? 0.3 : 0.15);
         if (e.side || e.hard) {
           const pose = P.pose({ pos: new THREE.Vector3() });
@@ -726,7 +736,7 @@ export class Game {
     if (this.kind === 'circuit') progress = (P.s - tr.gateS) / (tr.goalS - tr.gateS);
     else progress = (ROUTE.indexOf(tr.stageId) + clamp(P.s / tr.length, 0, 1)) / ROUTE.length;
     this.hud.update(dt, {
-      pos: R.position, field: R.field, near: R.neighbours(), coins: R.coins, lapT: this.kind === 'circuit' ? R.lapT : R.time,
+      pos: R.position, field: R.field, near: R.neighbours(), coins: R.coins, raceT: R.time, par: R.par, lapT: this.kind === 'circuit' ? R.lapT : R.time,
       speed: P.kmh, rpm: audio.rpmNorm ?? P.rpm, gearN: audio.vg ? audio.vg.gear : 0,
       progress: clamp(progress, 0, 1), stageId: tr.stage.district || tr.stageId,
       lap: Math.min(R.lap, tr.laps || 1), laps: tr.laps, ko: R.nextKnockout(),

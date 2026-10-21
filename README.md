@@ -15,8 +15,8 @@ Hold gas and steer. Corners push you to the outside, harder the faster you go, s
 
 ## Races
 
-- **Circuit:** any of the fifteen districts, three laps, twenty cars, you start last. Each lap is the district's own road (its look, landmarks and time of night) laid end to end, so every lap has the same corners.
-- **The Run:** twenty-four cars on one road through every district, dusk to dawn, Dhanmondi to the Padma Bridge (about five minutes). Knockout gates at Shahbag (top 20 go through), Kawran Bazar (16), Gulshan (12), Sadarghat (8), Mirpur (6) and 300 Feet (4); the last four race over the Padma.
+- **Circuit:** any of the fifteen districts, three laps, sixty cars on a rolling start, you start last. Each lap is the district's own road (its look, landmarks and time of night) laid end to end, so every lap has the same corners.
+- **The Run:** seventy-two cars on one road through every district, dusk to dawn, Dhanmondi to the Padma Bridge (about five minutes). Knockout gates at Shahbag (top 56 go through), Kawran Bazar (42), Gulshan (30), Sadarghat (20), Mirpur (12) and 300 Feet (4); the last four race over the Padma.
 
 Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan → Old Dhaka → Sadarghat → Motijheel → Mirpur → Airport Road → 300 Feet → CTG Highway → Savar → Padma Bridge
 
@@ -26,7 +26,9 @@ Fuel and nitro come in rows across the whole road, a few a lap, so you never hav
 
 Every car drives the same; pick the body you like.
 
-Best finishes are saved per race and shown on the map. Winning any race unlocks the Rickshaw 9000 in the garage.
+The clock is what counts: a circuit has gold, silver and bronze times, and your best time and medal are saved per race and shown on the map. Every car you pass tops up the tank (and every fifth gives a nitro charge), so a tank that burns about a lap's worth means you have to keep overtaking. On divided roads, stretches of ROAD WORKS close our carriageway and push everyone onto the opposite one, against oncoming traffic; driving the wrong way pays in nitro and fuel.
+
+Music is Bengali folk and film music on tabla, dhol, harmonium, tanpura, sitar, ektara, bansuri and shehnai. Music and sound effects have separate volume, reverb and compression. Winning any race unlocks the Rickshaw 9000 in the garage.
 
 ## Build
 

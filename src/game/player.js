@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { clamp, damp } from '../core/util.js';
+import { contraAt } from '../world/contra.js';
 
 const G = 9.81;
 // the world is played faster than the speedometer admits: the dash shows v / SPEED_K
@@ -48,6 +49,8 @@ export class Player {
     this.nitroT = 0;
     this.boosting = false;
     this.fuel = 1;
+    this.wrongWay = false;
+    this.inWorks = false;
     // nothing in this game wrecks or launches the car; the camera still asks
     this.crash = null;
     this.air = null;
@@ -114,9 +117,18 @@ export class Player {
     // grass
     const lim = world.limits(tr, sNow, this.x);
     const hw = this.halfW;
-    const off = this.x - hw < lim.lSoft || this.x + hw > lim.rSoft;
+    // the verge is rough; so is a coned-off carriageway (road works), and the median kerb is a bump to cross quickly
+    const works = contraAt(tr, sNow);
+    const inWorks = !!works && this.x - hw < (lim.strip ? lim.strip[0] : lim.hw);
+    const onStrip = !!lim.strip && this.x + hw > lim.strip[0] && this.x - hw < lim.strip[1];
+    const onGrass = this.x - hw < lim.lSoft || this.x + hw > lim.rSoft;
+    const off = onGrass || inWorks;
     this.offroad = damp(this.offroad, off ? 1 : 0, 10, dt);
-    if (off && this.v > GRASS_V) a -= 10 + (this.v - GRASS_V) * 0.6;
+    if (off && this.v > GRASS_V) a -= (10 + (this.v - GRASS_V) * 0.6) * (inWorks && !onGrass ? 0.6 : 1);
+    if (onStrip && this.v > 20) a -= 6 + (this.v - 20) * 0.3;
+    this.inWorks = inWorks;
+    // wrong way: fully on the opposite carriageway
+    this.wrongWay = !!lim.near && this.x - hw > lim.near - 0.2;
     // sliding wide costs a little
     a -= this.drift * 2;
     this.v = clamp(this.v + a * dt, 0, vmax * 1.05);

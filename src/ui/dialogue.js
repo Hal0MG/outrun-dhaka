@@ -46,14 +46,14 @@ export class Dialogue {
 
   // id: a key of LINES; chance: how often she bothers; force skips the rate limits
   // gap: the least time in seconds before she says this kind of thing again
-  say(id, chance = 1, force = false, gap = 7) {
+  say(id, chance = 1, force = false, gap = 20) {
     const set = LINES[id];
     if (!set) return;
     if (!force) {
       if (this.cool > 0 || this.t - (this.last[id] ?? -99) < gap || fx.next() > chance) return;
     }
     this.last[id] = this.t;
-    this.cool = 2.6;
+    this.cool = 7;
     this.hud.speak(fx.pick(set));
   }
 
@@ -61,7 +61,7 @@ export class Dialogue {
   sayText(key, text, gap = 25) {
     if (this.cool > 0 || this.t - (this.last[key] ?? -99) < gap) return;
     this.last[key] = this.t;
-    this.cool = 2.6;
+    this.cool = 7;
     this.hud.speak(text);
   }
 

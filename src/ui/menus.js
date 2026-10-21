@@ -23,7 +23,8 @@ export class Menus {
     this.returnTo = 'title';
     this.mapSel = store.get('mapSel', 'dhanmondi');
     if (this.mapSel !== 'run' && !STAGES[this.mapSel]) this.mapSel = 'dhanmondi';
-    this.best = store.get('best', {});
+    this.medals = store.get('medals', {}); // race id -> 1 gold, 2 silver, 3 bronze
+    this.bestT = store.get('bestT', {}); // race id -> best time in seconds
     this.bindMouse();
   }
 
@@ -222,16 +223,23 @@ export class Menus {
   showResults(res) {
     const key = res.kind === 'run' ? 'run' : this.game.district;
     const where = res.reached?.name?.toUpperCase() || '';
+    // the clock decides how it went: a medal on a circuit, a personal best on both
+    let medal = 0, newBest = false;
     if (!res.out) {
-      if (!this.best[key] || res.pos < this.best[key]) { this.best[key] = res.pos; store.set('best', this.best); }
-      if (res.pos === 1) store.set('wins', store.get('wins', 0) + 1);
+      if (res.par) { const k = res.par.findIndex((p) => res.time < p); medal = k >= 0 ? k + 1 : 0; }
+      if (!this.bestT[key] || res.time < this.bestT[key]) { this.bestT[key] = res.time; newBest = true; store.set('bestT', this.bestT); }
+      if (medal && (!this.medals[key] || medal < this.medals[key])) { this.medals[key] = medal; store.set('medals', this.medals); }
+      if (res.pos === 1 || medal === 1) store.set('wins', store.get('wins', 0) + 1);
     }
-    $('overBn').textContent = res.out === 'fuel' ? 'OUT OF FUEL' : res.out === 'knockout' ? 'KNOCKED OUT' : res.pos === 1 ? 'WINNER' : 'FINISHED';
+    const MEDAL = ['NO MEDAL', 'GOLD', 'SILVER', 'BRONZE'];
+    $('overBn').textContent = res.out === 'fuel' ? 'OUT OF FUEL' : res.out === 'knockout' ? 'KNOCKED OUT' : res.par ? MEDAL[medal] : 'FINISHED';
     if (res.out === 'knockout') $('overEn').textContent = `${ord(res.pos)} AT ${where} · NEEDED TOP ${res.cut}`;
     else if (res.out === 'fuel') $('overEn').textContent = `RAN DRY IN ${ord(res.pos)}${res.kind === 'run' ? ' · ' + where : ''}`;
-    else $('overEn').textContent = `${ord(res.pos)} OF ${res.field}`;
-    $('overSub').textContent = !res.out && res.pos <= 3 ? 'ON THE PODIUM' : '';
+    else $('overEn').textContent = fmtTime(res.time);
+    $('overSub').textContent = res.out ? '' : newBest ? 'NEW PERSONAL BEST' : '';
     const rows = [['RACE TIME', fmtTime(res.time)]];
+    if (!res.out) rows.push(['POSITION', `${ord(res.pos)} OF ${res.field}`]);
+    if (res.par) rows.push(['GOLD · SILVER · BRONZE', res.par.map((p) => fmtTime(p, 0)).join(' · ')]);
     if (res.kind === 'circuit') {
       res.laps.forEach((t, i) => rows.push([`LAP ${i + 1}`, fmtTime(t)]));
       if (res.laps.length) rows.push(['BEST LAP', fmtTime(Math.min(...res.laps))]);
@@ -296,8 +304,8 @@ export class Menus {
 
   refreshMap() {
     const id = this.mapSel;
-    drawDhaka($('mapCv'), { sel: id, best: this.best, labels: true });
-    const best = this.best[id];
+    drawDhaka($('mapCv'), { sel: id, best: this.medals, labels: true });
+    const best = this.bestT[id];
     if (id === 'run') {
       const gates = ROUTE.filter((d) => KNOCKOUTS[d]).map((d) => `${STAGES[d].short} ${KNOCKOUTS[d]}`).join(' · ');
       $('mapKind').textContent = 'THE RUN';
@@ -313,6 +321,7 @@ export class Menus {
       $('mapName').textContent = st.name.toUpperCase();
       $('mapSub').textContent = st.sub;
     }
-    $('mapBest').textContent = best ? `BEST · ${ord(best)}` : 'NOT RACED YET';
+    const m = this.medals[id];
+    $('mapBest').textContent = best ? `BEST ${fmtTime(best)}${m ? ' · ' + ['', 'GOLD', 'SILVER', 'BRONZE'][m] : ''}` : 'NOT RACED YET';
   }
 }

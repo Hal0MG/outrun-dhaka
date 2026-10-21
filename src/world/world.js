@@ -11,6 +11,8 @@ import { buildSpriteAtlas, makeSpriteMaterial } from './sprites.js';
 import { shared, makeAtlasMaterial, makeGlowMaterial, makeWaterMaterial } from './materials.js';
 import { makeRoadMaterial, buildFeatureTexture } from './road.js';
 import { STAGES, childrenOf, KNOCKOUTS } from './stages.js';
+import { buildContra } from './contra.js';
+import { oppLayout } from './zones.js';
 import { LANDMARKS, bannerMaterial, gantryMaterial } from './landmarks.js';
 import * as PR from './props.js';
 import { RNG, hashStr, clamp, smoothstep, lerp } from '../core/util.js';
@@ -154,6 +156,7 @@ export class World {
     tr.isFirst = isFirst;
     tr.level = stage.level;
     tr.contentLength = bCur;
+    tr.contra = []; // ROAD WORKS stretches that push racers onto the opposite carriageway (filled once the track is built)
     // authored stage distance -> track distance
     tr.mapS = (a) => {
       for (const [a0, a1, b0, b1] of map) if (a <= a1) return contentOffset + b0 + (a1 > a0 ? (Math.max(a, a0) - a0) / (a1 - a0) : 0) * (b1 - b0);
@@ -162,7 +165,7 @@ export class World {
     };
     tr.goalS = isFinal ? tr.length - 700 : null;
     // the first track's line has room behind it for the grid
-    tr.gateS = isFirst ? 130 : GATE_S;
+    tr.gateS = isFirst ? 360 : GATE_S; // room behind the line for a long rolling grid
     if (stage.circuit) {
       // lap n starts at lapS(n); the flag drops after the last one
       tr.laps = stage.laps;
@@ -197,6 +200,7 @@ export class World {
     tr.waterMat = makeWaterMaterial({ deep: stage.waterDeep || '#0c2a33', lights: stage.waterLights || '#ffb060' });
     tr.children = null;
     tr.chosen = null;
+    tr.contra = buildContra(tr);
     this.tracks.set(id, tr);
     return tr;
   }
@@ -392,6 +396,32 @@ export class World {
         }
       }
     }
+    // road works: a warning gate ahead, a striped barrier across our lanes and cones down every lane line
+    for (const z of tr.contra || []) {
+      if (z.s1 < ctx.s0 - 100 || z.s0 > ctx.s1 + 100) continue;
+      const gs = z.s0 - 140;
+      if (inChunk(gs)) {
+        const hwG = tr.halfWAt(gs);
+        const o = oppLayout(tr, gs, st);
+        PR.festiveGate(ctx, gs, hwG, o.far, bannerMaterial(['রাস্তা বন্ধ', 'ROAD WORKS · USE THE OTHER SIDE'], { c1: '#e4252b', c2: '#1a0508' }));
+      }
+      const hw0 = tr.halfWAt(Math.min(z.s0, tr.length));
+      if (inChunk(z.s0)) {
+        for (let x = -hw0 + 1.2; x <= hw0 - 1.0; x += 2.4) {
+          const p = ctx.P(z.s0, x, 0, true);
+          ctx.B.fx.box(p[0], p[1], p[2], 2.2, 0.9, 0.3, tr.yawAt(z.s0), { color: [1, 1, 1], region: ctx.fx.get('chevron') });
+        }
+      }
+      const lanes = Math.max(1, Math.round(tr.lanesAt(Math.min(z.s0, tr.length))));
+      for (let s = Math.max(ctx.s0, z.s0 + 6); s < Math.min(ctx.s1, z.s1); s += 8) {
+        const hw = tr.halfWAt(s);
+        for (let l = 0; l <= lanes; l++) {
+          const p = ctx.P(s, -hw + LANE_W * l + (l === 0 ? 0.4 : l === lanes ? -0.4 : 0), 0, true);
+          ctx.B.misc.cylinder(p[0], p[1], p[2], 0.28, 0.04, 0.8, 8, [1, 0.45, 0.05], ctx.misc.get('white'));
+          ctx.B.misc.cylinder(p[0], p[1] + 0.35, p[2], 0.17, 0.12, 0.12, 8, [1.4, 1.4, 1.4], ctx.misc.get('white'));
+        }
+      }
+    }
     // start / checkpoint / goal gates
     if (inChunk(tr.gateS)) {
       const s = tr.gateS;
@@ -470,7 +500,16 @@ export class World {
     const L = sideLimits(this.sideTypeAt(tr, s, -1), tr.stage, sec);
     const R = sideLimits(this.sideTypeAt(tr, s, 1), tr.stage, sec);
     const hw = tr.halfWAt(s);
-    return { lSoft: -(hw + L.soft), lWall: -(hw + L.wall), rSoft: hw + R.soft, rWall: hw + R.wall, hw };
+    const out = { lSoft: -(hw + L.soft), lWall: -(hw + L.wall), rSoft: hw + R.soft, rWall: hw + R.wall, hw, strip: null, near: null };
+    // a divided road: the kerb is low and crossable, and the opposite carriageway is open to you
+    if (this.sideTypeAt(tr, s, 1) === 'median') {
+      const o = oppLayout(tr, s, tr.stage);
+      out.strip = [hw + 0.1, o.near - 0.1];
+      out.near = o.near;
+      out.rSoft = o.far + 0.25;
+      out.rWall = o.far + 0.8;
+    }
+    return out;
   }
 
   update(dt, time, cam) {

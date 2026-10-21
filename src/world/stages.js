@@ -387,8 +387,8 @@ export function childrenOf(id) {
 // ------------------------------------------------------------------ the Run: a knockout across the city
 // Everyone starts in Dhanmondi. Entering these districts is a knockout gate:
 // anyone below the cut-off is out. The last four race across the Padma.
-export const RUN_FIELD = 24;
-export const KNOCKOUTS = { shahbag: 20, kawranBazar: 16, gulshan: 12, sadarghat: 8, mirpur: 6, purbachal: 4 };
+export const RUN_FIELD = 72;
+export const KNOCKOUTS = { shahbag: 56, kawranBazar: 42, gulshan: 30, sadarghat: 20, mirpur: 12, purbachal: 4 };
 
 // ------------------------------------------------------------------ district circuits
 // A district raced as laps: its own sections scaled to about LAP_LEN, long
