@@ -6,7 +6,7 @@ const KEYMAP = {
   ArrowRight: 'right', KeyD: 'right',
   ArrowUp: 'up', KeyW: 'up',
   ArrowDown: 'down', KeyS: 'down',
-  Space: 'boost', KeyB: 'boost', KeyN: 'boost', ShiftLeft: 'gear', ShiftRight: 'gear', KeyZ: 'gear',
+  Space: 'boost', KeyB: 'boost', KeyN: 'boost', ShiftLeft: 'fire', ShiftRight: 'fire', KeyZ: 'fire',
   KeyH: 'horn', KeyX: 'horn',
   KeyR: 'radio',
   KeyM: 'mute',
@@ -74,7 +74,7 @@ export class Input {
       if (b(1)) gBoost = true;
       if (b(14)) gx = -1;
       if (b(15)) gx = 1;
-      const map = { 2: 'gear', 3: 'camera', 9: 'pause', 4: 'radio', 5: 'horn', 0: 'confirm', 1: 'back', 8: 'photo', 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
+      const map = { 2: 'fire', 3: 'camera', 9: 'pause', 4: 'radio', 5: 'horn', 0: 'confirm', 1: 'back', 8: 'photo', 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
       for (const k in map) {
         const now = b(+k);
         const key = gp.index + ':' + k;

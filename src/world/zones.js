@@ -67,3 +67,10 @@ export function oppLaneX(tr, s, stage, lane) {
   const o = oppLayout(tr, s, stage);
   return o.near + LANE_W * (lane + 0.5);
 }
+
+// A jam is a long queue (about three times the authored length) with a checkpoint or accident at its head.
+export function jamSpan(tr, e) {
+  const s0 = tr.mapS(e.s);
+  const len = (tr.mapS(e.s + (e.len || 150)) - s0) * 5;
+  return { s0, s1: s0 + Math.max(480, len) };
+}

@@ -2,19 +2,19 @@
 // streams chunks around the player and answers collision queries.
 
 import * as THREE from 'three';
-import { Track, STEP, LANE_W } from './track.js';
+import { Track, STEP, LANE_W, CURVE_MUL as CURVE_MUL_W } from './track.js';
 import { buildChunk, CHUNK, sideLimits, ChunkCtx } from './chunk.js';
 import { buildFacadeAtlas, buildMiscAtlas } from './textures.js';
 import { buildSignAtlas, makeGantryTexture } from './signs.js';
 import { buildFxAtlas } from './fxatlas.js';
-import { buildZones, contraAt, oppLayout } from './zones.js';
+import { buildZones, contraAt, oppLayout, jamSpan } from './zones.js';
 import { buildSpriteAtlas, makeSpriteMaterial } from './sprites.js';
 import { shared, makeAtlasMaterial, makeGlowMaterial, makeWaterMaterial } from './materials.js';
 import { makeRoadMaterial, buildFeatureTexture } from './road.js';
 import { STAGES, childrenOf, CHECKPOINT_BONUS } from './stages.js';
 import { LANDMARKS, bannerMaterial, gantryMaterial } from './landmarks.js';
 import * as PR from './props.js';
-import { rampAt } from './envs.js';
+import { rampAt, futurePark } from './envs.js';
 import { RNG, hashStr, clamp, smoothstep, lerp } from '../core/util.js';
 
 export const DIVERGE = 340;
@@ -108,7 +108,8 @@ export class World {
     }
     // authored sections, shortened, with bends and crests worked into the long plain straights
     const map = [];
-    let aCur = 0, bCur = 0, flip = hashStr(stageId) % 2 ? 1 : -1;
+    let net = 0; // running heading change; bends that would swing the route round are not exaggerated
+    let aCur = 0, bCur = 0, flip = (hashStr(stageId) + (["padma","savar","sadarghat","oldDhaka"].includes(stageId) ? 1 : 0)) % 2 ? 1 : -1;
     for (const s0 of stage.sections) {
       const sc = defaults(s0);
       const plain = isPlain(sc);
@@ -117,8 +118,13 @@ export class World {
         const water = sc.L === 'lake' || sc.L === 'river' || sc.R === 'lake' || sc.R === 'river' || sc.L === 'bridge' || sc.R === 'bridge' || stage.L === 'bridge';
         // a sweeping bend, never more than ~50 degrees in one section (so long straights can't loop)
         if (!sc.k && sc.len > 90 && !sc.fork && !water) { sc.k = Math.min(0.0034, 0.85 / (sc.len * 1.7)) * flip; flip = -flip; }
-        if (!sc.dy && !water && sc.elev == null && !stage.flat) sc.dy = 4 * (hashStr(stageId + map.length) % 2 ? 1 : -1);
+        if (!sc.dy && !water && sc.elev == null && !stage.flat) sc.dy = 8 * (hashStr(stageId + map.length) % 2 ? 1 : -1);
       }
+      if (plain) {
+        const mul = sc.k * net > 0 && Math.abs(net) > 0.5 ? 1 : CURVE_MUL_W;
+        sc.kMul = mul;
+        net += (sc.k || 0) * mul * sc.len * 0.78;
+      } else net += (sc.k || 0) * sc.len * 0.78;
       map.push([aCur, aCur + s0.len, bCur, bCur + sc.len]);
       aCur += s0.len; bCur += sc.len;
       secs.push(sc);
@@ -324,6 +330,7 @@ export class World {
     for (const l of st.landmarks || []) {
       const s = M(l.s);
       if (!inChunk(s)) continue;
+      if (l.type === 'futurePark') { futurePark(ctx, s, l.side, l.dist); continue; }
       const fn = LANDMARKS[l.type];
       if (!fn) continue;
       if (l.type === 'ledArch') fn(ctx, s, tr.halfWAt(s) + 10, l.opts);
@@ -380,6 +387,22 @@ export class World {
           const p = ctx.P(s, sd * (hw + 0.25), 0);
           ctx.B.misc.box(p[0], p[1], p[2], 0.24, 1.2, 0.24, yaw, { color: [0.95, 0.95, 0.93], region: white });
           ctx.B.misc.box(p[0], p[1] + 0.7, p[2], 0.27, 0.3, 0.27, yaw, { color: sd < 0 ? [0.9, 0.12, 0.1] : [0.95, 0.75, 0.1], region: white });
+        }
+      }
+    }
+    // the checkpoint at the head of every jam: barriers across our carriageway and a taper of cones
+    for (const e of st.events || []) {
+      if (e.type !== 'jam') continue;
+      const { s1 } = jamSpan(tr, e);
+      if (!inChunk(s1) && !inChunk(s1 - 30)) continue;
+      const hw = tr.halfWAt(Math.min(s1, tr.length));
+      const n = Math.max(1, Math.round(hw * 2 / LANE_W));
+      for (let l = 0; l < n; l++) {
+        const x = -hw + LANE_W * (l + 0.5);
+        if (inChunk(s1)) ctx.breakable('barrier', s1, x, { hw: 1.3, hl: 0.4, ht: 0.9, mass: 0.02, score: 100, yaw: tr.yawAt(s1) * 0 });
+        for (let k = 1; k <= 4; k++) {
+          const sc = s1 - 8 * k;
+          if (inChunk(sc) && (l + k) % 2 === 0) ctx.breakable('cone', sc, x + (k - 2.5) * 0.9, { hw: 0.3, hl: 0.3, ht: 0.8, mass: 0.01, score: 50 });
         }
       }
     }

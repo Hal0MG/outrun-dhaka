@@ -236,6 +236,24 @@ function buildGround(ctx, s0, s1, side, type, xIn) {
 
 // ----------------------------------------------------------------- side generators
 
+// side streets: every block or so the buildings part for an inner road, so the avenue never reads as a corridor
+const BLOCK = 92, STREET_W = 10;
+function streetsIn(ctx, side, a, b) {
+  const out = [];
+  for (let k = Math.floor(a / BLOCK) - 1; k <= Math.ceil(b / BLOCK) + 1; k++) {
+    const h = hashStr(ctx.track.id + ':' + side + ':' + k);
+    if (h % 100 >= 72) continue;
+    const s0 = k * BLOCK + 12 + (h % 38);
+    if (s0 + STREET_W < a || s0 > b) continue;
+    out.push([s0, s0 + STREET_W]);
+  }
+  return out;
+}
+function hitStreet(ctx, side, s0, s1) {
+  for (const [a, b] of streetsIn(ctx, side, s0 - 4, s1 + 4)) if (s1 > a - 1 && s0 < b + 1) return [a, b];
+  return null;
+}
+
 function placeBuildingsRow(ctx, a, b, side, xIn, opts) {
   const st = ctx.stage;
   const rng = ctx.rng;
@@ -255,6 +273,7 @@ function placeBuildingsRow(ctx, a, b, side, xIn, opts) {
     };
     const setback = rng.range(0, opts.setback ?? 0.5);
     if (ctx.isClear(s, side, xIn + 5) || ctx.isClear(s + w, side, xIn + 5)) { s += w + 2; continue; }
+    if (!opts.noStreets) { const hit = hitStreet(ctx, side, s, s + w); if (hit) { s = Math.max(s + 1, hit[1] + 0.5); continue; } }
     PR.building(ctx, s, side, xIn + setback, w, d, h, style, { signP: opts.signP });
     // rooftop billboard
     if (opts.billboards && rng.chance(opts.bbP || 0.12) && h < 40) {
@@ -357,6 +376,13 @@ const SIDES = {
     PR.sidewalk(ctx, a, b, side, (s) => xIn(s) + 0.3, sw);
     const xm = xIn((a + b) / 2);
     const front = xm + 0.3 + sw;
+    for (const [s0, s1] of streetsIn(ctx, side, a, b)) {
+      const x0 = front - sw - 0.1, x1 = front + 70;
+      const pa = ctx.P(Math.max(a, s0), side * x0, 0.03, true), pb = ctx.P(Math.max(a, s0), side * x1, 0.03, true);
+      const pc = ctx.P(Math.min(b, s1), side * x1, 0.03, true), pd = ctx.P(Math.min(b, s1), side * x0, 0.03, true);
+      if (side > 0) ctx.B.misc.quad(pa, pb, pc, pd, [0, 0, 1, 4], [0.2, 0.2, 0.21], ctx.misc.get('concrete'));
+      else ctx.B.misc.quad(pd, pc, pb, pa, [0, 0, 1, 4], [0.2, 0.2, 0.21], ctx.misc.get('concrete'));
+    }
     placeBuildingsRow(ctx, a, b, side, front, { billboards: st.billboards, bbP: st.bbP ?? 0.14 });
     // back rows: taller, sparser, no shops
     placeBuildingsRow(ctx, a, b, side, front + 11 + ctx.rng.range(0, 4), { shops: false, heights: st.backHeights || [18, 45], wmin: 10, wmax: 22, gap: 6, towerP: st.towerP ?? 0.12 });

@@ -1029,6 +1029,28 @@ export const LANDMARKS = {
       const q = F.L(-8 + Math.cos(a) * 8.6, 0.1, -side * 12 + Math.sin(a) * 8.6);
       ctx.B.always.box(q[0], q[1], q[2], 0.3, 0.12, 0.3, 0, { color: [3, 2.4, 0.6] });
     }
+    // a huge crowd storming the compound: packed along the fence, fists up, flags, burning barricades
+    {
+      const rng = ctx.rng;
+      const names = ['crowd0', 'crowd1', 'crowd2', 'p_lungi', 'p_shirt', 'p_panjabi', 'p_kameez', 'p_vendor'];
+      for (let i = 0; i < 260; i++) {
+        const along = rng.range(-70, 55);
+        // thicker toward the gate (the fence line), thinner toward the road
+        const lat = -side * (6 + Math.pow(rng.next(), 0.8) * (dist - 22));
+        const p = F.L(along, 0.2, lat);
+        ctx.sprites.add(rng.pick(names), p[0], p[1], p[2], rng.range(0.95, 1.2), { flip: rng.chance(0.5), lamp: 1, glow: 1 });
+      }
+      for (let i = 0; i < 26; i++) {
+        const p = F.L(rng.range(-60, 50), 0, -side * rng.range(10, dist - 24));
+        ctx.sprites.add('flag', p[0], p[1] + 3.2, p[2], rng.range(0.7, 1), { glow: 0 });
+      }
+      for (let i = 0; i < 7; i++) {
+        const along = -55 + i * 18;
+        const c = F.L(along, 0, -side * (dist - 18));
+        ctx.B.always.box(c[0], c[1] + 0.3, c[2], 2.4, 0.5, 1.2, F.yaw, { color: [3, 1.1, 0.2] });
+        (ctx.emitters = ctx.emitters || []).push({ type: 'kilnSmoke', pos: [c[0], c[1] + 2, c[2]] });
+      }
+    }
     // gate lamps and a flag
     const fp = F.L(-30, 0, -side * 30);
     B.cylinder(fp[0], fp[1], fp[2], 0.1, 0.08, 14, 6, [0.85, 0.85, 0.85], ctx.misc.get('metal'));

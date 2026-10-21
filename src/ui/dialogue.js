@@ -35,10 +35,6 @@ export const LINES = {
   cinemaOut: ['Through the screen!'],
   coaster: ['ROLLER COASTER! We do not fit in the seat!'],
   // bosses
-  heliIntro: ['Helicopter. It’s throwing things.'],
-  heliHit: ['We clipped the chopper! Do it again!'],
-  busIntro: ['Two buses, both swerving.'],
-  busHit: ['Ram him again! He’s weaving!'],
 
   // reactions
   crash: ['Careful!','Are you okay?'],

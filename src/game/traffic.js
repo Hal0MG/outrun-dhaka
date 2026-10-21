@@ -144,9 +144,16 @@ export class Traffic {
     const [lo, hi] = this.laneRange(tr, Math.min(s, tr.length));
     let lane = opts.lane;
     if (lane == null) {
-      if (T.lanes === 'left') lane = this.rng.chance(0.75) ? lo : Math.min(lo + 1, hi);
-      else if (T.lanes === 'right') lane = Math.max(lo, hi - (this.rng.chance(0.4) ? 1 : 0));
-      else lane = this.rng.int(lo, hi);
+      // fill every lane evenly: take the emptiest lane near here (slow types lean left, big SUVs right)
+      const n = hi - lo + 1;
+      let from = lo, to = hi;
+      if (T.lanes === 'left') to = Math.max(lo, lo + Math.ceil(n * 0.6) - 1);
+      else if (T.lanes === 'right') from = Math.min(hi, hi - Math.ceil(n * 0.6) + 1);
+      const counts = new Map();
+      for (const o of this.list) if (o.track === tr && !o.oncoming && Math.abs(o.s - s) < 160) counts.set(o.lane, (counts.get(o.lane) || 0) + 1);
+      let best = [], bc = 1e9;
+      for (let l = from; l <= to; l++) { const c = counts.get(l) || 0; if (c < bc) { bc = c; best = [l]; } else if (c === bc) best.push(l); }
+      lane = this.rng.pick(best);
     }
     if (!opts.contra) lane = clamp(lane, opts.anyLane ? 0 : lo, opts.anyLane ? this.ourLanes(tr, s) - 1 : hi);
     const x = opts.x ?? (opts.contra ? oppLaneX(tr, s, stage, lane) : this.laneX(tr, Math.min(s, tr.length), lane) + this.rng.range(-0.5, 0.5));
@@ -209,14 +216,23 @@ export class Traffic {
   // dense cluster blocking the whole carriageway: Dhaka jam
   spawnJam(tr, s, len) {
     const lanes = this.ourLanes(tr, s);
-    for (let ss = s; ss < s + len; ss += this.rng.range(5, 8)) {
+    for (let ss = s; ss < s + len - 14; ss += this.rng.range(8, 13)) {
       for (let l = 0; l < lanes; l++) {
-        if (this.rng.chance(0.82)) {
+        if (this.rng.chance(0.62)) {
           const type = this.rng.weighted({ rickshaw: 4, cng: 3, car: 2, bus: 1.2, bike: 1.5, leguna: 0.8, tesla: 2, micro: 0.8 });
           const v = this.spawn(tr, ss + this.rng.range(-2, 2), { type, lane: l, speed: this.rng.range(0.0, 1.2), anyLane: true });
           if (v) v.special = 'jam';
         }
       }
+    }
+  }
+
+  // what the jam is queuing for: a police checkpoint with its cars slewed across the lanes
+  spawnJamCause(tr, s) {
+    const lanes = this.ourLanes(tr, s);
+    for (const [l, yaw, back] of [[Math.min(1, lanes - 1), 0.45, 10], [Math.max(0, lanes - 2), -0.4, 16]]) {
+      const v = this.spawn(tr, s - back, { T: { models: ['policeHilux'], speed: [0, 0], lanes: 'any', weave: 0, honkDodge: 0 }, type: 'police', model: 'policeHilux', lane: l, speed: 0, force: true, anyLane: true });
+      if (v) { v.special = 'jam'; v.fixedYaw = yaw; v.v = 0; v.vT = 0; v.base = 0; }
     }
   }
 
@@ -457,7 +473,7 @@ export class Traffic {
     // keep inside the road during width changes
     const hw = tr.halfWAt(sNow);
     v.x = clamp(v.x, -hw + v.w + 0.1, hw - v.w - 0.1);
-    v.yaw = Math.atan2(-(v.x - prevX) / Math.max(dt, 1e-4), Math.max(v.v, 1)) * 0.8;
+    v.yaw = v.fixedYaw != null ? v.fixedYaw : Math.atan2(-(v.x - prevX) / Math.max(dt, 1e-4), Math.max(v.v, 1)) * 0.8;
   }
 
   teslaCut(v, dt, player) {

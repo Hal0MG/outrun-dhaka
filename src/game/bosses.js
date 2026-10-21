@@ -1,7 +1,6 @@
 // Bosses.
-//  THE GREAT ESCAPE  (Manik Mia): a helicopter lifts off from Ganabhaban and
-//      flees over the avenue, dumping the household on you. Catch the golden
-//      suitcases, hit the ramps when it swoops low and clip its skids.
+//  THE HELICOPTER (Manik Mia): lifts off beside Ganabhaban, then hangs in front of you
+//      throwing the household at the road until your passenger's rockets bring it down.
 //  THE MIDNIGHT BUS WAR  (Motijheel): two local buses, two drivers who should
 //      not be driving, one road. Shove them into each other, the walls, the
 //      traffic.
@@ -137,22 +136,51 @@ export class Bosses {
     }
     this._p = new THREE.Vector3();
     this.time = 0;
+    this.rockets = [];
   }
 
   clear() {
     this.active = null;
     this.heli.visible = false;
     for (const r of this.rings) { r.visible = false; r.userData.b = null; }
+    for (const m of this.rockets) this.scene.remove(m);
+    this.rockets.length = 0;
   }
 
   // ------------------------------------------------------------ helicopter
   startHeli(track, s, opts = {}) {
     this.active = {
-      kind: 'heli', track, hp: 1, s: s, x: opts.fromX ?? -60, fromX: opts.fromX ?? -60, h: 2, t: 0, throwT: 3.5, phase: 'rise', swoopT: 0, low: 0,
-      name: 'BOSS · THE GREAT ESCAPE', sub: 'Sheikh Hasina, airborne with the entire Ganabhaban inventory', hits: 0, spinT: 0, end: opts.end ?? track.length - 260,
+      kind: 'heli', track, hp: 1, s, x: opts.fromX ?? -60, fromX: opts.fromX ?? -60, h: 2, t: 0, throwT: 3.5, phase: 'rise',
+      name: '', sub: 'SHIFT · FIRE', hits: 0, spinT: 0, rocketT: 0,
     };
     this.heli.visible = true;
     this.events.push({ type: 'bossStart', b: this.active });
+  }
+
+  // the passenger fires a homing rocket at the helicopter
+  fire(P, camera) {
+    const A = this.active;
+    if (!A || A.kind !== 'heli' || A.phase !== 'fight' || A.rocketT > 0) return false;
+    A.rocketT = 0.7;
+    const m = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.9, 8), new THREE.MeshStandardMaterial({ color: '#d8d8d4', roughness: 0.4 }));
+    body.rotation.x = Math.PI / 2;
+    m.add(body);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.25, 8), new THREE.MeshStandardMaterial({ color: '#c8102e' }));
+    tip.rotation.x = -Math.PI / 2;
+    tip.position.z = -0.55;
+    m.add(tip);
+    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 1.6, 0.4) }));
+    flame.scale.set(1, 1, 2.4);
+    flame.position.z = 0.7;
+    m.add(flame);
+    // from the passenger's side of the car
+    P.track.point(P.s - 0.2, P.x - 0.55, 1.35, m.position);
+    m.userData = { v: Math.max(P.v, 20) + 60, age: 0, dir: new THREE.Vector3() };
+    this.scene.add(m);
+    this.rockets.push(m);
+    this.events.push({ type: 'rocket' });
+    return true;
   }
 
   // ------------------------------------------------------------ buses
@@ -164,7 +192,7 @@ export class Bosses {
     const b = T.spawnEnemy(track, 'bossbus', s + 125, { lane: lanes - 1, model: 'bossbus1', speed: 18 });
     if (a) a.enemy.side = -1;
     if (b) b.enemy.side = 1;
-    this.active = { kind: 'bus', track, buses: [a, b].filter(Boolean), t: 0, name: 'BOSS · THE MIDNIGHT BUS WAR', sub: 'Two drivers. One road. Zero sobriety.', hp: 1 };
+    this.active = { kind: 'bus', track, buses: [a, b].filter(Boolean), t: 0, name: '', sub: '', hp: 1 };
     this.events.push({ type: 'bossStart', b: this.active });
   }
 
@@ -219,49 +247,35 @@ export class Bosses {
     if (A.track !== tr) { this.events.push({ type: 'bossGone', b: A }); this.clear(); return; }
     const hw = tr.halfWAt(Math.min(P.s, tr.length));
     const U = this.heli.userData;
-    // where it wants to be
-    let sT = P.s + 48 + Math.sin(A.t * 0.37) * 16;
-    let xT = Math.sin(A.t * 0.53) * hw * 0.8;
-    let hT = 15;
+    if (A.rocketT > 0) A.rocketT -= dt;
+    // it hangs in front of you, always inside the view: ahead of the bonnet, high, near the middle
+    let sT = P.s + 50 + Math.sin(A.t * 0.37) * 8;
+    let xT = P.x * 0.5 + Math.sin(A.t * 0.53) * Math.min(hw * 0.45, 5);
+    let hT = 13 + Math.sin(A.t * 0.8) * 1.5;
     if (A.phase === 'rise') {
-      // lifting off from the lawn beside the road
-      hT = lerp(2, 15, clamp(A.t / 4, 0, 1));
-      xT = lerp(A.fromX, 0, clamp((A.t - 1.5) / 4, 0, 1));
-      sT = Math.max(A.s, P.s + 70);
-      if (A.t > 5.5) { A.phase = 'fight'; A.t = 0; }
+      // lifting off from the lawn beside the road, then swinging in front of the car
+      hT = lerp(2, 13, clamp(A.t / 3.5, 0, 1));
+      xT = lerp(A.fromX, xT, clamp((A.t - 0.8) / 3.2, 0, 1));
+      sT = Math.max(A.s, P.s + 60);
+      if (A.t > 4.2) { A.phase = 'fight'; A.t = 0; }
     } else if (A.phase === 'fight') {
-      // swoop low over the next ramp so you have a chance
-      const ramp = this.nextRamp(tr, P.s);
-      if (ramp && ramp.s - P.s < 180 && ramp.s - P.s > 15) {
-        sT = ramp.s + 22 + (P.v * 0.3);
-        xT = ramp.x;
-        hT = 7.2;
-        A.low = 1;
-      } else A.low = 0;
-      // throw things
       A.throwT -= dt;
       if (A.throwT <= 0) {
         A.throwT = 1.0 + fx.next() * 1.2 - (1 - A.hp) * 0.4;
         this.throwItem(P, A, tr);
       }
-      if (P.s > A.end) { A.phase = 'escape'; A.t = 0; this.events.push({ type: 'bossGone', b: A }); }
-    } else if (A.phase === 'flee' || A.phase === 'escape') {
-      // up and away, west
-      hT = 15 + A.t * 9;
-      xT = -40 - A.t * 30;
-      sT = A.s + 40 * dt + P.v * dt;
-      if (A.phase === 'flee' && A.t < 2.5) {
-        // drop everything on the way out
-        A.dropT = (A.dropT || 0) - dt;
-        if (A.dropT <= 0) { A.dropT = 0.12; this.throwItem(P, A, tr, true); }
-      }
-      if (A.t > 9) { this.heli.visible = false; this.active = null; return; }
+    } else if (A.phase === 'flee') {
+      // shot down: it wobbles off and comes down beside the road
+      hT = Math.max(0, 13 - A.t * 6);
+      xT = A.x + (A.x >= 0 ? 1 : -1) * 6;
+      sT = P.s + 50 - A.t * 4;
+      if (A.t > 3.2) { this.heli.visible = false; this.active = null; return; }
     }
     // fly there like a helicopter: lag, bank, nose down when chasing
-    const vs = clamp((sT - A.s) * 1.6, -30, P.v + 26);
-    A.vs = damp(A.vs || 0, vs, 2, dt);
-    A.s += (A.phase === 'flee' || A.phase === 'escape' ? Math.max(A.vs, P.v * 0.9) : A.vs) * dt;
-    A.vx = damp(A.vx || 0, clamp((xT - A.x) * 1.2, -18, 18), 2.5, dt);
+    const vs = clamp(P.v + (sT - A.s) * 1.8, 0, P.v + 40);
+    A.vs = damp(A.vs || 0, vs, 2.4, dt);
+    A.s += A.vs * dt;
+    A.vx = damp(A.vx || 0, clamp((xT - A.x) * 1.4, -20, 20), 2.5, dt);
     A.x += A.vx * dt;
     A.h = damp(A.h, hT, 1.6, dt);
     if (A.spinT > 0) A.spinT -= dt;
@@ -270,7 +284,7 @@ export class Bosses {
     this.heli.position.copy(p);
     const yaw = tr.yawAt(Math.min(A.s, tr.length));
     this.heli.rotation.set(0, 0, 0);
-    this.heli.rotateY(-yaw + (A.spinT > 0 ? A.spinT * 9 : 0));
+    this.heli.rotateY(-yaw + (A.spinT > 0 ? A.spinT * 9 : 0) + (A.phase === 'flee' ? A.t * 4 : 0));
     this.heli.rotateX(-clamp((A.vs - P.v) * 0.01, -0.25, 0.25) - 0.08);
     this.heli.rotateZ(-A.vx * 0.03 + Math.sin(this.time * 1.7) * 0.03);
     U.rotor.rotation.y += dt * 38;
@@ -278,16 +292,29 @@ export class Bosses {
     U.arm.rotation.z = -1.2 + Math.sin(this.time * 7) * 0.5;
     U.beacon.visible = Math.sin(this.time * 8) > 0;
     U.search.intensity = 30;
-    // a hit: airborne off a ramp, right at the skids
-    if (A.phase === 'fight' && P.air && P.air.kind === 'heliRamp' && !P.air.hitHeli) {
-      const lift = P.air.h0 * (1 - P.airU()) + P.air.h * 4 * P.airU() * (1 - P.airU());
-      if (Math.abs(A.s - P.s) < 14 && Math.abs(A.x - P.x) < 7.5 && A.h - lift < 8) {
-        P.air.hitHeli = true;
-        A.spinT = 0.7;
-        this.damageHeli(0.26, 'ram');
-        this.particles.sparks(p, new THREE.Vector3(0, -1, 0));
-        for (let i = 0; i < 6; i++) this.throwItem(P, A, tr, true);
+    // rockets home in
+    for (let i = this.rockets.length - 1; i >= 0; i--) {
+      const m = this.rockets[i];
+      const u = m.userData;
+      u.age += dt;
+      u.dir.copy(this.heli.position).sub(m.position);
+      const d = u.dir.length();
+      if (d < 3.2 || u.age > 5 || A.phase === 'flee') {
+        this.scene.remove(m);
+        this.rockets.splice(i, 1);
+        if (d < 3.6 && A.phase === 'fight') {
+          A.spinT = 0.6;
+          this.damageHeli(0.125, 'rocket');
+          this.particles.flame(this.heli.position.x, this.heli.position.y, this.heli.position.z);
+          for (let k = 0; k < 6; k++) this.particles.sparks(this.heli.position, new THREE.Vector3(fx.next() - 0.5, -0.5, fx.next() - 0.5));
+          for (let k = 0; k < 3; k++) this.throwItem(P, A, tr, true);
+        }
+        continue;
       }
+      u.dir.multiplyScalar(1 / (d || 1));
+      m.position.addScaledVector(u.dir, u.v * dt);
+      m.lookAt(this.heli.position);
+      if (fx.next() < 0.7) this.particles.smoke(m.position, new THREE.Vector3(0, 0, 0), 0.5, [0.9, 0.9, 0.9]);
     }
     // rotor wash kicks up dust when low
     if (A.h < 9 && fx.next() < 0.5) {
@@ -299,22 +326,12 @@ export class Bosses {
       const b = r.userData.b;
       if (!b || !b.flying || !b.flying.thrown) { r.visible = false; r.userData.b = null; continue; }
       const f = b.flying;
-      // predict the landing point
       const T = (f.vh + Math.sqrt(Math.max(0, f.vh * f.vh + 2 * (b.kind === 'saree' ? 5 : 20) * b.h))) / (b.kind === 'saree' ? 5 : 20);
       tr.point(b.s + f.vs * T, b.x + f.vx * T, 0.08, r.position);
       r.visible = true;
       const k = 1 + Math.sin(this.time * 14) * 0.15;
       r.scale.setScalar(k * (b.kind === 'sofa' ? 1.6 : 1));
     }
-  }
-
-  nextRamp(tr, s) {
-    let best = null;
-    for (const ch of this.world.chunks.values()) {
-      if (ch.track !== tr) continue;
-      for (const o of ch.obstacles) if (o.kind === 'ramp' && o.jump?.kind === 'heliRamp' && o.s > s && (!best || o.s < best.s)) best = o;
-    }
-    return best;
   }
 
   throwItem(P, A, tr, panic = false) {

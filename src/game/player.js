@@ -6,11 +6,13 @@ import * as THREE from 'three';
 import { clamp, damp, lerp, fx, easeIO } from '../core/util.js';
 
 const G = 9.81;
+// the world is played faster than the speedometer admits: the dash shows v / SPEED_K
+export const SPEED_K = 1.35;
 
 export class Player {
   constructor(def) {
     this.def = def;
-    this.vmax = def.top / 3.6;
+    this.vmax = (def.top / 3.6) * SPEED_K;
     this.reset(null);
     this._obs = [];
   }
@@ -49,7 +51,7 @@ export class Player {
     this.airTime = 0;
   }
 
-  get kmh() { return this.v * 3.6; }
+  get kmh() { return (this.v * 3.6) / SPEED_K; }
   get halfW() { return this.def.width / 2; }
   get halfL() { return this.def.length / 2; }
 
@@ -150,20 +152,20 @@ export class Player {
     const thr = this.throttle;
     if (this.gear === 0) {
       const t = this.v / vLo;
-      a += thr * 20 * acc * clamp(1 - t * t, -0.3, 1);
-      if (this.v > vLo && !boostOn) a -= 3.5; // limiter / engine braking
+      a += thr * 20 * acc * SPEED_K * clamp(1 - t * t, -0.3, 1);
+      if (this.v > vLo && !boostOn) a -= 3.5 * SPEED_K; // limiter / engine braking
     } else {
       const t = this.v / vmax;
       // HI gear lugs below ~30% (punish staying in HI from standstill)
       const curve = t < 0.3 ? 0.55 + t * 1.5 : 1 - Math.pow((t - 0.3) / 0.75, 2) * 0.85;
-      a += thr * 14 * acc * clamp(curve, -0.2, 1);
+      a += thr * 14 * acc * SPEED_K * clamp(curve, -0.2, 1);
     }
-    if (boostOn) a += 11 * (1 - clamp(this.v / vmax, 0, 1)) + 3;
+    if (boostOn) a += (11 * (1 - clamp(this.v / vmax, 0, 1)) + 3) * SPEED_K;
     // rpm 0..1 for audio/HUD
     const rpmT = this.gear === 0 ? this.v / vLo : 0.35 + 0.65 * (this.v / this.vmax);
     this.rpm = damp(this.rpm, clamp(rpmT * (0.85 + 0.15 * thr), 0, 1.12), 8, dt);
     // brakes & drag
-    a -= brake * 24;
+    a -= brake * 24 * SPEED_K;
     a -= 0.25 + this.v * 0.01 + this.v * this.v * 0.00016;
     if (thr < 0.05) a -= 1.2;
     // section speed caps (spiral ramps, stairs, interiors)

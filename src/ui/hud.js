@@ -52,6 +52,8 @@ export class HUD {
     this.tagsEl = $('hTags');
     this.tagPool = [];
     this.takeT = 0;
+    this.villainEl = $('hVillain');
+    this._villainMood = -1;
     this.rearPool = [];
     this.buildTacho();
     this.drawPortrait(0);
@@ -172,11 +174,8 @@ export class HUD {
     this.comboT = 1.6;
   }
 
-  warn(html, dur = 3) {
-    this.warnEl.innerHTML = html;
-    this.warnEl.classList.add('show');
-    this.warnT = dur;
-  }
+  // event announcements are off: the road tells you what's going on
+  warn() {}
 
   speak(text, cls = '') {
     this.sayBn.textContent = text;
@@ -186,12 +185,63 @@ export class HUD {
   }
 
   // ---- boss bar
-  boss(on, name = '', sub = '') {
+  boss(on, name = '', sub = '', portrait = false) {
     this.bossEl.classList.toggle('show', on);
-    if (on) { this.bossName.textContent = name; this.bossSub.textContent = sub; this.bossHP(1); }
+    this.bossEl.classList.toggle('portrait', on && portrait);
+    document.body.classList.toggle('boss', on && portrait);
+    if (on) { this.bossName.textContent = name; this.bossSub.textContent = sub; this.bossHP(1); if (portrait) this.villain(1); }
+  }
+
+  // the villain's portrait: calm, then more and more furious as the bar drains
+  villain(f) {
+    const mood = f <= 0 ? 4 : f > 0.75 ? 0 : f > 0.5 ? 1 : f > 0.25 ? 2 : 3;
+    if (mood === this._villainMood) return;
+    this._villainMood = mood;
+    const c = this.villainEl.getContext('2d');
+    const w = 96, h = 96;
+    c.clearRect(0, 0, w, h);
+    const heat = [0, 0.25, 0.55, 0.9, 0.3][mood];
+    c.fillStyle = `rgb(${Math.round(70 + 170 * heat)},${Math.round(70 - 40 * heat)},${Math.round(80 - 50 * heat)})`;
+    c.fillRect(0, 0, w, h);
+    // saree shoulder
+    c.fillStyle = '#7a1d22';
+    c.beginPath(); c.moveTo(0, 96); c.quadraticCurveTo(48, 62, 96, 96); c.fill();
+    c.fillStyle = '#f2ead6';
+    c.beginPath(); c.moveTo(14, 96); c.quadraticCurveTo(48, 70, 82, 96); c.fill();
+    // hair and bun
+    c.fillStyle = '#d4d0c8';
+    c.beginPath(); c.ellipse(48, 46, 29, 34, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(48, 14, 11, 0, Math.PI * 2); c.fill();
+    // face
+    c.fillStyle = mood >= 2 && mood < 4 ? `rgb(${200 + 30 * heat | 0},${130 - 40 * heat | 0},${100 - 40 * heat | 0})` : '#c89066';
+    c.beginPath(); c.ellipse(48, 52, 22, 27, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#3a2a1a'; c.lineWidth = 1.5; c.stroke();
+    // glasses
+    c.strokeStyle = '#222'; c.lineWidth = 2;
+    for (const ex of [38, 58]) { c.beginPath(); c.ellipse(ex, 48, 7, 6, 0, 0, Math.PI * 2); c.stroke(); }
+    c.beginPath(); c.moveTo(45, 48); c.lineTo(51, 48); c.stroke();
+    // eyes and brows by mood
+    c.fillStyle = '#111';
+    const pupil = mood === 4 ? 1.2 : 2.4;
+    for (const ex of [38, 58]) { c.beginPath(); c.arc(ex, 48.5, mood === 4 ? 3.4 : pupil, 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = '#2a1a10'; c.lineWidth = 3;
+    const tilt = [0, 3, 6, 9, -3][mood];
+    c.beginPath(); c.moveTo(30, 39 - tilt * 0.3 + 3); c.lineTo(45, 39 + tilt); c.stroke();
+    c.beginPath(); c.moveTo(66, 39 - tilt * 0.3 + 3); c.lineTo(51, 39 + tilt); c.stroke();
+    // mouth
+    c.strokeStyle = '#6a1a1a'; c.fillStyle = '#4a0f10'; c.lineWidth = 2.5;
+    c.beginPath();
+    if (mood === 0) { c.moveTo(40, 68); c.quadraticCurveTo(48, 72, 56, 68); c.stroke(); }
+    else if (mood === 1) { c.moveTo(40, 69); c.lineTo(56, 69); c.stroke(); }
+    else if (mood === 2) { c.moveTo(40, 71); c.quadraticCurveTo(48, 65, 56, 71); c.stroke(); }
+    else if (mood === 3) { c.moveTo(38, 66); c.lineTo(58, 66); c.lineTo(55, 76); c.lineTo(41, 76); c.closePath(); c.fill(); c.fillStyle = '#fff'; c.fillRect(41, 66, 14, 3); }
+    else { c.ellipse(48, 71, 5, 7, 0, 0, Math.PI * 2); c.fill(); }
+    // steam when furious
+    if (mood === 3) { c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 3; for (const x of [14, 82]) { c.beginPath(); c.moveTo(x, 44); c.quadraticCurveTo(x + 6, 34, x, 24); c.stroke(); } }
   }
 
   bossHP(f, hurt = false) {
+    if (this.bossEl.classList.contains('portrait')) this.villain(f);
     this.bossBar.style.width = (clamp(f, 0, 1) * 100).toFixed(1) + '%';
     if (hurt) {
       this.bossBar.classList.add('hurt');

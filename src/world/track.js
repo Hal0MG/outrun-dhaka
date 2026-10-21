@@ -9,7 +9,7 @@ import { easeIO, smoothstep } from '../core/util.js';
 export const STEP = 2;
 export const LANE_W = 4.2;
 // ordinary road bends are authored gently; play them tighter (set pieces keep their exact shape)
-export const CURVE_MUL = 1.7;
+export const CURVE_MUL = 2.6;
 
 export class Track {
   /**
@@ -63,7 +63,7 @@ export class Track {
       const t = Math.min(1, (s - sec.s0) / sec.len);
       let env = 1;
       if (!sec.hardK) env = smoothstep(0, 0.22, t) * (1 - smoothstep(0.78, 1, t));
-      const tight = sec.hardK || sec.closed || sec.env || sec.surface ? 1 : CURVE_MUL;
+      const tight = sec.hardK || sec.closed || sec.env || sec.surface ? 1 : (sec.kMul ?? CURVE_MUL);
       const k = (sec.k || 0) * env * tight;
       gy = secGy0 + (sec.dy || 0) * easeIO(t);
       const targetElev = sec.elev != null ? sec.elev : secElev0;

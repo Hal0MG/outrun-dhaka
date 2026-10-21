@@ -105,6 +105,7 @@ async function boot() {
     const set = (v) => {
       b.classList.toggle('on', v);
       if (k === 'pause') { if (v) menus.pause(); return; }
+      if (k === 'fire') { if (v) input.tap('fire'); return; }
       input.touch[k] = v;
     };
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); audio.init(); b.setPointerCapture(e.pointerId); set(true); });

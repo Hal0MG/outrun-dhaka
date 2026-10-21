@@ -35,16 +35,16 @@ const IN = { L: 'interior', R: 'interior', closed: true, noDeck: true, roof: tru
 // tap in with your bumper, drive the rails and jump into a clothing store
 const METRO_DASH = () => [
   S(70, 0, 0, { lanes: 2, laneEase: 0.7, env: 'closure', closed: true, closeLead: 100, L: 'city', R: 'city', wallX: 0.4 }),
-  S(64, 0, 0, { ...IN, lanes: 2, elev: 6.5, surface: 'stairs', env: 'station', vcap: 30 }),
-  S(92, 0, 0, { ...IN, lanes: 3, laneEase: 0.25, elev: 6.5, surface: 'tiles', env: 'station', gateAt: 38, vcap: 36 }),
-  S(46, 0, 0, { ...IN, lanes: 2, laneEase: 0.3, elev: 12, surface: 'stairs', env: 'station', vcap: 30 }),
-  S(110, 0, 0, { ...IN, lanes: 3, laneEase: 0.25, elev: 12, surface: 'tiles', env: 'platform', vcap: 44 }),
+  S(64, 0, 0, { ...IN, lanes: 2, elev: 6.5, surface: 'stairs', env: 'station' }),
+  S(92, 0, 0, { ...IN, lanes: 3, laneEase: 0.25, elev: 6.5, surface: 'tiles', env: 'station', gateAt: 38 }),
+  S(46, 0, 0, { ...IN, lanes: 2, laneEase: 0.3, elev: 12, surface: 'stairs', env: 'station' }),
+  S(110, 0, 0, { ...IN, lanes: 3, laneEase: 0.25, elev: 12, surface: 'tiles', env: 'platform' }),
   S(30, 0, 0, { lanes: 2, laneEase: 0.5, elev: 11.2, surface: 'rail', env: 'viaduct', closed: true, L: 'elevated', R: 'elevated' }),
   S(320, 0.0016, 0, { lanes: 2, elev: 11.2, surface: 'rail', env: 'viaduct', closed: true, L: 'elevated', R: 'elevated' }),
   S(330, -0.0018, 0, { lanes: 2, elev: 11.2, surface: 'rail', env: 'viaduct', closed: true, L: 'elevated', R: 'elevated' }),
   S(70, 0, 0, { lanes: 2, elev: 11.2, surface: 'rail', env: 'construction', closed: true, L: 'elevated', R: 'elevated', jump: { len: 100, h: 7.5, kind: 'store', slow: 0.38 } }),
   S(84, 0, 0, { lanes: 2, elev: 13, surface: 'none', env: 'gap', gap: true, closed: true, L: 'gapCity', R: 'gapCity', noDeck: true }),
-  S(150, 0, 0, { ...IN, lanes: 3, laneEase: 0.15, elev: 13, surface: 'store', env: 'store', vcap: 38, jump: { len: 92, h: 3.5, kind: 'storeOut', slow: 0.4 } }),
+  S(150, 0, 0, { ...IN, lanes: 3, laneEase: 0.15, elev: 13, surface: 'store', env: 'store', jump: { len: 92, h: 3.5, kind: 'storeOut', slow: 0.4 } }),
   S(80, 0, 0, { lanes: 3, elev: 0, surface: 'none', env: 'gap', gap: true, closed: true, L: 'gapCity', R: 'gapCity', noDeck: true }),
   S(110, 0, 0, { lanes: 4, laneEase: 0.6, elev: 0, closed: true, L: 'city', R: 'median' }),
 ];
@@ -53,10 +53,10 @@ const METRO_DASH = () => [
 const R_SPIRAL = 26;
 const MALL_CRAWL = () => [
   S(90, 0, 0, { lanes: 3, laneEase: 0.6, env: 'mallFront', closed: true, closeLead: 130, L: 'city', R: 'city' }),
-  S(110, 0, 0, { ...IN, noDeck: false, lanes: 3, surface: 'mall', env: 'mallFloor', vcap: 38 }),
-  S(Math.round(Math.PI * 2 * R_SPIRAL * 2.25), 1 / R_SPIRAL, 0, { ...IN, lanes: 2, laneEase: 0.2, hardK: true, elev: 18, surface: 'mall', env: 'spiral', cf: 0.22, vcap: 33 }),
-  S(60, 0, 0, { ...IN, lanes: 3, laneEase: 0.4, elev: 18, surface: 'carpet', env: 'cinemaLobby', vcap: 34 }),
-  S(100, 0, 0, { ...IN, lanes: 3, elev: 16, surface: 'carpet', env: 'cinema', vcap: 38, jump: { len: 130, h: 7, kind: 'cinemaOut', slow: 0.33, roll: 1 } }),
+  S(110, 0, 0, { ...IN, noDeck: false, lanes: 3, surface: 'mall', env: 'mallFloor' }),
+  S(Math.round(Math.PI * 2 * R_SPIRAL * 2.25), 1 / R_SPIRAL, 0, { ...IN, lanes: 2, laneEase: 0.2, hardK: true, elev: 18, surface: 'mall', env: 'spiral', cf: 0.22 }),
+  S(60, 0, 0, { ...IN, lanes: 3, laneEase: 0.4, elev: 18, surface: 'carpet', env: 'cinemaLobby' }),
+  S(100, 0, 0, { ...IN, lanes: 3, elev: 16, surface: 'carpet', env: 'cinema', jump: { len: 130, h: 7, kind: 'cinemaOut', slow: 0.33, roll: 1 } }),
   S(120, 0, 0, { lanes: 3, elev: 9, surface: 'none', env: 'gap', gap: true, closed: true, L: 'gapCity', R: 'gapCity', noDeck: true }),
   S(260, 0, 0, { lanes: 4, laneEase: 0.4, elev: 0, L: 'elevated', R: 'elevated', closed: true }),
 ];
@@ -66,7 +66,7 @@ const COASTER = { lanes: 1.6, surface: 'coaster', env: 'coaster', closed: true, 
 const FUTURE_PARK = () => [
   S(80, 0, 0, { lanes: 3, laneEase: 0.6, env: 'parkGate', closed: true, closeLead: 130, L: 'city', R: 'city' }),
   S(320, 0.0022, 0, {
-    lanes: 3, surface: 'plaza', env: 'park', closed: true, L: 'open', R: 'open', vcap: 42,
+    lanes: 3, surface: 'plaza', env: 'park', closed: true, L: 'open', R: 'open',
     rides: [{ s: 60, type: 'wheel', side: 1, dist: 36, r: 22 }, { s: 140, type: 'carousel', side: -1, dist: 22 }, { s: 220, type: 'ship', side: 1, dist: 24 }, { s: 290, type: 'tower', side: -1, dist: 30 }],
   }),
   S(110, 0, 0, { ...COASTER, laneEase: 0.4, elev: 22, lift: true }),
@@ -178,9 +178,8 @@ export const STAGES = {
       { type: 'sangsad', s: 1480, side: 1, dist: 200, clear: [1240, 1720] },
       { type: 'novoTheatre', s: 2140, side: 1, dist: 66, clear: [2070, 2210] },
     ],
-    ramps: [{ s: 900, x: -0.35 }, { s: 1250, x: 0.3 }, { s: 1620, x: 0 }, { s: 1960, x: -0.3 }, { s: 2960, x: 0.3 }, { s: 3280, x: -0.2 }],
     events: [
-      { type: 'boss', id: 'heli', s: 380, end: 3420, fromX: -70 },
+      { type: 'boss', id: 'heli', s: 340, fromX: -70 },
       { type: 'kites', s0: 700, s1: 2000 },
     ],
     lines: [{ s: 60, id: 'manikmia' }, { s: 1200, id: 'sangsad' }, { s: 2280, id: 'flyover' }],
@@ -281,7 +280,6 @@ export const STAGES = {
     tint: { color: '#ff3bd8', amount: 0.16 },
     skyline: 'lake', waterDeep: '#120a2a', waterLights: '#ff5ad8', bonus: 16,
     landmarks: [
-      { type: 'ledArch', s: 1560 }, { type: 'ledArch', s: 2240 }, { type: 'ledArch', s: 2900 },
       { type: 'fountain', s: 2600, side: -1, dist: 70 },
     ],
     events: [
@@ -469,7 +467,7 @@ export const STAGES = {
     sections: [
       S(240, 0, 0, { elev: 8, L: 'elevated', R: 'elevated' }), S(300, -0.004, 0, { elev: 8, L: 'elevated', R: 'elevated' }),
       S(260, 0, 0, { elev: 0, L: 'city', far: 'city' }),
-      ...FUTURE_PARK(),
+      S(240, 0.0016), S(260, -0.0016), S(240, 0.0014),
       S(500, 0.0012), S(600, 0, 0, { L: 'field' }), S(500, 0.001),
     ],
     facades: CITY_FACADES, heights: [10, 30],
@@ -481,10 +479,10 @@ export const STAGES = {
     skyline: 'rural', bonus: 14,
     landmarks: [
       { type: 'kurilLoops', s: 180, side: 1, dist: 72 },
-      { type: 'jfp', s: 740, side: -1, dist: 70, clear: [660, 800] },
+      { type: 'jfp', s: 740, side: -1, dist: 70, clear: [560, 960] },
+      { type: 'futurePark', s: 740, side: -1, dist: 110 },
     ],
     events: [
-      { type: 'title', s: 700, text: 'FUTURE PARK', small: '' },
       { type: 'racers', s: 2050, n: 4 },
     ],
     lines: [{ s: 80, id: 'kuril' }, { s: 780, id: 'jfp' }, { s: 2100, id: 'racers' }, { s: 2700, id: 'kash' }],

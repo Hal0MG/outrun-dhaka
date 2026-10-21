@@ -9,7 +9,7 @@ import { Sky } from '../world/sky.js';
 import { Atmosphere } from '../world/atmosphere.js';
 import { shared } from '../world/materials.js';
 import { STAGES, PYRAMID, LEVEL_TIME, CHECKPOINT_BONUS, ENDINGS } from '../world/stages.js';
-import { contraAt } from '../world/zones.js';
+import { contraAt, jamSpan } from '../world/zones.js';
 import { SAREE_CSS } from '../world/fxatlas.js';
 import { Player } from './player.js';
 import { CameraRig } from './camera.js';
@@ -493,6 +493,7 @@ export class Game {
   raceInput(dt) {
     const I = this.input;
     const P = this.player;
+    if (I.pressed('fire') && this.bosses.fire(P, this.R.camera)) audio.nitro();
     if (I.horn && !this.horning) {
       this.horning = true;
       audio.horn(audio.engineKind, true);
@@ -617,7 +618,7 @@ export class Game {
       const key = tr.id + ':' + i;
       const s = tr.mapS(e.s ?? e.s0);
       if (e.type === 'jam') {
-        if (P.s > s - 560 && fire(key)) T.spawnJam(tr, s, tr.mapS((e.s ?? 0) + (e.len || 150)) - s);
+        if (P.s > s - 560 && fire(key)) { const js = jamSpan(tr, e); T.spawnJam(tr, js.s0, js.s1 - js.s0); T.spawnJamCause(tr, js.s1); }
         if (P.s > s - 330 && P.s < s - 120 && fire(key + 'w')) {
           const z = contraAt(tr, s);
           this.hud.warn('JAM AHEAD', 3);
@@ -713,9 +714,9 @@ export class Game {
           setTimeout(() => { if (this.state === 'race') { this.hud.warn(e.lane > 0 ? 'TRAIN! ◀ TAKE THE LEFT TRACK' : 'TRAIN! TAKE THE RIGHT TRACK ▶', 3); this.say.say('metroTrain', true); audio.trainHorn(); } }, 900);
         }
       } else if (e.type === 'warn') {
-        if (P.s > s && fire(key)) { this.hud.warn(e.text, e.dur || 3); if (e.line) this.say.say(e.line, true); }
+        if (P.s > s && fire(key)) { if (e.line) this.say.say(e.line, true); }
       } else if (e.type === 'title') {
-        if (P.s > s && fire(key)) { this.hud.takedown(e.text, e.small || '', 2.6); audio.bossStinger(); if (e.line) this.say.say(e.line, true); }
+        if (P.s > s && fire(key)) { /* set-piece titles are off: the place speaks for itself */ }
       }
     }
     // police sirens near you
@@ -739,8 +740,9 @@ export class Game {
     if (P.air || P.crash) return;
     for (const t of this.pieces.trains) {
       if (!t.onTrack || t.track !== P.track) continue;
-      const front = t.s - 11, back = t.s + 11 + t.len;
-      if (P.s + P.halfL > front && P.s - P.halfL < back && Math.abs(P.x - t.x) < 1.5 + P.halfW * 0.9) {
+      // the train body runs from its nose (t.s - 11) back to t.s - 11 + len; only the rail it is on is dangerous
+      const front = t.s - 11, back = t.s - 11 + t.len;
+      if (P.s + P.halfL * 0.85 > front && P.s - P.halfL * 0.85 < back && Math.abs(P.x - t.x) < 1.45 + P.halfW * 0.75) {
         P.startCrash('flip');
         t.v = 0;
       } else if (!t.passed && P.s > back) {
@@ -895,7 +897,7 @@ export class Game {
         this.addBoost(0.35);
         const how = e.cause === 'wall' ? 'INTO THE WALL' : e.cause === 'traffic' ? 'INTO TRAFFIC' : e.cause === 'enemy' ? 'FRIENDLY FIRE' : e.cause === 'barrier' ? 'INTO THE BARRIER' : 'RAMMED';
         if (this.timeLeft !== Infinity && E.time) { this.timeLeft += E.time; this.hud.timeAdded(); }
-        this.hud.takedown(this.chain > 1 ? `TAKEDOWN ×${this.chain}!` : rv ? 'RIVAL WRECKED!' : 'TAKEDOWN!', `${rv ? rv.name : E.label} · ${how} · +${bn(pts.toLocaleString('en-US'))}${E.time ? ` · +${E.time} SEC` : ''}`);
+        this.hud.takedown(this.chain > 1 ? `TAKEDOWN ×${this.chain}` : 'TAKEDOWN', `+${bn(pts.toLocaleString('en-US'))}`);
         if (fx.next() < 0.6) this.say.say('takedown', true);
       } else if (e.type === 'tipped') {
         audio.smash(true);
@@ -1024,13 +1026,11 @@ export class Game {
     for (const e of B.events) {
       if (e.type === 'bossStart') {
         if (!racing) continue;
-        this.hud.boss(true, e.b.name, e.b.sub);
+        this.hud.boss(true, e.b.name, e.b.sub, e.b.kind === 'heli');
         audio.bossStinger();
-        this.say.say(e.b.kind === 'heli' ? 'heliIntro' : 'busIntro', true);
-        this.hud.takedown('BOSS FIGHT', '', 2);
       } else if (e.type === 'bossHit') {
         this.hud.bossHP(B.hpFrac(), true);
-        if (e.why === 'ram' && racing) { audio.takedown(); this.cam.kick(0.5); this.hud.combo('HELI HIT!', '+10,000'); this.addScore(10000); this.say.say('heliHit', true); this.slowmo(0.35, 0.6); }
+        if (e.why === 'rocket' && racing) { audio.takedown(); this.cam.kick(0.4); this.addScore(5000); }
       } else if (e.type === 'bossDown') {
         this.hud.boss(false);
         audio.victory();
@@ -1040,13 +1040,12 @@ export class Game {
         const pts = 50000;
         this.addScore(pts);
         if (this.timeLeft !== Infinity) { this.timeLeft += 8; this.hud.timeAdded(); }
-        this.hud.takedown('BOSS DEFEATED', `BOSS DEFEATED · +${bn(pts.toLocaleString('en-US'))} · +8 SEC`, 3);
-        this.say.say(e.b.kind === 'heli' ? 'heliWin' : 'busWin', true);
+        this.hud.takedown('DEFEATED', `+${bn(pts.toLocaleString('en-US'))}`, 2.4);
         const pos = this.player.track.point(this.player.s + 30, 0, 12, new THREE.Vector3());
         for (let i = 0; i < 4; i++) this.particles.firework(pos.x + (fx.next() - 0.5) * 30, pos.y, pos.z + (fx.next() - 0.5) * 30);
       } else if (e.type === 'bossGone') {
         this.hud.boss(false);
-        if (racing && e.b.hp > 0) { this.hud.warn('BOSS ESCAPED', 3); if (e.b.kind === 'heli') this.say.say('heliLose', true); }
+        // (it simply drops out of the fight)
       } else if (e.type === 'busDown') {
         if (racing) { this.addScore(15000); this.hud.takedown('BUS DOWN', '+15,000', 2); this.slowmo(0.4, 0.6); }
         const v = e.v;
@@ -1054,7 +1053,7 @@ export class Game {
       } else if (e.type === 'busHonk') {
         audio.otherHorn('busHorn', 20, fx.next() - 0.5);
       } else if (e.type === 'throw') {
-        if (racing && fx.next() < 0.12) this.say.say('heliThrow');
+        // thrown items make their own noise
       }
     }
     B.events.length = 0;

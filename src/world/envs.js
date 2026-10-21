@@ -623,3 +623,35 @@ function roadAtGround(ctx, a, b, hw) {
   geo.computeBoundingSphere();
   return geo;
 }
+
+// Jamuna Future Park as scenery beside 300 Feet: rides and a roller coaster in the middle distance
+export function futurePark(ctx, s, side, dist) {
+  const B = ctx.B.misc;
+  const metal = ctx.misc.get('metal');
+  ride(ctx, s - 170, { side, dist: dist - 12, type: 'wheel', r: 24 });
+  ride(ctx, s - 118, { side, dist: dist - 18, type: 'carousel' });
+  ride(ctx, s - 70, { side, dist: dist - 8, type: 'ship' });
+  ride(ctx, s + 95, { side, dist: dist - 4, type: 'tower' });
+  // static coaster: two rails on lattice supports, rolling hills out behind the rides
+  const N = 34, step = 7;
+  const pts = [];
+  for (let i = 0; i <= N; i++) {
+    const ss = s + 130 + i * step;
+    const x = side * (dist + 18 + 10 * Math.sin(i * 0.5));
+    const h = 9 + 13 * (0.5 + 0.5 * Math.sin(i * 0.62)) + (i > N - 6 ? -(i - (N - 6)) * 1.2 : 0);
+    pts.push([ss, x, Math.max(2.5, h)]);
+  }
+  const red = [0.88, 0.14, 0.16];
+  for (let i = 0; i < N; i++) {
+    const a = pts[i], b = pts[i + 1];
+    for (const off of [-0.7, 0.7]) {
+      const pa = ctx.P(a[0], a[1] + off, a[2], true), pb = ctx.P(b[0], b[1] + off, b[2], true);
+      B.tube(pa, pb, 0.18, 0.18, 6, [0.95, 0.95, 0.97], metal);
+    }
+    if (i % 2 === 0) {
+      const top = ctx.P(a[0], a[1], a[2] - 0.5, true), foot = ctx.P(a[0], a[1], 0, true);
+      B.tube(foot, top, 0.3, 0.22, 6, red, metal);
+    }
+  }
+  ctx.B.always.box(...ctx.P(s + 130, side * (dist + 18), 6, true), 0.5, 0.5, 0.5, 0, { color: [3, 0.4, 0.3] });
+}
