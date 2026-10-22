@@ -14,6 +14,7 @@ Runs in the browser. No install, no assets to download: the world, the music and
 
 ## Play
 
+- **Play now:** https://hal0mg.github.io/outrun-dhaka/ (runs in your browser, nothing to install; Chrome or Edge works best).
 - **Windows:** download `OutrunDhaka.exe` from the [latest release](https://github.com/Hal0MG/outrun-dhaka/releases/latest) and run it. (Windows may warn that the file is unsigned: More info, then Run anyway.) Or build it yourself with `npm run exe`.
 - **Any browser:** build it (below) and open `dist/index.html` in Chrome or Edge. It is one self-contained file. Fonts load from Google Fonts when online.
 - **Dev server:** `npm install`, `npm run dev`, then open http://127.0.0.1:5173
