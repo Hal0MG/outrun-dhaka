@@ -89,7 +89,7 @@ export function drawDhaka(cv, opts = {}) {
   {
     const r = rng(20240611);
     const step = small ? 4.5 : 7 * k;
-    const sig = W * 0.095;
+    const sig = W * 0.13;
     const cosA = Math.cos(-0.2), sinA = Math.sin(-0.2);
     c.save();
     c.translate(W / 2, H / 2);
@@ -101,7 +101,8 @@ export function drawDhaka(cv, opts = {}) {
         // where this lattice point lands on screen, for the density
         const dx = x - W / 2, dy = y - H / 2;
         const sx = W / 2 + dx * cosA - dy * sinA, sy = H / 2 + dx * sinA + dy * cosA;
-        let d = 0.035;
+        // a low base everywhere, rising and falling in broad patches so no part of the map is left empty, and the districts on top
+        let d = 0.2 + 0.13 * Math.sin(sx / W * 9 + 1.3) * Math.sin(sy / H * 7 + 0.4);
         for (const [px, py] of pins) { const ex = sx - px, ey = sy - py; d += Math.exp(-(ex * ex + ey * ey) / (2 * sig * sig)); }
         if (r() > d * 0.8) continue;
         const a = 0.15 + r() * 0.5;
@@ -111,6 +112,21 @@ export function drawDhaka(cv, opts = {}) {
         c.fillRect(x + r() * step * 0.4, y + r() * step * 0.4, s, s);
       }
     }
+    c.restore();
+  }
+
+  // a faint street grid over the whole city, so the quiet parts still read as streets
+  if (!small) {
+    c.save();
+    c.translate(W / 2, H / 2);
+    c.rotate(-0.2);
+    c.strokeStyle = 'rgba(255,200,120,0.06)';
+    c.lineWidth = Math.max(1, k);
+    const g = 38 * k;
+    c.beginPath();
+    for (let x = -W; x < W; x += g) { c.moveTo(x, -H); c.lineTo(x, H); }
+    for (let y = -H; y < H; y += g * 0.8) { c.moveTo(-W, y); c.lineTo(W, y); }
+    c.stroke();
     c.restore();
   }
 
