@@ -340,11 +340,11 @@ export class Game {
     this.raceT = (this.raceT || 0) + dt;
     const kAt = (d) => Math.abs(tr.kAt(Math.min(P.s + d, tr.length)));
     // road works ahead: cross to the other carriageway (it pays, too)
-    const zone = contraAt(tr, P.s, 380);
+    const zone = contraAt(tr, P.s, 800);
     this._warned = this._warned || new Set();
     if (zone && !this._warned.has(zone.id)) {
       this._warned.add(zone.id);
-      this.hud.takedown('ROAD WORKS', 'CROSS OVER · THE WRONG WAY PAYS', 2.6);
+      this.hud.takedown('ROAD WORKS AHEAD', 'CROSS OVER TO THE RIGHT · THE WRONG WAY PAYS', 2.6);
       say.sayText('contra', 'Road works! Take the other side, it pays.', 25);
     }
     // how pickups work, once, early
@@ -741,8 +741,17 @@ export class Game {
       progress: clamp(progress, 0, 1), stageId: tr.stage.district || tr.stageId,
       lap: Math.min(R.lap, tr.laps || 1), laps: tr.laps, ko: R.nextKnockout(),
       fuel: P.fuel, nitro: P.nitro, boosting: P.boosting,
+      cross: this.crossInfo(),
     });
     this.hud.tags(this.state === 'race' || this.state === 'countdown' ? R.tags(this.R.camera) : []);
+  }
+
+  // the road-works cross-over for the HUD: metres to the barrier while it is ahead, and whether you still need to cross
+  crossInfo() {
+    const P = this.player;
+    const z = contraAt(P.track, P.s, 700);
+    if (!z || P.wrongWay) return null;
+    return { d: Math.max(0, z.s0 - P.s) };
   }
 
   // ------------------------------------------------------------ music: each district has its own song

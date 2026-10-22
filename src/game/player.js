@@ -126,7 +126,8 @@ export class Player {
     const off = onGrass || inWorks;
     this.offroad = damp(this.offroad, off ? 1 : 0, 10, dt);
     if (off && this.v > GRASS_V) a -= (18 + (this.v - GRASS_V) * 1.4) * (inWorks && !onGrass ? 0.6 : 1);
-    if (onStrip && this.v > 20) a -= 6 + (this.v - 20) * 0.3;
+    // the kerb is a bump, except where the road works send you across it: there it is a ramp
+    if (onStrip && this.v > 20) a -= (6 + (this.v - 20) * 0.3) * (contraAt(tr, sNow, 150) ? 0.15 : 1);
     this.inWorks = inWorks;
     // wrong way: fully on the opposite carriageway
     this.wrongWay = !!lim.near && this.x - hw > lim.near - 0.2;

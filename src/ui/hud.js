@@ -37,6 +37,9 @@ export class HUD {
     this.gapB = $('hGapB');
     this.parEl = $('hPar');
     this.tagsEl = $('hTags');
+    this.crossEl = $('hCross');
+    this.crossT = $('hCrossT');
+    this.crossD = $('hCrossD');
     this.fuelEl = $('hFuel');
     this.fuelBar = $('hFuelBar');
     this.charges = $('hCharges');
@@ -65,6 +68,7 @@ export class HUD {
   reset(kind) {
     this.kind = kind;
     this.last = {};
+    this.crossEl.classList.remove('show', 'now');
     document.body.classList.toggle('run', kind === 'run');
     this.lapLbl.textContent = kind === 'run' ? 'TIME' : 'LAP';
     for (const el of [this.msg, this.comboEl, this.takeEl, this.bubble]) el.classList.remove('show');
@@ -300,6 +304,19 @@ export class HUD {
       this.charges.classList.toggle('burn', !!d.boosting);
       L.charges = n + ':' + d.boosting;
     }
+    // road works: a standing "cross over" prompt with the distance to the barrier, so the move is never a surprise
+    const cr = d.cross;
+    const crKey = cr ? (cr.d > 0 ? 'ahead' : 'now') : '';
+    if (L.crKey !== crKey) {
+      L.crKey = crKey;
+      this.crossEl.classList.toggle('show', !!cr);
+      this.crossEl.classList.toggle('now', crKey === 'now');
+      this.crossT.textContent = crKey === 'now' ? 'KEEP RIGHT · USE THE OTHER SIDE' : 'ROAD WORKS · CROSS OVER';
+    }
+    if (cr && crKey === 'ahead') {
+      const m = Math.round(cr.d / 10) * 10;
+      if (L.crM !== m) { this.crossD.textContent = `▶ ${m} M`; L.crM = m; }
+    } else if (cr && L.crM !== -1) { this.crossD.textContent = '▶▶▶'; L.crM = -1; }
     // timers
     if (this.stageT > 0) { this.stageT -= dt; if (this.stageT <= 0) this.stage.classList.remove('show'); }
     if (this.msgT > 0) { this.msgT -= dt; if (this.msgT <= 0) this.msg.classList.remove('show'); }

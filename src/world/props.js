@@ -414,12 +414,13 @@ export function gantrySign(ctx, s, hwL, hwR, material, opts = {}) {
   B.box(back[0], back[1], back[2], w + 0.2, ph + 0.2, 0.08, yaw, { color: [0.4, 0.4, 0.4], region: metal });
 }
 
-export function roadSign(ctx, s, side, x, kind) {
+// size and height are for signs that need to be read at speed (the road-works warnings)
+export function roadSign(ctx, s, side, x, kind, size = 0.9, y = 2.0) {
   const p = ctx.P(s, side * x, 0.18);
   const yaw = ctx.track.yawAt(s);
-  ctx.B.misc.box(p[0], p[1], p[2], 0.08, 2.4, 0.08, yaw, { color: [0.6, 0.6, 0.6], region: ctx.misc.get('metal') });
-  const q = ctx.P(s + 0.05, side * x, 2.0);
-  ctx.B.sign.panel(q[0], q[1], q[2], 0.9, 0.9, yaw, [1, 1, 1], ctx.signs.get('rs_' + kind));
+  ctx.B.misc.box(p[0], p[1], p[2], 0.08, y + 0.4, 0.08, yaw, { color: [0.6, 0.6, 0.6], region: ctx.misc.get('metal') });
+  const q = ctx.P(s + 0.05, side * x, y);
+  ctx.B.sign.panel(q[0], q[1], q[2], size, size, yaw, [1, 1, 1], ctx.signs.get('rs_' + kind));
   ctx.obstacle(s, side * x, 0.2, 0.2, 'solid');
 }
 

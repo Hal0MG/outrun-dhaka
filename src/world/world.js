@@ -416,14 +416,41 @@ export class World {
         }
       }
     }
-    // road works: a warning gate ahead, a striped barrier across our lanes and cones down every lane line
+    // road works: warnings in stages (signs at 800 and 500 m, a gantry at 360, the cross-over sign at 250, a gate at 140),
+    // a diagonal taper of cones that steers you across, a striped barrier across our lanes and cones down every lane line
     for (const z of tr.contra || []) {
-      if (z.s1 < ctx.s0 - 100 || z.s0 > ctx.s1 + 100) continue;
+      if (z.s1 < ctx.s0 - 100 || z.s0 > ctx.s1 + 900) continue;
+      const signAt = (d, kinds) => {
+        const s = z.s0 - d;
+        if (!inChunk(s)) return;
+        const x = tr.halfWAt(Math.max(0, s)) + 1.5;
+        PR.roadSign(ctx, s, -1, x, kinds[0], 2.2, 4.3);
+        PR.roadSign(ctx, s, -1, x, kinds[1], 1.4, 2.3);
+      };
+      signAt(800, ['works', 'dist800']);
+      signAt(500, ['works', 'dist500']);
+      signAt(250, ['cross', 'dist250']);
+      const g2 = z.s0 - 360;
+      if (inChunk(g2)) {
+        const o2 = oppLayout(tr, g2, st);
+        PR.gantrySign(ctx, g2, tr.halfWAt(g2), o2.far, bannerMaterial(['সামনে রাস্তা বন্ধ', 'ROAD WORKS · CROSS TO THE RIGHT'], { c1: '#1456b8', c2: '#0a2a6b', tc: '#ffffff', w: 1024, h: 256 }), { w: 16 });
+      }
       const gs = z.s0 - 140;
       if (inChunk(gs)) {
         const hwG = tr.halfWAt(gs);
         const o = oppLayout(tr, gs, st);
-        PR.festiveGate(ctx, gs, hwG, o.far, bannerMaterial(['রাস্তা বন্ধ', 'ROAD WORKS · USE THE OTHER SIDE'], { c1: '#e4252b', c2: '#1a0508' }));
+        PR.festiveGate(ctx, gs, hwG, o.far, bannerMaterial(['রাস্তা বন্ধ', 'ROAD WORKS · CROSS OVER NOW'], { c1: '#e4252b', c2: '#1a0508' }));
+      }
+      // the taper: a diagonal line of lit cones from our left edge to our right edge, the last 120 m before the barrier
+      for (let k = 0; k <= 15; k++) {
+        const t = k / 15;
+        const s = z.s0 - 120 + t * 118;
+        if (!inChunk(s)) continue;
+        const hwT = tr.halfWAt(Math.max(0, s));
+        const p = ctx.P(s, -hwT + 0.9 + t * (2 * hwT - 1.8), 0, true);
+        ctx.B.misc.cylinder(p[0], p[1], p[2], 0.28, 0.04, 0.8, 8, [1, 0.45, 0.05], ctx.misc.get('white'));
+        ctx.B.misc.cylinder(p[0], p[1] + 0.35, p[2], 0.17, 0.12, 0.12, 8, [1.4, 1.4, 1.4], ctx.misc.get('white'));
+        if (k % 3 === 0) ctx.B.neon.box(p[0], p[1] + 0.95, p[2], 0.16, 0.16, 0.16, 0, { color: [3, 1.6, 0.1] });
       }
       const hw0 = tr.halfWAt(Math.min(z.s0, tr.length));
       if (inChunk(z.s0)) {

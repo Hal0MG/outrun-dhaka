@@ -345,6 +345,34 @@ function roadSign(ctx, w, h, kind) {
     ctx.fillStyle = '#111';
     ctx.beginPath(); ctx.ellipse(cx, h * 0.72, 30, 12, 0, Math.PI, 0); ctx.fill();
     P.signText(ctx, 'স্পিড ব্রেকার', cx, h - 22, { font: `700 ${Math.round(w * 0.1)}px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
+  } else if (kind === 'works') {
+    // yellow diamond with a traffic cone
+    ctx.fillStyle = '#f2c230';
+    ctx.beginPath(); ctx.moveTo(cx, 4); ctx.lineTo(w - 4, cy); ctx.lineTo(cx, h - 4); ctx.lineTo(4, cy); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#e8551a';
+    ctx.beginPath(); ctx.moveTo(cx, cy - 22); ctx.lineTo(cx + 15, cy + 16); ctx.lineTo(cx - 15, cy + 16); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx - 9, cy - 2, 18, 6);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(cx - 20, cy + 16, 40, 6);
+  } else if (kind === 'cross') {
+    // blue disc, white arrow bending to the right: the other carriageway is on the right
+    ctx.fillStyle = '#1456b8';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = w * 0.04; ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(cx - 22, cy + 28); ctx.lineTo(cx - 22, cy - 2); ctx.lineTo(cx + 2, cy - 22); ctx.lineTo(cx + 2, cy - 34);
+    ctx.lineTo(cx + 28, cy - 14); ctx.lineTo(cx + 2, cy + 6); ctx.lineTo(cx + 2, cy - 6); ctx.lineTo(cx - 8, cy + 4); ctx.lineTo(cx - 8, cy + 28);
+    ctx.closePath(); ctx.fill();
+  } else if (kind.startsWith('dist')) {
+    // distance plate under a warning sign
+    ctx.fillStyle = '#f2c230';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 5; ctx.strokeRect(3, 3, w - 6, h - 6);
+    P.signText(ctx, kind.slice(4), cx, cy - 6, { font: `700 ${Math.round(w * 0.34)}px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
+    P.signText(ctx, 'M', cx, cy + 26, { font: `700 ${Math.round(w * 0.2)}px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
   } else if (kind === 'kmpost') {
     ctx.fillStyle = '#f4f4f0';
     ctx.fillRect(0, 0, w, h);
@@ -368,7 +396,7 @@ export function buildSignAtlas() {
       poster(ctx, 384, 192, new RNG('bb' + i), spec);
     }, { wrap: false });
   });
-  ['speed40', 'speed60', 'speed80', 'slow', 'nohorn', 'school', 'bump', 'kmpost'].forEach((k) => {
+  ['speed40', 'speed60', 'speed80', 'slow', 'nohorn', 'school', 'bump', 'works', 'cross', 'dist800', 'dist500', 'dist250', 'kmpost'].forEach((k) => {
     A.add('rs_' + k, 96, 96, (ctx) => roadSign(ctx, 96, 96, k), { wrap: false });
   });
   // LED scrolling sign (red dots)

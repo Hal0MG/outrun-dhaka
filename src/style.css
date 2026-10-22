@@ -305,3 +305,14 @@ body.touch .h-speed { left: max(8px, env(safe-area-inset-left, 0px)); bottom: ca
 body.touch .t-pause { right: max(12px, env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; width: 40px; height: 40px; }
 body.touch .t-nitro { left: auto; right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(146px + env(safe-area-inset-bottom, 0px)); width: 176px; height: 50px; border-radius: 25px; font-size: 15px !important; }
 body.touch .t-horn { right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(204px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 38px; }
+
+/* ---- road works: a standing cross-over prompt with the distance to the barrier */
+.h-cross { position: absolute; left: 50%; top: calc(31vh + env(safe-area-inset-top, 0px)); transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 2px; padding: 6px 16px 4px; background: #f2c230; color: #111; border: 3px solid #000; box-shadow: 5px 5px 0 #000; font-family: var(--f-display); text-align: center; white-space: nowrap; pointer-events: none; }
+.h-cross.show { display: flex; }
+.h-cross b { font-weight: 400; font-size: 14px; letter-spacing: 0.08em; }
+.h-cross span { font-size: 26px; line-height: 1; color: #1456b8; font-variant-numeric: tabular-nums; animation: crossblink 0.7s steps(2) infinite; }
+.h-cross.now { background: #1456b8; color: #fff; }
+.h-cross.now span { color: #ffe14a; }
+@keyframes crossblink { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .h-cross span { animation: none; } }
+body.touch .h-cross { top: calc(33vh + env(safe-area-inset-top, 0px)); }
