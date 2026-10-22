@@ -6,23 +6,31 @@ Runs in the browser. No install, no assets to download: the world, the music and
 
 ![Title screen: the showreel](docs/screenshots/title.jpg)
 
-![Hatirjheel at night](docs/screenshots/hatirjheel.jpg)
+![Shahbag at sunset, the road painted for Pohela Boishakh](docs/screenshots/shahbag.jpg)
 
-*Hatirjheel after dark*
+*Shahbag at sunset, the road painted for Pohela Boishakh*
 
-![Old Dhaka](docs/screenshots/old-dhaka.jpg)
+![Dhanmondi, with the Satmasjid Mosque in the glow](docs/screenshots/dhanmondi.jpg)
 
-*Old Dhaka: shopfronts, tangled wires and fireworks*
+*Dhanmondi, with the Satmasjid Mosque in the glow*
 
-![Motijheel in the rain](docs/screenshots/motijheel.jpg)
+![Old Dhaka at night: shopfronts, tangled wires, fireworks](docs/screenshots/old-dhaka.jpg)
 
-*Motijheel in the monsoon: puddles, umbrellas, beaded paint*
+*Old Dhaka at night: shopfronts, tangled wires, fireworks*
 
-![Shahbag at dusk](docs/screenshots/shahbag.jpg)
+![Gulshan, along the lake](docs/screenshots/gulshan.jpg)
 
-*Shahbag at dusk, with the road painted for Pohela Boishakh*
+*Gulshan, along the lake*
 
-![Pick a race](docs/screenshots/map.jpg)
+![Motijheel in the monsoon](docs/screenshots/motijheel.jpg)
+
+*Motijheel in the monsoon*
+
+![The Padma Bridge toll plaza at dawn](docs/screenshots/padma.jpg)
+
+*The Padma Bridge toll plaza at dawn*
+
+![Pick any district, or run the whole city](docs/screenshots/map.jpg)
 
 *Pick any district, or run the whole city*
 
