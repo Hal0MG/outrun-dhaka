@@ -117,7 +117,7 @@ export function sideLimits(type, stage, sec) {
     case 'gapCity': return { soft: 0.3, wall: 2 };
     case 'median': return { soft: 0.1, wall: 0.2 };
     case 'elevated': case 'bridge': return { soft: 0.2, wall: 0.35 };
-    case 'lake': case 'river': return { soft: 0.3, wall: 3.6 };
+    case 'lake': case 'river': return { soft: 0.3, wall: 1.9 }; // the promenade rail, not the walkway behind it
     case 'field': case 'kash': return { soft: 0.4, wall: 60 };
     case 'park': return { soft: 0.3, wall: 9 };
     case 'wall': return { soft: 0.3, wall: 3.0 };

@@ -166,12 +166,12 @@ export class Game {
   }
 
   onPass(n, nitro) {
-    this.hud.combo(n > 1 ? `PASSED ×${n}` : 'PASSED', nitro ? '+FUEL · +NITRO' : '+FUEL');
+    this.hud.combo(n > 1 ? `PASSED ×${n}` : 'PASSED', nitro ? '+NITRO' : '');
     audio.blip(1000 + Math.min(n, 5) * 120);
   }
 
   onWrongWay(nitro) {
-    this.hud.combo('WRONG WAY', nitro ? '+NITRO · +FUEL' : '+FUEL');
+    this.hud.combo('WRONG WAY', nitro ? '+NITRO' : '');
     audio.blip(1500);
   }
 
@@ -470,7 +470,7 @@ export class Game {
     if (P.boosting && !this._wasBoost) { audio.nitro(); this.backfire = 0.15; }
     if (!P.boosting && this._wasBoost && P.nitro < 1) this.say.say('nitroOut', 0.5, false, 45);
     this._wasBoost = P.boosting;
-    if (P.fuel < 0.2 && !this._lowFuel) { this._lowFuel = true; this.say.say('fuelLow', 1, true); }
+    if (P.fuel < 0.2 && !this._lowFuel) { this._lowFuel = true; this.hud.message('LOW FUEL', 1.6); this.say.say('fuelLow', 1, true); }
     else if (P.fuel > 0.4) this._lowFuel = false;
   }
 

@@ -36,15 +36,16 @@ RIVALS[0].color = '#0b0b0f';
 export const CIRCUIT_FIELD = 24;
 
 // fuel: metres a full tank lasts, and how much a can puts back
-// (a circuit tank lasts about a lap; passing cars is how you keep the tank topped up)
+// (a circuit tank is 70% of the race, so you need the fuel rows; nitro burns it faster)
 const TANK_RUN = 16000; // about half the Run's length
-const CAN_FUEL = 0.25;
-const PASS_FUEL = 0.05; // per car passed on a circuit
-const PASS_FUEL_RUN = 0.02; // on the Run there are many more passes to make
+const CAN_FUEL = 0.3; // fuel rows are the only way to top up: one a lap on a circuit, one every ~6 km on the Run
+const FUEL_EVERY_RUN = 6000;
 const NITRO_BURN = 2.5; // fuel burns this much faster while the nitro is on
 const PASS_NITRO = 8; // cars passed per free nitro charge
 const ROLL_V = 22; // the rolling start: everyone rolls at this speed until GO
 const FIELD_GAP = 38; // metres between one racer and the next, strung out along the road ahead of you
+const PACK = 6; // the nearest racers ahead of you run tighter, so there is a bunch to fight through
+const PACK_GAP = 20;
 const VIEW = 420;
 
 export class Race {
@@ -72,7 +73,7 @@ export class Race {
     this.coins = 0;
     this.finished = null;
     this.field = kind === 'run' ? RUN_FIELD : CIRCUIT_FIELD;
-    this.tank = kind === 'run' ? TANK_RUN : tr.lapLen * tr.laps * 0.7; // 70% of the race: you need a fuel row, passes, or the wrong way to finish
+    this.tank = kind === 'run' ? TANK_RUN : tr.lapLen * tr.laps * 0.7; // 70% of the race: you need the fuel rows to finish
     this.passes = 0;
     this.passNitro = 0;
     this.wrongAcc = 0;
@@ -93,7 +94,8 @@ export class Race {
       const md = g.fleet.md(d.model);
       const x = laneX(i * 3 + 1);
       return {
-        ...d, i, G: tr.base + tr.gateS + 25 + (n - i) * FIELD_GAP, x, gx: x, v: ROLL_V, vx: 0, out: false, done: false, ready: true,
+        ...d, i, G: tr.base + tr.gateS + 25 + (n - i <= PACK ? (n - i) * PACK_GAP : PACK * PACK_GAP + (n - i - PACK) * FIELD_GAP), x, gx: x,
+        slipT: 0, mistakeT: 2 + (i % 7), aggro: i === 0 || i % 2 === 0, v: ROLL_V, vx: 0, out: false, done: false, ready: true,
         // everyone is a touch slower than your top speed and the pace falls only gently down the field: the leader
         // takes nitro and a clean line to catch, the cars behind are passable one at a time, not all at once
         skill: (kind === 'run' ? 1.0 : 0.99) - (kind === 'run' ? 0.07 : 0.06) * (i / n), bias: ((i * 7) % 5 - 2) * 0.32, dodge: null, dodgeT: 0,
@@ -141,15 +143,15 @@ export class Race {
     const rng = new RNG(4242);
     const lapLen = tr.lapLen;
     const pattern = [];
-    // fuel and nitro come in rows across the whole road (a fuel row and two nitro rows a lap; passing cars earns the rest),
+    // fuel and nitro come in rows across the whole road (a fuel row and two nitro rows a lap),
     // so you never have to hug a side to catch them
-    const special = [[0.25, 'nitro'], [0.5, 'fuel'], [0.75, 'nitro']]; // (fuel only on the second lap, below)
+    const special = [[0.25, 'nitro'], [0.5, 'fuel'], [0.75, 'nitro']];
     for (let u = 70; u < lapLen - 60; u += rng.range(95, 150)) {
       if (special.some(([f]) => Math.abs(u - f * lapLen) < 60)) continue;
       if (rng.chance(0.62)) pattern.push({ u, kind: 'trail', a: rng.next(), b: rng.next() });
     }
     for (const [f, kind] of special) pattern.push({ u: f * lapLen, kind, a: rng.next() });
-    for (let i = 0; i < tr.laps; i++) for (const p of pattern) { if (p.kind === 'fuel' && i !== 1) continue; this.place(tr, tr.lapS(i) + p.u, p.kind, p.a, p.b); }
+    for (let i = 0; i < tr.laps; i++) for (const p of pattern) this.place(tr, tr.lapS(i) + p.u, p.kind, p.a, p.b);
     this.pickups.sort((a, b) => a.G - b.G);
   }
 
@@ -162,7 +164,7 @@ export class Race {
     const s1 = (tr.isFinal ? tr.goalS : tr.length) - 40;
     for (let s = s0; s < s1; s += rng.range(95, 150)) {
       const G = tr.base + s;
-      const fuel = Math.floor(G / 7000) !== Math.floor((G - 200) / 7000);
+      const fuel = Math.floor(G / FUEL_EVERY_RUN) !== Math.floor((G - 200) / FUEL_EVERY_RUN);
       const nitro = Math.floor((G + 400) / 2200) !== Math.floor((G + 200) / 2200);
       if (fuel) this.place(tr, s, 'fuel', rng.next());
       else if (nitro) this.place(tr, s, 'nitro', rng.next());
@@ -287,6 +289,16 @@ export class Race {
       // you leave behind stays behind and the field ahead stays spread out.
       const gap = r.G - PG;
       if (gap > 1200) vT *= Math.max(0.97, 1 - (gap - 1200) / 8000);
+      // rubber band: a car right behind you pushes to hold you off, up to a few percent over its normal pace
+      if (go && gap < 0 && gap > -200) vT *= 1 + 0.04 * (1 + gap / 200);
+      // mistakes: in a bend a driver now and then runs wide and lifts for a second
+      r.mistakeT -= dt;
+      r.slipT = Math.max(0, r.slipT - dt);
+      if (go && r.mistakeT <= 0) {
+        r.mistakeT = 5 + Math.random() * 9;
+        if (kA > 0.004 && Math.random() < 0.5) r.slipT = 1.1;
+      }
+      if (r.slipT > 0) vT *= 0.84;
       if (r.done) vT = Math.min(vT, 26);
       if (!go) vT = ROLL_V; // the rolling start: hold formation until GO
       // the inside of the next bend, else the rival's own lane
@@ -306,6 +318,11 @@ export class Race {
         if (r.dodge == null || Math.abs(r.x - ahead.x) < 1.9) vT = Math.min(vT, ahead.v + (ahead.d > 9 ? 2 : -1));
       }
       if (r.dodgeT > 0 && r.dodge != null) xT = r.dodge;
+      // an aggressive driver just ahead of you covers your line when you pull out to pass
+      const lead = r.G - PG;
+      if (go && r.aggro && !ahead && bend < 0.5 && lead > 3 && lead < 24 && P.v > r.v - 1 && Math.abs(P.x - r.x) < 5) xT = P.x + P.vx * 0.15;
+      // a mistake: run wide on the outside of the bend
+      if (r.slipT > 0) xT += Math.sign(kIn || 1) * (hw * 0.3);
       // road works on our side: the field takes the opposite carriageway; on a divided road the rival can use all of it
       let reach = hw;
       if (tr && this.game.world.sideTypeAt(tr, Math.min(L.s, tr.length), 1) === 'median') {
@@ -439,12 +456,11 @@ export class Race {
     }
   }
 
-  // driving the opposite carriageway pays: fuel as you go and a nitro charge every few seconds
+  // driving the opposite carriageway pays a nitro charge every few seconds
   wrongWayReward(dt) {
     const g = this.game;
     const P = g.player;
     if (!P.wrongWay || P.v < 25) return;
-    P.fuel = Math.min(1, P.fuel + 0.02 * dt);
     this.wrongAcc = (this.wrongAcc || 0) + dt;
     if (this.wrongAcc >= 2.2) {
       this.wrongAcc -= 2.2;
@@ -454,8 +470,8 @@ export class Race {
     }
   }
 
-  // every car you pass tops up the tank, and every few passes earn a nitro charge. A rival counts again
-  // only once they have pulled well clear of you, so swapping places with the same car is no way to farm fuel.
+  // every few cars you pass earn a nitro charge. A rival counts again
+  // only once they have pulled well clear of you, so swapping places with the same car is no way to farm nitro.
   awardPasses() {
     const g = this.game;
     const P = g.player;
@@ -469,7 +485,6 @@ export class Race {
     }
     if (!n) return;
     this.passes += n;
-    P.fuel = Math.min(1, P.fuel + (this.kind === 'run' ? PASS_FUEL_RUN : PASS_FUEL) * n);
     this.passNitro = (this.passNitro || 0) + n;
     let nitro = 0;
     while (this.passNitro >= PASS_NITRO) { this.passNitro -= PASS_NITRO; if (P.nitro < NITRO_MAX) { P.nitro += 1; nitro++; } }

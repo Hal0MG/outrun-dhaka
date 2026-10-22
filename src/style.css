@@ -289,3 +289,19 @@ body.touch #tuntuni { width: 40px; height: 40px; }
 .h-obj .par.gold { color: #ffc400; }
 .h-obj .par.silver { color: #d4dae0; }
 .h-obj .par.bronze { color: #d98a4e; }
+
+/* ---- phones: three groups so nothing sits under a thumb.
+   top-left the clock and objective, top-right the pause button and the tank, bottom-left the speedo,
+   bottom the controls. Coins stay; the lap clock and the car behind are dropped. */
+body.touch .h-time { transform: rotate(-2deg) scale(0.72); }
+body.touch .h-obj { top: calc(92px + env(safe-area-inset-top, 0px)); }
+body.touch .h-obj .gap.behind, body.touch .h-score .row.small, body.touch .h-cam { display: none; }
+body.touch .h-score { top: calc(14px + env(safe-area-inset-top, 0px)); right: calc(max(12px, env(safe-area-inset-right, 0px)) + 54px); }
+body.touch .h-score .row { font-size: 16px; }
+body.touch .h-progress { top: calc(60px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: 40vw; }
+body.touch .h-hct { left: auto; right: max(12px, env(safe-area-inset-right, 0px)); top: calc(80px + env(safe-area-inset-top, 0px)); bottom: auto; transform: none; flex-direction: column; align-items: flex-end; gap: 6px; }
+body.touch .h-hct .fb { width: 90px; height: 10px; }
+body.touch .h-speed { left: max(8px, env(safe-area-inset-left, 0px)); bottom: calc(112px + env(safe-area-inset-bottom, 0px)); transform: scale(0.6); }
+body.touch .t-pause { right: max(12px, env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; width: 40px; height: 40px; }
+body.touch .t-nitro { left: auto; right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(146px + env(safe-area-inset-bottom, 0px)); width: 176px; height: 50px; border-radius: 25px; font-size: 15px !important; }
+body.touch .t-horn { right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(204px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 38px; }

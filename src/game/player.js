@@ -15,7 +15,8 @@ export const SPEED_K = 1.35;
 export const CORNER_K = 0.1;
 export const NITRO_MAX = 3;
 const NITRO_DUR = 2.6;
-const GRASS_V = 34;
+// off the tarmac the car is held to GRASS_V and loses grip; the wall scrape is a real brake
+const GRASS_V = 26;
 
 export class Player {
   constructor(def) {
@@ -124,7 +125,7 @@ export class Player {
     const onGrass = this.x - hw < lim.lSoft || this.x + hw > lim.rSoft;
     const off = onGrass || inWorks;
     this.offroad = damp(this.offroad, off ? 1 : 0, 10, dt);
-    if (off && this.v > GRASS_V) a -= (10 + (this.v - GRASS_V) * 0.6) * (inWorks && !onGrass ? 0.6 : 1);
+    if (off && this.v > GRASS_V) a -= (18 + (this.v - GRASS_V) * 1.4) * (inWorks && !onGrass ? 0.6 : 1);
     if (onStrip && this.v > 20) a -= 6 + (this.v - 20) * 0.3;
     this.inWorks = inWorks;
     // wrong way: fully on the opposite carriageway
@@ -135,7 +136,8 @@ export class Player {
 
     // ---- across the road
     const k = fr.k;
-    const vxT = steer * this.steerGrip * clamp(this.v / 14, 0, 1);
+    // the verge is loose: less grip while a wheel is off the road
+    const vxT = steer * this.steerGrip * clamp(this.v / 14, 0, 1) * (1 - 0.35 * this.offroad);
     // shoves from contact decay through the damping
     this.vx = damp(this.vx, vxT, 10, dt);
     this.x += (this.vx - k * this.v * this.v * CORNER_K) * dt;
@@ -150,13 +152,13 @@ export class Player {
       this.x = lim.lWall + hw;
       if (this.vx < 0) this.vx = -this.vx * 0.3;
       this.scrape = 1;
-      this.v *= 1 - 0.8 * dt;
+      this.v *= 1 - 1.8 * dt;
     }
     if (this.x + hw > lim.rWall) {
       this.x = lim.rWall - hw;
       if (this.vx > 0) this.vx = -this.vx * 0.3;
       this.scrape = 1;
-      this.v *= 1 - 0.8 * dt;
+      this.v *= 1 - 1.8 * dt;
     }
 
     // ---- engine note and looks

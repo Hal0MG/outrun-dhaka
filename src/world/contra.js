@@ -2,7 +2,7 @@
 // kerb you can drive over, and the opposite carriageway with oncoming traffic.
 // Every kilometre or so one of those stretches has ROAD WORKS on our side: the
 // lanes are coned off and rough, so the only fast way through is the opposite
-// carriageway. Driving on it also pays: nitro and fuel for the time spent there.
+// carriageway. Driving on it also pays: nitro for the time spent there.
 
 export const CONTRA_LEN = 300;
 const GAP = 1100; // road between one set of works and the next

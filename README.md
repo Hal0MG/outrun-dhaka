@@ -11,7 +11,7 @@ Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · H horn ·
 
 ## Driving
 
-Hold gas and steer. Corners push you to the outside, harder the faster you go, so the skill is the line you hold through them. Tap SPACE to burn one nitro charge (you can hold three); nitro in a tight bend throws you wide. Contact with other cars and running onto the verge only cost speed: nothing wrecks you. Grab coins, fuel cans (run dry and you roll to a stop) and nitro pickups on the road.
+Hold gas and steer. Corners push you to the outside, harder the faster you go, so the skill is the line you hold through them. Tap SPACE to burn one nitro charge (you can hold three); nitro in a tight bend throws you wide. Running onto the verge or scraping a rail costs a lot of speed and grip, and contact with other cars costs speed: nothing wrecks you, but nothing is free. Grab coins, fuel cans (run dry and you roll to a stop) and nitro pickups on the road.
 
 ## Races
 
@@ -26,7 +26,7 @@ Fuel and nitro come in rows across the whole road, a few a lap, so you never hav
 
 Every car drives the same; pick the body you like.
 
-The clock is what counts: a circuit has gold, silver and bronze times, and your best time and medal are saved per race and shown on the map. The tank is about 70% of a circuit, and nitro burns fuel two and a half times as fast, so fuel is something you manage: there is one fuel row per race, every car you pass adds a little (and every eighth gives a nitro charge), and the wrong way pays fuel too. On divided roads, stretches of ROAD WORKS close our carriageway and push everyone onto the opposite one, against oncoming traffic; driving the wrong way pays in nitro and fuel.
+The clock is what counts: a circuit has gold, silver and bronze times, and your best time and medal are saved per race and shown on the map. The tank is about 70% of a circuit, and nitro burns fuel two and a half times as fast, so fuel is something you manage: there is one fuel row a lap (about every 6 km on the Run), and every eighth car you pass gives a nitro charge. On divided roads, stretches of ROAD WORKS close our carriageway and push everyone onto the opposite one, against oncoming traffic; driving the wrong way pays in nitro.
 
 Music is five original tracks on Bengali scales (Yaman, Kafi, Bhairav, Khamaj, Bilawal) with tabla, bansuri and ektara, changing with each district. Music and sound effects have separate volume, reverb and compression. Winning any race unlocks the Rickshaw 9000 in the garage.
 
