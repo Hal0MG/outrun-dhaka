@@ -9,6 +9,9 @@ const GEAR_TOPS = {
   6: [0.2, 0.34, 0.49, 0.64, 0.81, 1.0],
 };
 
+// levels for recorded beds, relative to the synthesised noise they replace (tune by ear)
+const SAMPLE_TRIM = { rain: 1.6, city: 1.6, river: 1.6 };
+
 export class AudioEngine {
   constructor() {
     this.ctx = null;
@@ -66,6 +69,43 @@ export class AudioEngine {
     this.buildEngine();
     this.buildLoops();
     this.loadEngineWorklet();
+    this.loadSamples();
+  }
+
+  // Recorded ambience, if supplied: public/audio/<name>.ogg (or .mp3) for rain, city and river replaces the synthesised
+  // bed of that name. Any that are missing keep the generated sound.
+  async loadSamples() {
+    const base = import.meta.env.BASE_URL + 'audio/';
+    for (const name of ['rain', 'city', 'river']) {
+      for (const ext of ['ogg', 'mp3']) {
+        try {
+          const res = await fetch(base + name + '.' + ext);
+          if (!res.ok || (res.headers.get('content-type') || "").includes('html')) continue;
+          const buf = await this.ctx.decodeAudioData(await res.arrayBuffer());
+          this.useSample(name, buf);
+          break;
+        } catch (e) { /* not there, or not decodable: keep the synthesised bed */ }
+      }
+    }
+  }
+
+  useSample(name, buf) {
+    const ctx = this.ctx, L = this.L[name];
+    if (!L) return;
+    const n = ctx.createBufferSource();
+    n.buffer = buf;
+    n.loop = true;
+    // a recording is already shaped: the noise filter just passes it, and a trim brings it to the old bed's level
+    L.flt.type = 'allpass';
+    L.flt.disconnect();
+    const trim = ctx.createGain();
+    trim.gain.value = SAMPLE_TRIM[name] || 1;
+    n.connect(L.flt);
+    L.flt.connect(trim).connect(L.g);
+    n.start();
+    try { L.n.stop(); } catch (e) { /* already stopped */ }
+    L.n.disconnect();
+    L.n = n;
   }
 
   // the modelled engine; until it loads (or where worklets are missing) the old oscillator engine plays

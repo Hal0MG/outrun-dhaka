@@ -14,6 +14,7 @@ import { STAGES, childrenOf, KNOCKOUTS } from './stages.js';
 import { buildContra } from './contra.js';
 import { oppLayout } from './zones.js';
 import { LANDMARKS, bannerMaterial, gantryMaterial } from './landmarks.js';
+import { MODELS, placeModel } from './models.js';
 import * as PR from './props.js';
 import { RNG, hashStr, clamp, smoothstep } from '../core/util.js';
 
@@ -357,6 +358,9 @@ export class World {
       if (!inChunk(s)) continue;
       const fn = LANDMARKS[l.type];
       if (!fn) continue;
+      // a modelled version, if one was supplied, stands in for the generated building
+      const mdl = MODELS[l.type] && placeModel(l.type, ctx.P(s, l.side * l.dist, 0, true), tr.yawAt(s));
+      if (mdl) { ctx.extra.push(mdl); continue; }
       if (l.type === 'ledArch') fn(ctx, s, tr.halfWAt(s) + 10, l.opts);
       else if (l.type === 'tollPlaza') fn(ctx, s, tr.halfWAt(s), tr.lanesAt(s));
       else fn(ctx, s, l.side, l.dist, l.opts);

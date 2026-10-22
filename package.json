@@ -4,6 +4,8 @@
   "description": "An OutRun-style arcade racer through Dhaka, from Dhanmondi to everywhere.",
   "type": "module",
   "private": true,
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/Hal0MG/outrun-dhaka.git" },
   "scripts": {
     "dev": "vite --port 5173 --strictPort",
     "build": "vite build",

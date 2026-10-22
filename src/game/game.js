@@ -24,6 +24,7 @@ import { contraAt } from '../world/contra.js';
 import { Particles } from './particles.js';
 import { Weather } from './weather.js';
 import { loadCarAssets } from './carassets.js';
+import { loadLandmarkModels } from '../world/models.js';
 import { Race } from './race.js';
 import { CARS, buildPlayerCar, makeEnvMap, applyEnv } from './cars.js';
 import { audio } from '../audio/audio.js';
@@ -49,7 +50,7 @@ export class Game {
   }
 
   async init(progress) {
-    await loadCarAssets();
+    await Promise.all([loadCarAssets(), loadLandmarkModels()]);
     this.world.buildAssets(progress);
     progress?.('Hanging the sky');
     this.sky = new Sky(this.scene);

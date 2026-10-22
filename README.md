@@ -1,51 +1,66 @@
-# Outrun Dhaka · আউটরান ঢাকা
+# Outrun Dhaka
 
-An arcade racer through Dhaka, after Horizon Chase Turbo. Pick a race on a top-down map of the city, with a list beside it: any district as a three-lap circuit (CIRCUIT tab), or THE RUN, a knockout race across the whole city.
+An arcade racer through Dhaka, after Horizon Chase Turbo. Race any of fifteen districts as a three-lap circuit, or run **The Run**: a knockout race across the whole city, from Dhanmondi at dusk to the Padma Bridge at dawn.
+
+Runs in the browser. No install, no assets to download: the world, the music and the engine sounds are all generated in code, in about 2 MB.
+
+![Title screen: the showreel](docs/screenshots/title.jpg)
+
+| | |
+|---|---|
+| ![Shahbag](docs/screenshots/shahbag.jpg) | ![Hatirjheel at night](docs/screenshots/hatirjheel.jpg) |
+| ![Old Dhaka](docs/screenshots/old-dhaka.jpg) | ![Motijheel](docs/screenshots/motijheel.jpg) |
+| ![Sadarghat](docs/screenshots/sadarghat.jpg) | ![Race picker](docs/screenshots/map.jpg) |
 
 ## Play
 
-- **Easiest:** open `dist/index.html` in Chrome or Edge. It is a single self-contained file (fonts load from Google Fonts when online; it falls back to system Bengali fonts offline).
-- **Dev server:** `npm install`, then `npm run dev` and open http://127.0.0.1:5173
+- **Quickest:** build it (below) and open `dist/index.html` in Chrome or Edge. It is one self-contained file. Fonts load from Google Fonts when online.
+- **Dev server:** `npm install`, `npm run dev`, then open http://127.0.0.1:5173
 
-The title screen is a showreel: racers stream down a different district every dozen seconds, filmed from above the road.
+Controls: â†‘/W gas Â· â†“/S brake Â· â†â†’ steer Â· SPACE/B nitro Â· R music Â· ESC/P pause Â· F fullscreen. Gamepads work. On a phone, gas is automatic: two steer buttons on the left, brake and nitro on the right.
 
-Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · R music on/off · ESC/P pause · F fullscreen. Gamepads work too. On a phone the gas is automatic: two steer buttons on the left, brake and nitro on the right.
+## The game
 
-## Driving
+- **Circuit:** any district, three laps, 24 cars. You start last with the field strung out ahead, so you pass a few at a time. Gold, silver and bronze times; your best time and medal are saved per race.
+- **The Run:** 48 cars on one road through every district. Knockout gates thin the field at Shahbag, Kawran Bazar, Gulshan, Sadarghat, Mirpur and 300 Feet. About five minutes.
+- **Driving:** corners push you wide, so the skill is the line you hold. Tap nitro to burn a charge (hold three), but nitro in a bend throws you wide. The verge and rails cost speed and grip. Fuel cans, coins and nitro pickups lie across the road; the tank is a bit under a circuit's worth, so fuel is something you manage.
+- **The road:** rickshaws, CNGs, buses, police and RAB pickups, pedestrians and stalls. Nobody keeps to a lane. Anything you hit is flung off the road. Potholes, patches and litter that scatters when you drive through it; in the rain, puddles that splash, umbrellas and water beading on the car. On divided roads, stretches of ROAD WORKS push you onto the opposite carriageway, against oncoming traffic.
+- **The places:** each district has its own time of night, weather, music and real landmarks (Jatiya Sangsad Bhaban, Ahsan Manzil, Baitul Mukarram, Shaheed Minar and more), plus the metro train on its viaduct, planes over the airport, kites and fireworks.
+- **Sound:** original music on Bengali scales with tabla, bansuri and ektara, a different track per district, and a modelled engine sound.
 
-Hold gas and steer. Corners push you to the outside, harder the faster you go, so the skill is the line you hold through them. Tap SPACE to burn one nitro charge (you can hold three); nitro in a tight bend throws you wide. Running onto the verge or scraping a rail costs a lot of speed and grip, and contact with other cars costs speed: nothing wrecks you, but nothing is free. Grab coins, fuel cans (run dry and you roll to a stop) and nitro pickups on the road.
-
-## Races
-
-- **Circuit:** any of the fifteen districts, three laps, twenty-four cars on a rolling start, you start last and the field is strung out up the road ahead, so you pass a few at a time instead of the whole pack at once. Each lap is the district's own road (its look, landmarks and time of night) laid end to end, so every lap has the same corners.
-- **The Run:** forty-eight cars on one road through every district, dusk to dawn, Dhanmondi to the Padma Bridge (about five minutes). Knockout gates at Shahbag (top 46 go through), Kawran Bazar (39), Gulshan (32), Sadarghat (28), Mirpur (26) and 300 Feet (23), so the back of the field is thinned at each gate.
-
-Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan → Old Dhaka → Sadarghat → Motijheel → Mirpur → Airport Road → 300 Feet → CTG Highway → Savar → Padma Bridge
-
-On the road (potholes, repair patches, mud and litter that scatters when you drive through it; in the rain, puddles that splash, umbrellas, and beads of water on the car; bare asphalt: no painted lanes or zebra crossings, and nobody keeps to a lane): Dhaka's traffic (rickshaws, CNGs, buses, cars, police and RAB pickups), pedestrians and roadside stalls. They only populate the road: nothing here slows a racer, and whatever you or a rival hits is flung off the road. Traffic thins out when many racers are close together. Your driver comments from a speech bubble above the car: reactions (overtakes, nitro, bumps) and advice that helps you win (nitro ready on a straight, sharp bend ahead, low fuel, the knockout cut-off).
-
-Fuel and nitro come in rows across the whole road, a few a lap, so you never have to hug a side to catch them. The sky and skyline have their own life per district: the metro train on the viaduct, planes over the airport, flocks of birds, Bengali kites (some flown after dark), fireworks, fire-breathers, and people on balconies.
-
-Every car drives the same; pick the body you like.
-
-The clock is what counts: a circuit has gold, silver and bronze times, and your best time and medal are saved per race and shown on the map. The tank is about 70% of a circuit, and nitro burns fuel two and a half times as fast, so fuel is something you manage: there is one fuel row a lap (about every 6 km on the Run), and every eighth car you pass gives a nitro charge. On divided roads, stretches of ROAD WORKS close our carriageway and push everyone onto the opposite one, against oncoming traffic; driving the wrong way pays in nitro.
-
-Music is five original tracks on Bengali scales (Yaman, Kafi, Bhairav, Khamaj, Bilawal) with tabla, bansuri and ektara, changing with each district. Music and sound effects have separate volume, reverb and compression. Winning any race unlocks the Rickshaw 9000 in the garage.
+Dhanmondi â†’ Shahbag â†’ Manik Mia â†’ Kawran Bazar â†’ Hatirjheel â†’ Gulshan â†’ Old Dhaka â†’ Sadarghat â†’ Motijheel â†’ Mirpur â†’ Airport Road â†’ 300 Feet â†’ CTG Highway â†’ Savar â†’ Padma Bridge
 
 ## Build
 
-- `npm run build` writes the single-file game to `dist/index.html`.
-- `npm run artifact` also writes `dist/outrun-dhaka.artifact.html` (same game without the document skeleton, for hosts that supply their own).
+```
+npm install
+npm run build      # dist/index.html, a single file
+npm run artifact   # also dist/outrun-dhaka.artifact.html (no document skeleton)
+```
 
-Everything (buildings, signboards, rickshaw art, trees, cars, landmarks, music, engine sounds) is generated in code at startup; there are no asset files.
+Built with [three.js](https://threejs.org) and Vite. Deployed as a static site (see `render.yaml`).
+
+### Optional recordings and models
+
+The game ships with generated sound and buildings. If you add files, it uses them instead; any that are missing fall back to the generated version.
+
+- `public/audio/` loopable `rain`, `city` and `river` recordings (`.ogg` or `.mp3`). See [public/audio/README.txt](public/audio/README.txt).
+- `public/models/` glTF binaries named after a landmark (`sangsad.glb`, `ahsanManzil.glb`, ...). See [public/models/README.txt](public/models/README.txt).
+
+When using these, the build is a folder (`dist/`), not just one file.
 
 ## Code map
 
-- `src/world/` track geometry, districts and circuits (`stages.js`), chunk streaming, props, landmarks, textures, sky, road shader
-- `src/game/` ambience (`ambience.js`: trains, planes, birds, kites, fireworks), driving model (`player.js`), races, rivals and pickups (`race.js`), traffic, pedestrians and stalls (`traffic.js`, `peds.js`, `stalls.js`), instanced car drawing (`fleet.js`), car models, camera, particles, weather
-- `src/audio/` synthesised engines and effects, the music sequencer and five tracks
-- `src/ui/` HUD, menus, the Dhaka map (`dhakamap.js`), the driver's speech bubble (`dialogue.js`)
+- `src/world/` track geometry, districts (`stages.js`), chunk streaming, props, landmarks, textures, sky, road shader
+- `src/game/` driving model (`player.js`), races and rivals (`race.js`), traffic, pedestrians, instanced cars (`fleet.js`), ambience, showreel (`attract.js`), weather, camera
+- `src/audio/` synthesised engines and effects, the music sequencer
+- `src/ui/` HUD, menus, the Dhaka map
 
 ## Credits
 
-Car meshes: "Free Low Poly Vehicles Pack" by Rgsdev (CC0), in `src/assets/cars`. They are refitted to real dimensions, recoloured and smooth-shaded at startup.
+- Car meshes: "Free Low Poly Vehicles Pack" by Rgsdev, CC0 (`src/assets/cars/LICENSE.txt`). Refitted, recoloured and smooth-shaded at startup.
+- Everything else (art, music, sound, code) is original.
+
+## License
+
+Code: MIT, see [LICENSE](LICENSE).
