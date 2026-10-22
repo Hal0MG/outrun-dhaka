@@ -1,4 +1,5 @@
-// Pedestrians who cross wherever they like (often right under the footbridge).
+// Pedestrians who cross wherever they like (often right under the footbridge), at any angle,
+// and plenty who are just out strolling in the road.
 // A racer that hits one sends them spinning through the air like a cardboard
 // cut-out; they land, lie there seeing stars, then get up and shake a fist.
 // It costs the racer nothing. Painted billboard sprites that rotate in the screen plane.
@@ -7,7 +8,7 @@ import * as THREE from 'three';
 import { clamp, damp, fx, RNG } from '../core/util.js';
 import { shared } from '../world/materials.js';
 
-const MAX = 90;
+const MAX = 200;
 const KINDS = {
   street: ['p_lungi', 'p_shirt', 'p_saree', 'p_kameez', 'p_panjabi', 'p_vendor', 'p_lungi', 'p_shirt'],
   commuter: ['p_shirt', 'p_kameez', 'p_saree', 'p_panjabi', 'p_shirt'],
@@ -117,12 +118,23 @@ export class Peds {
     return p;
   }
 
-  // a little group crossing the road ahead of the player
+  // a little group crossing the road ahead of the player, wherever they like: not square across, but at an angle
   crossing(track, s, n = 3) {
     const hw = track.halfWAt(Math.min(s, track.length));
     const dir = this.rng.sign();
     for (let i = 0; i < n; i++) {
-      this.add(track, s + this.rng.range(-2.5, 2.5), -dir * (hw + this.rng.range(0.4, 3)), 'street', { vx: dir * this.rng.range(1.1, 1.7) });
+      const p = this.add(track, s + this.rng.range(-4, 4), -dir * (hw + this.rng.range(0.4, 3)), 'street', { vx: dir * this.rng.range(1.0, 1.8) });
+      if (p) p.vs = this.rng.range(-0.7, 0.7);
+    }
+  }
+
+  // people already out in the road, ambling about or crossing from the middle
+  roam(track, s, n = 2) {
+    const hw = track.halfWAt(Math.min(s, track.length));
+    for (let i = 0; i < n; i++) {
+      const dir = this.rng.sign();
+      const p = this.add(track, s + this.rng.range(-8, 8), this.rng.range(-hw + 0.8, hw - 0.8), 'street', { vx: dir * this.rng.range(0.8, 1.6) });
+      if (p) p.vs = this.rng.range(-0.9, 0.9);
     }
   }
 
@@ -135,12 +147,14 @@ export class Peds {
     if (active && rate > 0.12) {
       this.spawnT -= dt;
       if (this.spawnT <= 0) {
-        this.spawnT = this.rng.range(1.4, 3.4) / rate;
-        const s = P.s + this.rng.range(140, 260);
+        this.spawnT = this.rng.range(0.35, 1.0) / Math.max(rate, 0.5);
+        const s = P.s + this.rng.range(120, 300);
         if (s < tr.length - 300 && tr.elevAt(s) < 1) {
           let sp = s;
           for (const fb of tr.stage.footbridges || []) { const fs = tr.mapS(fb); if (Math.abs(fs - s) < 120 && this.rng.chance(0.6)) sp = fs + this.rng.range(-3, 3); }
-          this.crossing(tr, sp, this.rng.int(1, 3));
+          // half cross from the kerb, half are already strolling in the road
+          if (this.rng.chance(0.5)) this.crossing(tr, sp, this.rng.int(1, 4));
+          else this.roam(tr, sp, this.rng.int(1, 3));
         }
       }
     }
@@ -168,7 +182,7 @@ export class Peds {
             if (-d > -v.l && -d < 10 + v.v * 0.9 && Math.abs(v.x - (p.x + p.vx * 0.8)) < v.w + 0.8) { wait = true; break; }
           }
         }
-        if (!wait) p.x += p.vx * dt;
+        if (!wait) { p.x += p.vx * dt; if (p.state === 'walk') p.s += p.vs * dt; }
         if (p.state !== 'idle' && Math.abs(p.x) > hw + 4) { this.list.splice(i, 1); continue; }
       } else if (p.state === 'freeze') {
         p.rot = Math.sin(p.t * 30) * 0.08;

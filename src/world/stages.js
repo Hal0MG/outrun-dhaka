@@ -42,7 +42,6 @@ export const STAGES = {
       { type: 'floodlights', s: 2660, side: -1, dist: 18, clear: [2560, 2780], opts: { w: 60, d: 90 } },
     ],
     footbridges: [880, 2100, 3350],
-    zebras: [500, 1700, 2400, 3100],
   },
 
   // ======================================================================== LEVEL 1
@@ -69,7 +68,6 @@ export const STAGES = {
       { type: 'shaheedMinar', s: 840, side: -1, dist: 16, clear: [780, 920] },
     ],
     banners: [{ s: 120, lines: ['শুভ নববর্ষ ১৪৩৩', 'SHUBHO NOBOBORSHO'] }, { s: 1850, lines: ['মঙ্গল শোভাযাত্রা', 'CHARUKOLA · DHAKA UNIVERSITY'], c1: '#1d5fa8', c2: '#0d2f5c' }],
-    zebras: [600, 1300, 2000, 2700],
   },
 
   manikmia: {
@@ -142,7 +140,6 @@ export const STAGES = {
     ],
     metroStations: [800],
     footbridges: [560, 3200],
-    zebras: [400, 1100, 3300],
   },
 
   hatirjheel: {
@@ -255,7 +252,6 @@ export const STAGES = {
       { type: 'stadium', s: 1850, side: -1, dist: 120, clear: [1700, 2000] },
     ],
     metroStations: [700],
-    zebras: [500, 1300, 2300],
   },
 
   // ======================================================================== LEVEL 4 (exits)
@@ -439,7 +435,6 @@ export function circuitStage(id) {
     sections: every(lap, (s) => ({ ...s })),
     landmarks: every(base.landmarks, (l, i) => ({ ...l, s: at(l.s, i), clear: l.clear && [at(l.clear[0], i), at(l.clear[1], i)] })),
     footbridges: every(base.footbridges, at),
-    zebras: every(base.zebras, at),
     metroStations: every(base.metroStations, at),
     banners: every(base.banners, (b, i) => ({ ...b, s: at(b.s, i) })),
     alpana: every(base.alpana, ([a, b], i) => [at(a, i), at(b, i)]),

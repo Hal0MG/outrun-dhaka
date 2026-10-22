@@ -2,12 +2,11 @@
 // and RAB pickups) and plenty of them: the road is meant to be
 // busy. They are scenery that moves: nothing here ever slows a racer down.
 // Anything a racer (you or a rival) runs into is flung off the road and gone a
-// moment later. Bikes, CNGs and e-rickshaws weave between lanes.
+// moment later. There are no lanes to keep to: everyone drifts across the whole road, bikes, CNGs and e-rickshaws most of all.
 //
 // Cars live at a distance G along the whole route, like the field does, so the
 // road can cross district tracks.
 
-import { LANE_W } from '../world/track.js';
 import { oppLayout } from '../world/zones.js';
 import * as THREE from 'three';
 import { clamp, RNG } from '../core/util.js';
@@ -86,16 +85,15 @@ export class Traffic {
     const type = this.rng.weighted(Object.fromEntries(Object.entries(TYPES).map(([k, t]) => [k, t.weight])));
     const T = TYPES[type];
     const sc = Math.min(L.s, tr.length);
-    const lanes = Math.max(1, Math.round(tr.lanesAt(sc)));
     const hw = tr.halfWAt(sc);
-    // the emptiest lane near here
-    let best = [], bc = 1e9;
-    for (let l = 0; l < lanes; l++) {
+    // nobody keeps to a lane here: the emptiest of a few random spots across the whole road
+    let x = 0, bc = 1e9;
+    for (let k = 0; k < 4; k++) {
+      const cx = this.rng.range(-hw + 1.3, hw - 1.3);
       let c = 0;
-      for (const o of this.cars) if (Math.abs(o.G - G) < 120 && Math.abs(o.x - (-hw + LANE_W * (l + 0.5))) < LANE_W / 2) c++;
-      if (c < bc) { bc = c; best = [l]; } else if (c === bc) best.push(l);
+      for (const o of this.cars) if (Math.abs(o.G - G) < 120 && Math.abs(o.x - cx) < 2.2) c++;
+      if (c < bc) { bc = c; x = cx; }
     }
-    const x = -hw + LANE_W * (this.rng.pick(best) + 0.5) + this.rng.range(-0.4, 0.4);
     const md = this.game.fleet.md(T.models[0]);
     if (!this.free(G, x, md.len / 2, md.wid / 2)) return;
     this.make(type, G, x, this.rng.range(T.speed[0], T.speed[1]));
@@ -113,10 +111,9 @@ export class Traffic {
     if (L.s > tr.length - 80 && !tr.isFinal) return;
     if (this.game.world.sideTypeAt(tr, sc, 1) !== 'median') return;
     const o = oppLayout(tr, sc, tr.stage);
-    const lanes = Math.max(1, Math.round((tr.stage.lanes * LANE_W) / LANE_W));
     const type = this.rng.weighted({ car: 4, rickshaw: 1.5, cng: 3, bus: 1.5, suv: 1.5, micro: 1.2, truck: 1, bike: 1 });
     const T = TYPES[type];
-    const x = o.near + LANE_W * (this.rng.int(0, lanes - 1) + 0.5) + this.rng.range(-0.4, 0.4);
+    const x = this.rng.range(o.near + 1.3, o.far - 1.3);
     const md = this.game.fleet.md(T.models[0]);
     if (!this.free(G, x, md.len / 2, md.wid / 2)) return;
     this.make(type, G, x, this.rng.range(T.speed[0], T.speed[1]) + 4, { dir: -1 });
@@ -124,9 +121,10 @@ export class Traffic {
 
   fling(car, m) {
     const side = Math.sign(car.x - m.x) || (this.rng.chance(0.5) ? 1 : -1);
+    // a proper launch: it leaves faster than you are going, well off to the side, high and tumbling
     car.wreck = {
-      t: 0, vs: m.v * 0.85 + this.rng.range(0, 4), vx: side * this.rng.range(5, 10), vh: this.rng.range(5, 9),
-      rollV: side * this.rng.range(3, 8), yawV: this.rng.sign() * this.rng.range(0.6, 2.4), pitchV: this.rng.range(-1.5, 1.5),
+      t: 0, vs: m.v * 1.2 + this.rng.range(6, 14), vx: side * this.rng.range(13, 24), vh: this.rng.range(11, 17),
+      rollV: side * this.rng.range(6, 14), yawV: this.rng.sign() * this.rng.range(1.5, 5), pitchV: this.rng.range(-4, 4),
     };
     car.brake = false;
     this.events.push({ type: 'hit', car, by: m.player ? 'player' : 'rival' });
@@ -136,12 +134,11 @@ export class Traffic {
   weave(c, dt) {
     c.weaveT -= dt;
     if (c.weaveT <= 0) {
-      c.weaveT = this.rng.range(2, 6);
-      if (c.track && this.rng.chance(c.weave)) {
+      c.weaveT = this.rng.range(1.5, 5);
+      // everyone drifts: heavier vehicles a little, bikes, CNGs and e-rickshaws all over the road
+      if (c.track && this.rng.chance(0.25 + c.weave * 0.75)) {
         const hw = c.track.halfWAt(Math.min(c.s, c.track.length));
-        const lanes = Math.max(1, Math.round(c.track.lanesAt(Math.min(c.s, c.track.length))));
-        const lane = clamp(Math.round((c.x + hw) / LANE_W - 0.5) + this.rng.sign(), 0, lanes - 1);
-        const tx = -hw + LANE_W * (lane + 0.5);
+        const tx = clamp(c.x + this.rng.range(-4.5, 4.5), -hw + c.w + 0.6, hw - c.w - 0.6);
         if (this.free(c.G, tx, c.l, c.w)) c.tx = tx;
       }
     }
@@ -163,7 +160,7 @@ export class Traffic {
     }
     for (let i = this.cars.length - 1; i >= 0; i--) {
       const c = this.cars[i];
-      if (c.G < PG - KEEP_BEHIND || c.G > PG + KEEP_AHEAD || (c.wreck && c.wreck.t > 2.6)) { this.cars.splice(i, 1); continue; }
+      if (c.G < PG - KEEP_BEHIND || c.G > PG + KEEP_AHEAD || (c.wreck && c.wreck.t > 3.2)) { this.cars.splice(i, 1); continue; }
       if (c.wreck) {
         const w = c.wreck;
         w.t += dt;
@@ -174,8 +171,8 @@ export class Traffic {
         c.roll += w.rollV * dt;
         c.pitch += w.pitchV * dt;
         c.yaw += w.yawV * dt;
-        if (c.lift < 0) { c.lift = 0; w.vh = Math.abs(w.vh) > 3 ? -w.vh * 0.3 : 0; w.vs *= 0.7; w.vx *= 0.7; w.rollV *= 0.6; w.pitchV *= 0.6; w.yawV *= 0.6; }
-        w.vs *= Math.exp(-0.4 * dt);
+        if (c.lift < 0) { c.lift = 0; w.vh = Math.abs(w.vh) > 3 ? -w.vh * 0.45 : 0; w.vs *= 0.8; w.vx *= 0.85; w.rollV *= 0.7; w.pitchV *= 0.7; w.yawV *= 0.7; }
+        w.vs *= Math.exp(-0.25 * dt);
       } else {
         // keep station behind whatever is ahead in the lane
         let v = c.v;

@@ -179,16 +179,6 @@ button { font: inherit; color: inherit; }
 body:not(.racing) #touch { display: none; }
 #touch button { position: absolute; pointer-events: auto; border: 3px solid #000; background: rgba(255, 241, 210, 0.85); color: #000; font-family: var(--f-display); font-size: 16px; box-shadow: 4px 4px 0 #000; touch-action: none; }
 #touch button.on { background: var(--marigold); }
-.t-left, .t-right { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 76px; height: 76px; border-radius: 50%; }
-.t-left { left: max(18px, env(safe-area-inset-left, 0px)); }
-.t-right { left: calc(max(18px, env(safe-area-inset-left, 0px)) + 92px); }
-.t-gas, .t-brake { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 80px; height: 110px; border-radius: 12px; }
-.t-gas { right: max(18px, env(safe-area-inset-right, 0px)); background: rgba(25, 168, 74, 0.9) !important; color: #fff !important; }
-.t-brake { right: calc(max(18px, env(safe-area-inset-right, 0px)) + 96px); background: rgba(228, 37, 43, 0.9) !important; color: #fff !important; }
-.t-horn { right: calc(max(18px, env(safe-area-inset-right, 0px)) + 30px); bottom: calc(150px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 44px; border-radius: 22px; font-size: 12px !important; }
-.t-nitro { left: calc(max(18px, env(safe-area-inset-left, 0px)) + 40px); bottom: calc(116px + env(safe-area-inset-bottom, 0px)); width: 92px; height: 48px; border-radius: 24px; font-size: 13px !important; background: rgba(34, 211, 238, 0.9) !important; }
-.t-pause { right: calc(max(18px, env(safe-area-inset-right, 0px)) + 110px); bottom: calc(150px + env(safe-area-inset-bottom, 0px)); width: 44px; height: 44px; border-radius: 8px; }
-body.touch .h-speed { bottom: calc(120px + env(safe-area-inset-bottom, 0px)); transform: scale(0.8); transform-origin: left bottom; }
 body.touch .h-radio, body.touch #hMap { display: none; }
 
 @keyframes cardin { from { transform: rotate(-12deg) translateY(60vh); } to { transform: rotate(-1.5deg) translateY(0); } }
@@ -290,21 +280,6 @@ body.touch #tuntuni { width: 40px; height: 40px; }
 .h-obj .par.silver { color: #d4dae0; }
 .h-obj .par.bronze { color: #d98a4e; }
 
-/* ---- phones: three groups so nothing sits under a thumb.
-   top-left the clock and objective, top-right the pause button and the tank, bottom-left the speedo,
-   bottom the controls. Coins stay; the lap clock and the car behind are dropped. */
-body.touch .h-time { transform: rotate(-2deg) scale(0.72); }
-body.touch .h-obj { top: calc(92px + env(safe-area-inset-top, 0px)); }
-body.touch .h-obj .gap.behind, body.touch .h-score .row.small, body.touch .h-cam { display: none; }
-body.touch .h-score { top: calc(14px + env(safe-area-inset-top, 0px)); right: calc(max(12px, env(safe-area-inset-right, 0px)) + 54px); }
-body.touch .h-score .row { font-size: 16px; }
-body.touch .h-progress { top: calc(60px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: 40vw; }
-body.touch .h-hct { left: auto; right: max(12px, env(safe-area-inset-right, 0px)); top: calc(80px + env(safe-area-inset-top, 0px)); bottom: auto; transform: none; flex-direction: column; align-items: flex-end; gap: 6px; }
-body.touch .h-hct .fb { width: 90px; height: 10px; }
-body.touch .h-speed { left: max(8px, env(safe-area-inset-left, 0px)); bottom: calc(112px + env(safe-area-inset-bottom, 0px)); transform: scale(0.6); }
-body.touch .t-pause { right: max(12px, env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; width: 40px; height: 40px; }
-body.touch .t-nitro { left: auto; right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(146px + env(safe-area-inset-bottom, 0px)); width: 176px; height: 50px; border-radius: 25px; font-size: 15px !important; }
-body.touch .t-horn { right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(204px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 38px; }
 
 /* ---- road works: a standing cross-over prompt with the distance to the barrier */
 .h-cross { position: absolute; left: 50%; top: calc(31vh + env(safe-area-inset-top, 0px)); transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 2px; padding: 6px 16px 4px; background: #f2c230; color: #111; border: 3px solid #000; box-shadow: 5px 5px 0 #000; font-family: var(--f-display); text-align: center; white-space: nowrap; pointer-events: none; }
@@ -316,3 +291,41 @@ body.touch .t-horn { right: max(18px, env(safe-area-inset-right, 0px)); bottom: 
 @keyframes crossblink { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .h-cross span { animation: none; } }
 body.touch .h-cross { top: calc(33vh + env(safe-area-inset-top, 0px)); }
+
+/* ---- phones: a stripped-down HUD. The gas is automatic, so the thumbs only steer (left), and brake and nitro (right).
+   Only the essentials stay on screen: the clock and your position, the lap, speed, fuel and nitro, and pause. */
+body.touch .h-radio, body.touch #hMap, body.touch .h-tags, body.touch .h-cam, body.touch .h-score,
+body.touch .h-obj .gap, body.touch .h-obj .par, body.touch .h-hct .charges span, body.touch .h-hct .fuel span,
+body.touch .gear, body.touch #tacho, body.touch .kmh i { display: none; }
+body.touch .h-time { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: scale(0.62); transform-origin: left top; min-width: 0; }
+body.touch .h-obj { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(58px + env(safe-area-inset-top, 0px)); }
+body.touch .h-obj .need { font-size: 10px; padding: 1px 6px; }
+body.touch .h-progress { left: 0; right: 0; top: 0; transform: none; width: auto; height: 4px; border: 0; box-shadow: none; }
+body.touch .h-progress .flag { display: none; }
+body.touch .h-hct { left: auto; right: max(10px, env(safe-area-inset-right, 0px)); top: calc(60px + env(safe-area-inset-top, 0px)); bottom: auto; transform: none; flex-direction: column; align-items: flex-end; gap: 5px; }
+body.touch .h-hct .fb { width: 78px; height: 8px; box-shadow: 2px 2px 0 #000; }
+body.touch .h-hct .charges i { width: 11px; height: 11px; }
+/* speed: a plain number over the steering buttons */
+body.touch .h-speed { left: max(14px, env(safe-area-inset-left, 0px)); bottom: calc(118px + env(safe-area-inset-bottom, 0px)); width: auto; height: auto; transform: none; }
+body.touch .kmh { position: static; font-size: 34px; text-align: left; }
+body.touch .kmh::after { content: " km/h"; font-size: 11px; letter-spacing: 0.1em; color: var(--marigold); -webkit-text-stroke: 0; }
+body.touch .h-cross { top: calc(33vh + env(safe-area-inset-top, 0px)); }
+body.touch .h-cross b { font-size: 11px; }
+body.touch .h-cross span { font-size: 20px; }
+body.touch .bubble { font-size: 13px; padding: 5px 9px; }
+body.touch .h-pause { display: none; }
+/* controls */
+#touch button { position: absolute; pointer-events: auto; border: 3px solid #000; color: #000; font-family: var(--f-display); box-shadow: 3px 3px 0 #000; touch-action: none; background: rgba(255, 241, 210, 0.78); }
+#touch button.on { background: var(--marigold); transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+.t-left, .t-right { bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 92px; height: 92px; border-radius: 26px; font-size: 26px; }
+.t-left { left: max(14px, env(safe-area-inset-left, 0px)); }
+.t-right { left: calc(max(14px, env(safe-area-inset-left, 0px)) + 102px); }
+.t-brake { right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 92px; height: 92px; border-radius: 26px; background: rgba(228, 37, 43, 0.9) !important; color: #fff !important; font-size: 15px; }
+.t-nitro { right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(126px + env(safe-area-inset-bottom, 0px)); width: 92px; height: 92px; border-radius: 50%; background: rgba(34, 211, 238, 0.92) !important; font-size: 15px; }
+.t-pause { right: max(10px, env(safe-area-inset-right, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); width: 38px; height: 38px; border-radius: 10px; font-size: 14px; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .t-left, .t-right, .t-brake, .t-nitro { width: 76px; height: 76px; }
+  .t-right { left: calc(max(14px, env(safe-area-inset-left, 0px)) + 86px); }
+  .t-nitro { right: calc(max(14px, env(safe-area-inset-right, 0px)) + 86px); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); }
+  body.touch .h-speed { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
+}

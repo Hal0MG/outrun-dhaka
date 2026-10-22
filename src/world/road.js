@@ -150,17 +150,8 @@ const ROAD_FS = /* glsl */ `
 
     // --- markings
     float fade = mix(1.0, 0.3 + 0.7 * smoothstep(0.25, 0.75, vn(vec2(lx * 2.0, s * 0.35))), uMarkFade);
-    float du = min(lf, 1.0 - lf) * laneW;
-    float inner = step(0.5, u) * step(u, lanes - 0.5);
-    float dash = step(fract(s / 6.0), 0.45);
-    float laneLine = (1.0 - smoothstep(0.055, 0.085, du)) * dash * inner;
-    float centre = uTwoWay * (1.0 - smoothstep(0.05, 0.08, abs(alx - 0.14)));
-    if (uTwoWay > 0.5) laneLine *= step(0.4, alx);
-    float edgeLine = (1.0 - smoothstep(0.07, 0.1, abs(alx - (hw - 0.3)))) * (1.0 - gutter);
-    col = mix(col, vec3(0.86, 0.85, 0.8), laneLine * fade * 0.85);
-    col = mix(col, vec3(0.92, 0.72, 0.16), max(edgeLine, centre) * fade * 0.9);
-    float zebra = feat.r * step(alx, hw - 0.5) * step(0.5, fract(lx / 1.1));
-    col = mix(col, vec3(0.9, 0.9, 0.86), zebra * fade);
+    // Dhaka's roads carry no lane dashes, edge lines or zebra crossings: bare asphalt. Only the chequered
+    // start/finish lines (below) are painted.
     if (feat.b > 0.02) {
       vec4 al = alpana(vec2(lx, s));
       col = mix(col, al.rgb * 0.75, al.a * feat.b * (1.0 - gutter));

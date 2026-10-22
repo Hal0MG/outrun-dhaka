@@ -7,7 +7,7 @@ An arcade racer through Dhaka, after Horizon Chase Turbo. Pick a race on a top-d
 - **Easiest:** open `dist/index.html` in Chrome or Edge. It is a single self-contained file (fonts load from Google Fonts when online; it falls back to system Bengali fonts offline).
 - **Dev server:** `npm install`, then `npm run dev` and open http://127.0.0.1:5173
 
-Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · H horn · R music on/off · V photo mode · ESC/P pause · F fullscreen. Gamepads and phone touch controls work too.
+Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · H horn · R music on/off · V photo mode · ESC/P pause · F fullscreen. Gamepads work too. On a phone the gas is automatic: two steer buttons on the left, brake and nitro on the right.
 
 ## Driving
 
@@ -20,7 +20,7 @@ Hold gas and steer. Corners push you to the outside, harder the faster you go, s
 
 Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan → Old Dhaka → Sadarghat → Motijheel → Mirpur → Airport Road → 300 Feet → CTG Highway → Savar → Padma Bridge
 
-On the road: Dhaka's traffic (rickshaws, CNGs, buses, cars, police and RAB pickups), pedestrians and roadside stalls. They only populate the road: nothing here slows a racer, and whatever you or a rival hits is flung off the road. Traffic thins out when many racers are close together. Tuntuni, your passenger, comments from a speech bubble above the car: reactions (overtakes, nitro, bumps) and advice that helps you win (nitro ready on a straight, sharp bend ahead, low fuel, the knockout cut-off).
+On the road (bare asphalt: no painted lanes or zebra crossings, and nobody keeps to a lane): Dhaka's traffic (rickshaws, CNGs, buses, cars, police and RAB pickups), pedestrians and roadside stalls. They only populate the road: nothing here slows a racer, and whatever you or a rival hits is flung off the road. Traffic thins out when many racers are close together. Tuntuni, your passenger, comments from a speech bubble above the car: reactions (overtakes, nitro, bumps) and advice that helps you win (nitro ready on a straight, sharp bend ahead, low fuel, the knockout cut-off).
 
 Fuel and nitro come in rows across the whole road, a few a lap, so you never have to hug a side to catch them. The sky and skyline have their own life per district: the metro train on the viaduct, planes over the airport, flocks of birds, Bengali kites (some flown after dark), fireworks, fire-breathers, and people on balconies.
 

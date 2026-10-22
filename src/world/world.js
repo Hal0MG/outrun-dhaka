@@ -200,7 +200,6 @@ export class World {
     // reserved zones for landmarks
     tr.clear = (stage.landmarks || []).filter((l) => l.clear).map((l) => ({ s0: tr.mapS(l.clear[0]), s1: tr.mapS(l.clear[1]), side: l.side }));
     // features
-    const zebras = (stage.zebras || []).map((z) => tr.mapS(z));
     const alp = (stage.alpana || []).map(([a, b]) => [tr.mapS(a), tr.mapS(b)]);
     const pud = (stage.puddles || []).map(([a, b]) => [tr.mapS(a), tr.mapS(b)]);
     const featRng = new RNG(hashStr(id) + 77);
@@ -208,7 +207,6 @@ export class World {
     for (let i = 0; i < tr.n; i++) puddleNoise.push(featRng.next());
     tr.featTex = buildFeatureTexture(tr, (s) => {
       let z = 0, p = 0, al = 0, ch = 0;
-      for (const zs of zebras) if (s >= zs && s < zs + 4) z = 1;
       for (const [a, b] of alp) if (s >= a && s <= b) al = smoothstep(a, a + 40, s) * (1 - smoothstep(b - 40, b, s));
       for (const [a, b] of pud) if (s >= a && s <= b) p = 0.75;
       if (Math.abs(s - tr.gateS - 0.5) < 1.6) ch = 1;
@@ -381,16 +379,6 @@ export class World {
       const R = ctx.sideType(s, 1);
       const hwR = R === 'median' ? tr.halfWAt(s) + (st.medianW || 2.6) + st.lanes * LANE_W : tr.halfWAt(s);
       PR.festiveGate(ctx, s, tr.halfWAt(s), hwR, bannerMaterial(b.lines, { c1: b.c1, c2: b.c2 }));
-    }
-    // pedestrians waiting at zebra crossings
-    for (const z of st.zebras || []) {
-      const s = M(z) + 2;
-      if (!inChunk(s)) continue;
-      for (let i = 0; i < 4; i++) {
-        const p = ctx.P(s + ctx.rng.range(-1.5, 1.5), -(tr.halfWAt(s) + 0.8 + ctx.rng.next()), 0.18);
-        ctx.sprites.add(ctx.rng.pick(['p_lungi', 'p_saree', 'p_shirt', 'p_kameez', 'crowd0']), p[0], p[1], p[2], 1, { lamp: 1 });
-      }
-      PR.roadSign(ctx, s - 30, -1, tr.halfWAt(s) + 1.2, ctx.rng.pick(['school', 'slow', 'nohorn']));
     }
     // occasional road signs
     if (ctx.rng.chance(0.25) && !tr.sectionAt(ctx.s0 + 50).fork) {

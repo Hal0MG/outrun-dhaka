@@ -79,6 +79,7 @@ async function boot() {
     const on = isTouch;
     touchEl.hidden = !on;
     document.body.classList.toggle('touch', on);
+    input.autoGas = on;
   }
   applyTouch();
   for (const b of touchEl.querySelectorAll('button')) {

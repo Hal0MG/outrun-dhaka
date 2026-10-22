@@ -233,7 +233,7 @@ export class AudioEngine {
     {
       const gl = ctx.createOscillator(); gl.frequency.value = 0.23;
       const gl2 = ctx.createOscillator(); gl2.frequency.value = 0.61;
-      const gg = ctx.createGain(); gg.gain.value = 0.35;
+      const gg = ctx.createGain(); gg.gain.value = 0.15;
       this.gust = ctx.createGain(); this.gust.gain.value = 1;
       gl.connect(gg); gl2.connect(gg);
       gg.connect(this.gust.gain);
@@ -379,13 +379,14 @@ export class AudioEngine {
     E.jetG.gain.setTargetAtTime(on * (k === 'jet' ? 0.05 : 0), t, 0.1);
 
     const L = this.L;
-    const sp = clamp(p.speed / 80, 0, 1.2);
-    L.wind.flt.frequency.setTargetAtTime(300 + sp * 2200, t, 0.1);
-    L.wind.g.gain.setTargetAtTime(sp * sp * (p.convertible ? 0.36 : 0.18), t, 0.1);
-    L.road.g.gain.setTargetAtTime(clamp(p.speed / 30, 0, 1) * 0.16 * (1 + (p.rain || 0) * 0.6), t, 0.1);
-    L.road.flt.frequency.setTargetAtTime(180 + sp * 420, t, 0.1);
-    L.whistle.g.gain.setTargetAtTime(Math.max(0, sp - 0.65) * 0.05, t, 0.2);
-    L.whistle.flt.frequency.setTargetAtTime(1800 + sp * 1600, t, 0.2);
+    // wind: the game sits near top speed nearly all the time, so it has to be pleasant there. It is a soft low
+    // rush that stops growing at about two thirds of top speed (no climbing hiss, no mirror whistle)
+    const wv = clamp(p.speed / 55, 0, 1);
+    L.wind.flt.frequency.setTargetAtTime(220 + wv * 520, t, 0.15);
+    L.wind.g.gain.setTargetAtTime(wv * wv * (p.convertible ? 0.07 : 0.04), t, 0.15);
+    L.road.g.gain.setTargetAtTime(clamp(p.speed / 30, 0, 1) * 0.1 * (1 + (p.rain || 0) * 0.6), t, 0.1);
+    L.road.flt.frequency.setTargetAtTime(180 + wv * 220, t, 0.1);
+    L.whistle.g.gain.setTargetAtTime(0, t, 0.2);
     this.chat.gain.setTargetAtTime((p.crowd || 0) * 0.07 * (1 - clamp(p.speed / 110, 0, 0.7)), t, 0.4);
     const rv = p.rival;
     if (rv) {

@@ -30,10 +30,12 @@ export class Input {
     this.lastDevice = 'keyboard';
     this.touch = { left: false, right: false, gas: false, brake: false, horn: false, boost: false };
     this.boostHeld = false;
+    this.autoGas = false; // set on touch devices
     this.gpPrev = {};
     window.addEventListener('keydown', (e) => {
       const a = KEYMAP[e.code];
       if (!a) return;
+      if (a === 'up' || a === 'down' || a === 'left' || a === 'right') this.autoGas = false; // a keyboard on a touch laptop drives itself
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Backspace'].includes(e.code)) e.preventDefault();
       if (!this.down.has(a)) this.edges.add(a);
       this.down.add(a);
@@ -94,7 +96,9 @@ export class Input {
       const d = target - this.steer;
       this.steer += Math.sign(d) * Math.min(Math.abs(d), rate * dt);
     }
-    this.throttle = Math.max(this.down.has('up') || this.touch.gas ? 1 : 0, gThrottle);
+    // on a phone the gas is automatic: you steer, brake and fire nitro
+    const auto = this.autoGas && !this.touch.brake ? 1 : 0;
+    this.throttle = Math.max(this.down.has('up') || this.touch.gas ? 1 : 0, gThrottle, auto);
     this.brake = Math.max(this.down.has('down') || this.touch.brake ? 1 : 0, gBrake);
     this.horn = this.down.has('horn') || this.touch.horn || gHorn;
     this.boostHeld = this.down.has('boost') || this.touch.boost || gBoost;
