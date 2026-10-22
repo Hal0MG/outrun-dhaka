@@ -6,18 +6,32 @@ Runs in the browser. No install, no assets to download: the world, the music and
 
 ![Title screen: the showreel](docs/screenshots/title.jpg)
 
-| | |
-|---|---|
-| ![Shahbag](docs/screenshots/shahbag.jpg) | ![Hatirjheel at night](docs/screenshots/hatirjheel.jpg) |
-| ![Old Dhaka](docs/screenshots/old-dhaka.jpg) | ![Motijheel](docs/screenshots/motijheel.jpg) |
-| ![Sadarghat](docs/screenshots/sadarghat.jpg) | ![Race picker](docs/screenshots/map.jpg) |
+![Hatirjheel at night](docs/screenshots/hatirjheel.jpg)
+
+*Hatirjheel after dark*
+
+![Old Dhaka](docs/screenshots/old-dhaka.jpg)
+
+*Old Dhaka: shopfronts, tangled wires and fireworks*
+
+![Motijheel in the rain](docs/screenshots/motijheel.jpg)
+
+*Motijheel in the monsoon: puddles, umbrellas, beaded paint*
+
+![Shahbag at dusk](docs/screenshots/shahbag.jpg)
+
+*Shahbag at dusk, with the road painted for Pohela Boishakh*
+
+![Pick a race](docs/screenshots/map.jpg)
+
+*Pick any district, or run the whole city*
 
 ## Play
 
 - **Quickest:** build it (below) and open `dist/index.html` in Chrome or Edge. It is one self-contained file. Fonts load from Google Fonts when online.
 - **Dev server:** `npm install`, `npm run dev`, then open http://127.0.0.1:5173
 
-Controls: â†‘/W gas Â· â†“/S brake Â· â†â†’ steer Â· SPACE/B nitro Â· R music Â· ESC/P pause Â· F fullscreen. Gamepads work. On a phone, gas is automatic: two steer buttons on the left, brake and nitro on the right.
+Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · R music · ESC/P pause · F fullscreen. Gamepads work. On a phone, gas is automatic: two steer buttons on the left, brake and nitro on the right.
 
 ## The game
 
@@ -28,7 +42,7 @@ Controls: â†‘/W gas Â· â†“/S brake Â· â†â†’ steer Â· S
 - **The places:** each district has its own time of night, weather, music and real landmarks (Jatiya Sangsad Bhaban, Ahsan Manzil, Baitul Mukarram, Shaheed Minar and more), plus the metro train on its viaduct, planes over the airport, kites and fireworks.
 - **Sound:** original music on Bengali scales with tabla, bansuri and ektara, a different track per district, and a modelled engine sound.
 
-Dhanmondi â†’ Shahbag â†’ Manik Mia â†’ Kawran Bazar â†’ Hatirjheel â†’ Gulshan â†’ Old Dhaka â†’ Sadarghat â†’ Motijheel â†’ Mirpur â†’ Airport Road â†’ 300 Feet â†’ CTG Highway â†’ Savar â†’ Padma Bridge
+Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan → Old Dhaka → Sadarghat → Motijheel → Mirpur → Airport Road → 300 Feet → CTG Highway → Savar → Padma Bridge
 
 ## Build
 
