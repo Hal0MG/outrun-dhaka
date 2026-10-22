@@ -135,9 +135,7 @@ async function boot() {
     const wasRace = menus.screen === 'race';
     menus.update(dt);
     if (wasRace && menus.screen === 'race') {
-      if (input.pressed('photo')) game.togglePhoto();
-      if (input.pressed('pause') && game.state !== 'photo') menus.pause();
-      else if (input.pressed('pause') && game.state === 'photo') game.togglePhoto();
+      if (input.pressed('pause')) menus.pause();
       if (input.pressed('radio')) game.toggleMusic();
     }
     // sub-step long frames for stable physics; one step per frame normally

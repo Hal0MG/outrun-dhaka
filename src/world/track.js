@@ -162,25 +162,3 @@ export class Track {
     return p;
   }
 }
-
-export function makeFrame() {
-  return {
-    pos: new THREE.Vector3(),
-    fwd: new THREE.Vector3(),
-    right: new THREE.Vector3(),
-    up: new THREE.Vector3(),
-    yaw: 0,
-    pitch: 0,
-    k: 0,
-    halfW: 5,
-  };
-}
-
-// lateral world offset between two tracks at a point (used for fork re-basing)
-export function lateralOffset(trackA, sA, trackB, sB) {
-  const pa = trackA.point(sA, 0, 0, new THREE.Vector3());
-  const pb = trackB.point(sB, 0, 0, new THREE.Vector3());
-  const yaw = trackA.yawAt(sA);
-  const rx = Math.cos(yaw), rz = Math.sin(yaw);
-  return (pb.x - pa.x) * rx + (pb.z - pa.z) * rz;
-}

@@ -322,17 +322,4 @@ export function buildTrafficModels(misc) {
 }
 
 // Logical types (for stage mixes) -> concrete model keys + behaviour
-export const TRAFFIC_TYPES = {
-  rickshaw: { models: ['rickshaw0', 'rickshaw1', 'rickshaw2', 'rickshaw3'], speed: [4.5, 6.5], lanes: 'left', weave: 0.25, honkDodge: 0.55, bell: true },
-  cng: { models: ['cng'], speed: [11, 15], lanes: 'any', weave: 0.7, honkDodge: 0.7 },
-  car: { models: ['car'], speed: [15, 24], lanes: 'any', weave: 0.3, honkDodge: 0.4, colors: true },
-  suv: { models: ['suv'], speed: [16, 26], lanes: 'right', weave: 0.25, honkDodge: 0.2, colors: 'dark' },
-  bus: { models: ['bus0', 'bus1', 'bus2'], speed: [11, 17], lanes: 'any', weave: 0.35, honkDodge: 0.08, stops: true },
-  brtc: { models: ['brtc'], speed: [10, 14], lanes: 'left', weave: 0.15, honkDodge: 0.05, stops: true },
-  truck: { models: ['truck0', 'truck1'], speed: [12, 18], lanes: 'left', weave: 0.15, honkDodge: 0.1 },
-  bike: { models: ['bike'], speed: [14, 22], lanes: 'any', weave: 0.9, honkDodge: 0.8 },
-  leguna: { models: ['leguna'], speed: [10, 14], lanes: 'left', weave: 0.4, honkDodge: 0.3, stops: true },
-  horse: { models: ['horse'], speed: [5, 7], lanes: 'left', weave: 0.1, honkDodge: 0.3 },
-  van: { models: ['van'], speed: [4, 6], lanes: 'left', weave: 0.2, honkDodge: 0.5, bell: true },
-  police: { models: ['police'], speed: [42, 46], lanes: 'any', weave: 0, honkDodge: 0 },
-};
+

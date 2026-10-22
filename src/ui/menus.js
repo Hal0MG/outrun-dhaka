@@ -5,8 +5,8 @@ import { CARS } from '../game/cars.js';
 import { audio } from '../audio/audio.js';
 import { STAGES, ROUTE, CIRCUIT_LAPS, RUN_FIELD, KNOCKOUTS } from '../world/stages.js';
 import { CIRCUIT_FIELD } from '../game/race.js';
-import { drawDhaka, stepOnMap, hitOnMap } from './dhakamap.js';
-import { bn, store, fmtTime } from '../core/util.js';
+import { drawDhaka, hitOnMap } from './dhakamap.js';
+import { store, fmtTime } from '../core/util.js';
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ['loading', 'title', 'map', 'garage', 'settings', 'howto', 'pause', 'results'];
@@ -23,6 +23,8 @@ export class Menus {
     this.returnTo = 'title';
     this.mapSel = store.get('mapSel', 'dhanmondi');
     if (this.mapSel !== 'run' && !STAGES[this.mapSel]) this.mapSel = 'dhanmondi';
+    this.mapLast = this.mapSel !== 'run' ? this.mapSel : store.get('mapLast', 'dhanmondi'); // the circuit to go back to from the Run tab
+    if (!STAGES[this.mapLast]) this.mapLast = 'dhanmondi';
     this.medals = store.get('medals', {}); // race id -> 1 gold, 2 silver, 3 bronze
     this.bestT = store.get('bestT', {}); // race id -> best time in seconds
     this.bindMouse();
@@ -54,15 +56,29 @@ export class Menus {
       audio.init();
       if ($('mainMenu').hidden) this.openMenu();
     });
+    // the map: tap a pin to pick that district (tap it again to race); on the Run tab the pins are just the route
     $('mapCv').addEventListener('click', (e) => {
+      if (this.mapSel === 'run') return;
       const cv = $('mapCv');
       const r = cv.getBoundingClientRect();
-      const hit = hitOnMap(cv, ((e.clientX - r.left) / r.width) * cv.width, ((e.clientY - r.top) / r.height) * cv.height);
+      const hit = hitOnMap(cv, ((e.clientX - r.left) / r.width) * cv.width, ((e.clientY - r.top) / r.height) * cv.height, cv.width / r.width);
       if (!hit) return;
       audio.init();
-      if (hit === this.mapSel) this.startRace();
-      else { this.mapSel = hit; audio.blip(); this.refresh(); }
+      this.pickDistrict(hit, true);
     });
+    $('mapList').addEventListener('click', (e) => {
+      const row = e.target.closest('.mp-row[data-id]');
+      if (!row) return;
+      audio.init();
+      this.pickDistrict(row.dataset.id, true);
+    });
+    $('mapTabs').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-mode]');
+      if (!b) return;
+      audio.init();
+      this.setMapMode(b.dataset.mode);
+    });
+    window.addEventListener('resize', () => { if (this.screen === 'map') this.refreshMap(); });
     $('setList').addEventListener('click', (e) => {
       const r = e.target.closest('.set-row');
       if (!r) return;
@@ -117,11 +133,12 @@ export class Menus {
       if (ok) this.mainAction($('mainMenu').children[this.sel].dataset.act);
       if (back) { $('mainMenu').hidden = true; $('pressStart').style.display = ''; }
     } else if (s === 'map') {
-      const dir = left ? [-1, 0] : right ? [1, 0] : up ? [0, -1] : down ? [0, 1] : null;
-      if (dir) {
-        const next = stepOnMap(this.mapSel, dir[0], dir[1]);
-        if (next !== this.mapSel) { this.mapSel = next; audio.blip(); this.refresh(); }
+      // up/down walk the districts, left/right flip between a circuit and the Run
+      if ((up || down) && this.mapSel !== 'run') {
+        const i = ROUTE.indexOf(this.mapSel);
+        this.pickDistrict(ROUTE[(i + (down ? 1 : ROUTE.length - 1)) % ROUTE.length], false);
       }
+      if (left || right) this.setMapMode(left ? 'circuit' : 'run');
       if (ok) this.startRace();
       if (back) { audio.back(); this.toTitle(); }
     } else if (s === 'garage') {
@@ -184,10 +201,28 @@ export class Menus {
     }
   }
 
+  // pick a district circuit; picking the one already picked (a second tap) races it
+  pickDistrict(id, tapToRace) {
+    if (this.mapSel === id) { if (tapToRace) this.startRace(); return; }
+    this.mapSel = id;
+    this.mapLast = id;
+    audio.blip();
+    this.refresh();
+  }
+
+  setMapMode(mode) {
+    if ((mode === 'run') === (this.mapSel === 'run')) return;
+    if (mode === 'run') this.mapLast = this.mapSel;
+    this.mapSel = mode === 'run' ? 'run' : this.mapLast;
+    audio.blip();
+    this.refresh();
+  }
+
   // race whatever is picked on the map, in the garage car
   startRace() {
     audio.confirm();
     store.set('mapSel', this.mapSel);
+    store.set('mapLast', this.mapLast);
     const g = this.game;
     // a locked car on the drive (browsing the garage) falls back to the first one
     if (this.locked(CARS[g.carIndex])) { g.carIndex = this.settings.car ?? 0; g.colorIndex = this.settings.color ?? 0; g.buildCar(); }
@@ -202,7 +237,6 @@ export class Menus {
     this.prevState = this.game.state;
     this.game.state = 'paused';
     this.show('pause');
-    audio.horn(audio.engineKind, false);
   }
 
   pauseAction(a) {
@@ -246,7 +280,7 @@ export class Menus {
     } else {
       rows.push(['DISTRICTS', `${ROUTE.indexOf(res.reached?.id) + 1} / ${ROUTE.length}`]);
     }
-    rows.push(['COINS', bn(res.coins)]);
+    rows.push(['COINS', String(res.coins)]);
     $('overTally').innerHTML = rows.map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join('');
     $('overHint').textContent = 'ENTER race again · BACKSPACE map';
     this.game.hud.show(false);
@@ -304,20 +338,42 @@ export class Menus {
 
   refreshMap() {
     const id = this.mapSel;
-    drawDhaka($('mapCv'), { sel: id, best: this.medals, labels: true });
+    const run = id === 'run';
+    for (const b of $('mapTabs').children) b.classList.toggle('on', (b.dataset.mode === 'run') === run);
+    // the map is drawn at the size it is shown, so text and pins stay crisp and a sensible size on a phone
+    const cv = $('mapCv');
+    const u = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.round(cv.clientWidth * u), h = Math.round(cv.clientHeight * u);
+    if (w && h && (cv.width !== w || cv.height !== h)) { cv.width = w; cv.height = h; }
+    drawDhaka(cv, { sel: id, best: this.medals, labels: true, u: cv.clientWidth ? cv.width / cv.clientWidth : 1 });
+    cv.style.cursor = run ? 'default' : 'pointer';
+    // the list: districts to pick from, or (on the Run) the route with its knockout gates
+    const medalDot = (m) => (m ? `<span class="md m${m}" title="${['', 'GOLD', 'SILVER', 'BRONZE'][m]}"></span>` : '');
+    const list = $('mapList');
+    if (run) {
+      list.innerHTML = ROUTE.map((d, i) => {
+        const note = i === 0 ? 'START' : i === ROUTE.length - 1 ? 'FINISH' : KNOCKOUTS[d] ? `KNOCKOUT · TOP ${KNOCKOUTS[d]} GO THROUGH` : '';
+        return `<div class="mp-row run ${KNOCKOUTS[d] ? 'ko' : ''}"><b class="n">${i + 1}</b><span class="nm">${STAGES[d].name}<small>${note}</small></span></div>`;
+      }).join('');
+    } else {
+      list.innerHTML = ROUTE.map((d, i) => {
+        const t = this.bestT[d];
+        return `<button class="mp-row ${d === id ? 'sel' : ''}" data-id="${d}"><b class="n">${i + 1}</b><span class="nm">${STAGES[d].name}<small>${STAGES[d].sub}</small></span><span class="rs">${medalDot(this.medals[d])}${t ? fmtTime(t) : ''}</span></button>`;
+      }).join('');
+      const sel = list.querySelector('.sel');
+      if (sel) list.scrollTop = clampScroll(sel.offsetTop - list.clientHeight / 2 + sel.offsetHeight / 2, list);
+    }
+    // the card for the pick
     const best = this.bestT[id];
-    if (id === 'run') {
-      const gates = ROUTE.filter((d) => KNOCKOUTS[d]).map((d) => `${STAGES[d].short} ${KNOCKOUTS[d]}`).join(' · ');
+    if (run) {
       $('mapKind').textContent = 'THE RUN';
       $('mapMeta').textContent = `${RUN_FIELD} CARS · ${ROUTE.length} DISTRICTS`;
-      $('mapBn').textContent = 'ঢাকা রান';
       $('mapName').textContent = 'DHANMONDI TO THE PADMA';
-      $('mapSub').textContent = `One road across the whole city, dusk to dawn. Knockout gates: ${gates}. Fall below the cut-off and you are out.`;
+      $('mapSub').textContent = 'One road across the whole city, dusk to dawn. At each knockout gate everyone below the cut-off is out.';
     } else {
       const st = STAGES[id];
       $('mapKind').textContent = 'CIRCUIT';
       $('mapMeta').textContent = `${CIRCUIT_FIELD} CARS · ${CIRCUIT_LAPS} LAPS`;
-      $('mapBn').textContent = st.bn;
       $('mapName').textContent = st.name.toUpperCase();
       $('mapSub').textContent = st.sub;
     }
@@ -325,3 +381,5 @@ export class Menus {
     $('mapBest').textContent = best ? `BEST ${fmtTime(best)}${m ? ' · ' + ['', 'GOLD', 'SILVER', 'BRONZE'][m] : ''}` : 'NOT RACED YET';
   }
 }
+
+const clampScroll = (v, el) => Math.max(0, Math.min(v, el.scrollHeight - el.clientHeight));

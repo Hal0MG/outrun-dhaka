@@ -1,4 +1,4 @@
-// Tuntuni, the passenger. Short generic reactions, shown as a speech bubble
+// The driver talking to themselves. Short generic reactions and advice, shown as a speech bubble
 // coming off the car. Rate-limited so she comments on the race, not every frame.
 
 import { fx } from '../core/util.js';
@@ -17,6 +17,7 @@ export const LINES = {
   hitTraffic: ['Sorry, uncle!', 'Whoa, he flew!', 'Oops.', 'That was a bus!'],
   ped: ['Sorry!', 'They’re fine, they’re fine.', 'Pedestrian!'],
   smash: ['That was someone’s shop.', 'Free fruit!', 'Whoops, the stall.'],
+  pothole: ['Ow, my teeth!', 'That road is falling apart.', 'Pothole!', 'Mind the hole!'],
   scrape: ['Stop rubbing the rail!', 'Mind the paint!'],
   lap: ['Next lap!', 'Another lap done.'],
   finalLap: ['Last lap!', 'Final lap, give it everything!'],

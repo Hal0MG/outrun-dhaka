@@ -6,10 +6,8 @@ import { MeshBuilder, LineBuilder } from './builder.js';
 import { SpriteBatch } from './sprites.js';
 import { buildRoadStrip } from './road.js';
 import { LANE_W, STEP } from './track.js';
-import { RNG, hashStr, clamp } from '../core/util.js';
+import { RNG, hashStr } from '../core/util.js';
 import * as PR from './props.js';
-import { LANDMARKS } from './landmarks.js';
-import { oppLayout } from './zones.js';
 
 export const CHUNK = 100;
 

@@ -1,4 +1,4 @@
-// All sound is synthesised: engines, horns, bells, crashes, the city.
+// All sound is synthesised: engines, bells, crashes, the city.
 
 import { clamp, fx } from '../core/util.js';
 import { ENGINE_WORKLET, ENGINES } from './engineWorklet.js';
@@ -464,69 +464,6 @@ export class AudioEngine {
     n.stop(t + dur + 0.1);
   }
 
-  // horns ---------------------------------------------------------------
-  horn(kind = 'v12', on = true) {
-    if (!this.ready) return;
-    const ctx = this.ctx;
-    if (on) {
-      if (this.hornNodes) return;
-      const t = ctx.currentTime;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.16, t + 0.02);
-      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2200;
-      const sh = ctx.createWaveShaper();
-      const c = new Float32Array(256);
-      for (let i = 0; i < 256; i++) { const x = i / 128 - 1; c[i] = Math.tanh(x * 3); }
-      sh.curve = c;
-      g.connect(sh).connect(f).connect(this.sfx);
-      const freqs = kind === 'cng' ? [520] : kind === 'jet' ? [880, 1320] : kind === 'i4' ? [400, 500] : [415, 523];
-      const os = freqs.map((fr) => {
-        const o = ctx.createOscillator();
-        o.type = kind === 'cng' ? 'square' : 'sawtooth';
-        o.frequency.value = fr;
-        o.connect(g);
-        o.start();
-        return o;
-      });
-      if (kind === 'jet') {
-        // the rickshaw 9000 still has its bell
-        this.bell(0);
-      }
-      this.hornNodes = { g, os };
-    } else if (this.hornNodes) {
-      const { g, os } = this.hornNodes;
-      const t = ctx.currentTime;
-      g.gain.cancelScheduledValues(t);
-      g.gain.setValueAtTime(g.gain.value, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
-      os.forEach((o) => o.stop(t + 0.08));
-      this.hornNodes = null;
-    }
-  }
-
-  // other vehicles' horns at a distance (pan + volume)
-  otherHorn(kind, dist = 30, pan = 0) {
-    if (!this.ready) return;
-    const v = clamp(1.2 / (1 + dist * 0.05), 0.02, 0.4) * 0.35;
-    const d = 0.18 + fx.next() * 0.35;
-    if (kind === 'busHorn') {
-      // the infamous musical hydraulic horn
-      const seq = [[392, 0], [494, 0.12], [587, 0.24], [784, 0.36]];
-      for (const [f, dt] of seq) this.tone('sawtooth', f, 0.2, v * 0.7, { delay: dt, lp: 2400, pan });
-      return;
-    }
-    if (kind === 'cngHorn') {
-      this.tone('square', 640, 0.12, v * 0.8, { to: 420, lp: 1600, pan });
-      this.tone('square', 640, 0.12, v * 0.8, { to: 420, lp: 1600, pan, delay: 0.16 });
-      return;
-    }
-    if (kind === 'bell') { this.bell(pan, v * 2); return; }
-    const f = 330 + fx.next() * 260;
-    this.tone('sawtooth', f, d, v, { lp: 1800, pan });
-    this.tone('sawtooth', f * 1.26, d, v * 0.7, { lp: 1800, pan });
-  }
-
   bell(pan = 0, vol = 0.12) {
     // rickshaw bell: tring-tring (inharmonic partials, fast decay)
     for (let r = 0; r < 2; r++) {
@@ -551,50 +488,11 @@ export class AudioEngine {
     this.noiseHit(0.3, 0.6, 'bandpass', 900, 1.2, { to: 300 });
     this.tone('square', 160, 0.12, 0.15, { to: 80, lp: 800 });
   }
-  shift(up) {
-    this.noiseHit(up ? 0.22 : 0.12, up ? 0.12 : 0.06, 'highpass', up ? 3000 : 1500, 1, { to: up ? 6000 : 800 });
-  }
   backfire() {
     for (let i = 0; i < 3; i++) this.noiseHit(0.06, 0.4, 'lowpass', 900, 1, { delay: i * 0.07 + fx.next() * 0.03 });
   }
   splash() {
     this.noiseHit(0.5, 0.35, 'lowpass', 1200, 0.8, { to: 300 });
-  }
-  // a car flashing past: rising then falling band of noise and engine tone, swept across the stereo field
-  passBy(relV, side, big = false) {
-    if (!this.ready) return;
-    const ctx = this.ctx, t = ctx.currentTime;
-    const k = clamp(relV / 60, 0.25, 1.4);
-    const dur = 0.55 / Math.max(0.5, k);
-    const pan = ctx.createStereoPanner();
-    pan.pan.setValueAtTime(side * 0.2, t);
-    pan.pan.linearRampToValueAtTime(side * 0.95, t + dur);
-    pan.connect(this.sfx);
-    const n = this.noise(false);
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.4;
-    bp.frequency.setValueAtTime(900 * k + 300, t);
-    bp.frequency.exponentialRampToValueAtTime(260, t + dur);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.22 * k * (big ? 1.4 : 1), t + dur * 0.25);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    n.connect(bp).connect(g).connect(pan);
-    n.start(t, Math.random()); n.stop(t + dur + 0.05);
-    const o = ctx.createOscillator(); o.type = 'sawtooth';
-    const f0 = big ? 70 : 110;
-    o.frequency.setValueAtTime(f0 * (1 + k * 0.25), t);
-    o.frequency.exponentialRampToValueAtTime(f0 * (1 - k * 0.2), t + dur);
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
-    const og = ctx.createGain();
-    og.gain.setValueAtTime(0.0001, t);
-    og.gain.exponentialRampToValueAtTime(0.06 * k, t + dur * 0.3);
-    og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(lp).connect(og).connect(pan);
-    o.start(t); o.stop(t + dur + 0.05);
-  }
-
-  whoosh(pan = 0) {
-    this.noiseHit(0.45, 0.22, 'bandpass', 600, 1.5, { to: 2400, a: 0.12 });
   }
   thunder(delay = 0) {
     this.noiseHit(3.5, 0.55, 'lowpass', 300, 0.7, { delay, to: 60, a: 0.08 });
@@ -603,10 +501,6 @@ export class AudioEngine {
   shipHorn(pan = -0.6) {
     this.tone('sawtooth', 98, 2.4, 0.09, { lp: 500, pan, a: 0.2, rev: true });
     this.tone('sawtooth', 123.5, 2.4, 0.07, { lp: 500, pan, a: 0.2 });
-  }
-  trainHorn() {
-    this.tone('sawtooth', 311, 1.2, 0.06, { lp: 1400, a: 0.1, rev: true });
-    this.tone('sawtooth', 370, 1.2, 0.05, { lp: 1400, a: 0.1 });
   }
   crow(pan = 0) {
     for (let i = 0; i < 2; i++) {
@@ -632,19 +526,6 @@ export class AudioEngine {
     this.noiseHit(5, 0.4, 'lowpass', 400, 0.6, { a: 2.2, to: 2400 });
     this.tone('sawtooth', 220, 4, 0.04, { a: 2, to: 160, lp: 900 });
   }
-  powerCut() {
-    this.tone('sawtooth', 120, 0.6, 0.12, { to: 30, lp: 600 });
-    this.noiseHit(0.08, 0.3, 'highpass', 2000, 1);
-  }
-  generator() {
-    // the whole street's generators kick in
-    this.tone('square', 50, 2.5, 0.04, { a: 0.5, hold: 1, lp: 300 });
-  }
-  powerBack() {
-    this.tone('sine', 50, 0.4, 0.15, { to: 120 });
-    this.noiseHit(0.1, 0.2, 'bandpass', 3000, 1);
-  }
-
   glass() {
     this.noiseHit(0.5, 0.45, 'highpass', 3500, 0.8, { to: 7000 });
     for (let i = 0; i < 10; i++) this.tone('sine', 2500 + fx.next() * 4500, 0.12 + fx.next() * 0.2, 0.04, { delay: fx.next() * 0.35 });
@@ -660,23 +541,20 @@ export class AudioEngine {
     this.tone('sine', 660, 0.5, 0.06, { delay: 0.05, to: 330 });
     this.tone('triangle', 900, 0.6, 0.05, { delay: 0.15, to: 1800 });
   }
+  splash(v = 40) {
+    const k = Math.min(1, v / 70);
+    this.noiseHit(0.35, 0.12 + 0.2 * k, 'bandpass', 1500 + 800 * k, 0.7, { to: 500 });
+    this.noiseHit(0.2, 0.1 * k, 'lowpass', 400, 0.8);
+  }
   thud() {
     this.noiseHit(0.18, 0.3, 'lowpass', 500, 1);
     this.tone('sine', 110, 0.2, 0.2, { to: 55 });
-  }
-  moo() {
-    this.tone('sawtooth', 150, 1.1, 0.07, { to: 110, lp: 700, a: 0.12 });
-    this.tone('sawtooth', 152, 1.1, 0.05, { to: 112, lp: 500, a: 0.15 });
   }
   takedown() {
     this.noiseHit(1.2, 0.85, 'lowpass', 2600, 0.8, { to: 140 });
     this.tone('sine', 70, 0.9, 0.7, { to: 30 });
     for (let i = 0; i < 10; i++) this.tone('triangle', 1600 + fx.next() * 3500, 0.12, 0.05, { delay: 0.05 + fx.next() * 0.6 });
     this.noiseHit(0.6, 0.25, 'highpass', 5000, 1, { delay: 0.1 });
-  }
-  clang() {
-    for (const f of [420, 610, 890]) this.tone('square', f, 0.3, 0.05, { to: f * 0.7, lp: 2600 });
-    this.noiseHit(0.2, 0.3, 'bandpass', 1400, 1.5);
   }
   nitro() {
     this.noiseHit(0.9, 0.4, 'bandpass', 500, 1.2, { to: 3200, a: 0.05 });
@@ -689,11 +567,6 @@ export class AudioEngine {
     this.noiseHit(big ? 0.6 : 0.35, big ? 0.7 : 0.45, 'lowpass', 1100, 0.8, { to: 120 });
     this.tone('sine', 80, 0.4, big ? 0.6 : 0.35, { to: 38 });
   }
-  bossStinger() {
-    const notes = [196, 233, 262, 311, 294];
-    notes.forEach((f, i) => this.tone('sawtooth', f, 0.35, 0.07, { delay: i * 0.16, lp: 1800, rev: true }));
-    this.noiseHit(1.4, 0.3, 'lowpass', 400, 0.7, { a: 0.3 });
-  }
   victory() {
     const notes = [523, 659, 784, 659, 784, 1047];
     notes.forEach((f, i) => this.tone('square', f, 0.2, 0.08, { delay: i * 0.11, lp: 3500, rev: true }));
@@ -701,7 +574,7 @@ export class AudioEngine {
   }
 
   // UI ------------------------------------------------------------------
-  // Tuntuni talking: a little voiced babble, one syllable-blip per letter, no words (like a game character's
+  // the driver talking: a little voiced babble, one syllable-blip per letter, no words (like a game character's
   // chatter). Vowels are longer and brighter, a trailing '?' lifts the pitch, '!' is more excited.
   talk(text) {
     if (!this.ctx || !this.ready) return;
@@ -757,12 +630,6 @@ export class AudioEngine {
     notes.forEach((f, i) => this.tone('sawtooth', f, 0.3, 0.06, { delay: i * 0.1, lp: 3500, rev: true }));
   }
   combo(n) { this.tone('square', 600 + Math.min(n, 8) * 120, 0.08, 0.06, { lp: 4000 }); }
-  timeWarn() { this.tone('square', 1200, 0.08, 0.06, { lp: 4000 }); }
-  tune() {
-    // radio dial static
-    this.noiseHit(0.35, 0.2, 'bandpass', 2200, 0.7, { to: 800 });
-    this.tone('sine', 1800, 0.25, 0.03, { to: 600 });
-  }
 }
 
 export const audio = new AudioEngine();

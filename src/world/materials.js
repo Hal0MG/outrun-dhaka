@@ -88,44 +88,6 @@ export function makeGlowMaterial(intensity = 1, opts = {}) {
   return m;
 }
 
-// Soft additive "light cone" / halo cards
-export function makeHaloMaterial() {
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      uFogColor: shared.uFogColor,
-      uFogDensity: shared.uFogDensity,
-      uAmount: { value: 1 },
-    },
-    vertexShader: /* glsl */ `
-      attribute vec3 color;
-      varying vec2 vUv;
-      varying vec3 vCol;
-      varying float vFog;
-      void main(){
-        vUv = uv; vCol = color;
-        vec4 mv = modelViewMatrix * vec4(position,1.0);
-        vFog = -mv.z;
-        gl_Position = projectionMatrix * mv;
-      }`,
-    fragmentShader: /* glsl */ `
-      uniform float uAmount;
-      uniform float uFogDensity;
-      varying vec2 vUv;
-      varying vec3 vCol;
-      varying float vFog;
-      void main(){
-        vec2 p = vUv * 2.0 - 1.0;
-        float d = length(p);
-        float a = exp(-d * d * 3.5) * (1.0 - smoothstep(0.85, 1.0, d));
-        float f = exp(-uFogDensity * uFogDensity * vFog * vFog);
-        gl_FragColor = vec4(vCol * a * uAmount * f, 1.0);
-      }`,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-}
-
 // Water: fresnel sky reflection, ripples, sun/moon glint, shimmering light columns.
 export function makeWaterMaterial(opts = {}) {
   return new THREE.ShaderMaterial({

@@ -2,8 +2,8 @@
 // streams chunks around the player and answers collision queries.
 
 import * as THREE from 'three';
-import { Track, STEP, LANE_W, CURVE_MUL as CURVE_MUL_W } from './track.js';
-import { buildChunk, CHUNK, sideLimits, ChunkCtx } from './chunk.js';
+import { Track, LANE_W, CURVE_MUL as CURVE_MUL_W } from './track.js';
+import { buildChunk, CHUNK, sideLimits } from './chunk.js';
 import { buildFacadeAtlas, buildMiscAtlas } from './textures.js';
 import { buildSignAtlas, makeGantryTexture } from './signs.js';
 import { buildFxAtlas } from './fxatlas.js';
@@ -15,7 +15,7 @@ import { buildContra } from './contra.js';
 import { oppLayout } from './zones.js';
 import { LANDMARKS, bannerMaterial, gantryMaterial } from './landmarks.js';
 import * as PR from './props.js';
-import { RNG, hashStr, clamp, smoothstep, lerp } from '../core/util.js';
+import { RNG, hashStr, clamp, smoothstep } from '../core/util.js';
 
 export const DIVERGE = 340;
 export const FORK_LEN = 280;

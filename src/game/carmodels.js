@@ -88,119 +88,6 @@ function plate(B, A, z, y, back = true) {
   else B.quad([hw, y - hh, zz], [-hw, y - hh, zz], [-hw, y + hh, zz], [hw, y + hh, zz], [0, 0, 1, 1], [1, 1, 1], A.get('plate'));
 }
 
-// the small stuff that makes a box read as a car: arches, skirts, seams,
-// mirrors, handles, lips, diffuser, exhaust tips, window trim
-function detailBody(B, A, sp, bodyCol) {
-  const white = A.get('white');
-  const W = sp.W, hw = W / 2, L2 = sp.L / 2;
-  const [wz0, wz1] = sp.wheelZ;
-  const r = sp.r;
-  for (const s of [-1, 1]) {
-    // wheel-arch lips: dark half-rings standing proud of the body
-    for (const wz of [wz0, wz1]) {
-      const n = 9;
-      for (let i = 0; i < n; i++) {
-        const a0 = Math.PI * (i / n), a1 = Math.PI * ((i + 1) / n);
-        const R = r + 0.06;
-        const z0 = wz + Math.cos(a0) * R, y0 = r + Math.sin(a0) * R;
-        const z1 = wz + Math.cos(a1) * R, y1 = r + Math.sin(a1) * R;
-        const x = s * (hw + 0.012);
-        const t = 0.05;
-        const p = (z, y, k) => [x, y + Math.sin(Math.atan2(y - r, z - wz)) * k, z + Math.cos(Math.atan2(y - r, z - wz)) * k];
-        const q = [p(z0, y0, 0), p(z1, y1, 0), p(z1, y1, t), p(z0, y0, t)];
-        if (s > 0) B.quad(q[0], q[1], q[2], q[3], [0, 0, 1, 1], TRIM, white);
-        else B.quad(q[1], q[0], q[3], q[2], [0, 0, 1, 1], TRIM, white);
-      }
-    }
-    // side skirt between the wheels
-    const sk0 = wz0 + r + 0.08, sk1 = wz1 - r - 0.08;
-    if (sk1 > sk0) B.box(s * (hw - 0.02), 0.2, (sk0 + sk1) / 2, 0.08, 0.1, sk1 - sk0, 0, { color: TRIM, region: white });
-    // door seams and handles
-    const doorFront = wz0 + r + 0.2, doorRear = sp.pillars && sp.pillars.length > 1 ? Math.max(...sp.pillars) + 0.05 : (wz1 - r - 0.25);
-    for (const z of [doorFront, doorRear]) if (z > wz0 && z < wz1) B.box(s * (hw + 0.004), sp.bumperH + 0.05, z, 0.008, sp.belt - sp.bumperH - 0.08, 0.012, 0, { color: DARK, region: white });
-    if (sp.pillars && sp.pillars.length > 1) {
-      const mid = Math.min(...sp.pillars);
-      B.box(s * (hw + 0.004), sp.bumperH + 0.05, mid, 0.008, sp.belt - sp.bumperH - 0.08, 0.012, 0, { color: DARK, region: white });
-    }
-    B.box(s * (hw + 0.012), sp.belt - 0.13, doorFront + 0.55, 0.02, 0.03, 0.14, 0, { color: CHROME, region: white });
-    // body crease catching the light
-    B.box(s * (hw + 0.006), sp.belt - 0.2, (wz0 + wz1) / 2, 0.01, 0.018, (wz1 - wz0) + 0.6, 0, { color: [Math.min(1.25, bodyCol[0] * 1.2 + 0.08), Math.min(1.25, bodyCol[1] * 1.2 + 0.08), Math.min(1.25, bodyCol[2] * 1.2 + 0.08)], region: white });
-    // mirrors on stalks
-    if (sp.cabin) {
-      const mz = sp.cabin[0][0] - 0.12;
-      B.box(s * (hw + 0.05), sp.belt + 0.02, mz, 0.06, 0.04, 0.06, 0, { color: DARK, region: white });
-      B.box(s * (hw + 0.13), sp.belt + 0.04, mz, 0.15, 0.1, 0.07, 0, { color: bodyCol, region: white });
-      B.box(s * (hw + 0.13), sp.belt + 0.05, mz + 0.037, 0.12, 0.07, 0.006, 0, { color: [0.55, 0.62, 0.7], region: white });
-    }
-  }
-  // front lip and rear diffuser
-  B.box(0, 0.12, -L2 + 0.08, W - 0.3, 0.05, 0.2, 0, { color: DARK, region: white });
-  B.box(0, 0.14, L2 - 0.12, W - 0.5, 0.08, 0.24, 0, { color: DARK, region: white });
-  for (const x of [-0.3, -0.1, 0.1, 0.3]) B.box(x, 0.12, L2 - 0.04, 0.02, 0.12, 0.2, 0, { color: TRIM, region: white });
-  // exhaust tips
-  for (const x of sp.exhausts || [-hw + 0.38, hw - 0.38]) discZ(B, x, 0.24, L2 + 0.03, 0.05, 10, CHROME, 1, white);
-  for (const x of sp.exhausts || [-hw + 0.38, hw - 0.38]) discZ(B, x, 0.24, L2 + 0.035, 0.035, 10, [0.03, 0.03, 0.03], 1, white);
-  // window trim along the roofline
-  if (sp.cabin) {
-    const tw = (sp.cabinW || hw - 0.1);
-    const zA = sp.cabin[1][0], zB = sp.cabin[2][0];
-    for (const s of [-1, 1]) B.box(s * (tw - (sp.roofY - sp.belt) * (sp.tumble ?? 0.18) + 0.01), sp.roofY - 0.03, (zA + zB) / 2, 0.02, 0.03, Math.abs(zB - zA), 0, { color: DARK, region: white });
-  }
-}
-
-// a generic car: lower body + glasshouse + roof, from a compact spec
-function carFromSpec(A, sp) {
-  const B = new MeshBuilder(true);
-  const Lt = lights();
-  const W = sp.W, hw = W / 2;
-  const white = A.get('white'), glass = A.get('glass');
-  const bodyCol = sp.color || PAINT;
-  // lower body (painted), with a slightly narrower top edge
-  const belt = sp.belt;
-  extrude(B, sp.body, (z, y) => (y > belt - 0.02 ? hw - 0.05 : hw), white, bodyCol, {
-    edgeColor: ([z0, y0], [z1, y1]) => (Math.max(y0, y1) < sp.bumperH ? TRIM : bodyCol),
-    sideRegion: sp.sideRegion ? A.get(sp.sideRegion) : white,
-    sideColor: sp.sideColor,
-  });
-  // glasshouse
-  if (sp.cabin) {
-    const tw = sp.cabinW || hw - 0.1;
-    extrude(B, sp.cabin, (z, y) => tw - (y - belt) * (sp.tumble ?? 0.18), glass, [1, 1, 1], {
-      edgeRegion: ([z0, y0], [z1, y1]) => (Math.abs(y0 - y1) < 0.04 && Math.min(y0, y1) > belt + 0.2 ? white : glass),
-      edgeColor: ([z0, y0], [z1, y1]) => (Math.abs(y0 - y1) < 0.04 && Math.min(y0, y1) > belt + 0.2 ? (sp.roofColor || bodyCol) : [1, 1, 1]),
-    });
-    // pillars so the glass reads as windows
-    for (const pz of sp.pillars || []) {
-      const top = sp.roofY;
-      for (const x of [-1, 1]) {
-        const xx = x * (tw - (top - belt) * (sp.tumble ?? 0.18) * 0.5 + 0.012);
-        B.box(xx, belt, pz, 0.03, top - belt, 0.09, 0, { color: sp.pillarColor || DARK, region: white });
-      }
-    }
-  }
-  wheels(B, A, W, sp.wheelZ[0], sp.wheelZ[1], sp.r, sp.tyreW || 0.24);
-  detailBody(B, A, sp, bodyCol);
-  // bumpers/grille
-  const L2 = sp.L / 2;
-  if (sp.grille !== false) B.quad([hw - 0.25, sp.grilleY - 0.09, -L2 - 0.02], [-hw + 0.25, sp.grilleY - 0.09, -L2 - 0.02], [-hw + 0.25, sp.grilleY + 0.09, -L2 - 0.02], [hw - 0.25, sp.grilleY + 0.09, -L2 - 0.02], [0, 0, 1, 1], [1, 1, 1], A.get('grille'));
-  if (sp.plates !== false) { plate(B, A, sp.rearZ ?? L2 + 0.02, sp.plateY ?? 0.5, true); plate(B, A, -(sp.frontZ ?? L2 + 0.02), sp.grilleY - 0.18, false); }
-  // lights
-  const tz = (sp.rearZ ?? L2) + 0.015;
-  const fz = -(sp.frontZ ?? L2) - 0.015;
-  for (const s of [-1, 1]) {
-    if (sp.roundTails) {
-      for (const k of sp.roundTails) discZ(Lt.tail, s * k, sp.tailY, tz, 0.085, 10, [2.6, 0.08, 0.05], 1);
-    } else {
-      Lt.tail.box(s * (hw - sp.tailW / 2 - 0.06), sp.tailY - sp.tailH / 2, tz, sp.tailW, sp.tailH, 0.03, 0, { color: [2.5, 0.08, 0.04] });
-    }
-    Lt.head.box(s * (hw - sp.headW / 2 - 0.08), sp.headY - sp.headH / 2, fz, sp.headW, sp.headH, 0.03, 0, { color: [2.7, 2.6, 2.3] });
-    Lt.amber.box(s * (hw - 0.1), sp.headY - sp.headH / 2 - 0.12, fz, 0.12, 0.06, 0.03, 0, { color: [2.5, 1.3, 0.2] });
-  }
-  if (sp.tailBar) Lt.tail.box(0, sp.tailY - 0.05, tz, W - 0.5, 0.05, 0.03, 0, { color: [1.6, 0.05, 0.03] });
-  const out = { B, Lt, W, L: sp.L };
-  return out;
-}
-
 function finish(m, len, wid, hgt, extra = {}) {
   return {
     body: m.B.build(), tail: m.Lt.tail.empty ? null : m.Lt.tail.build(), head: m.Lt.head.empty ? null : m.Lt.head.build(),
@@ -259,13 +146,6 @@ export function policePickup(A) {
 
 
 
-
-// ------------------------------------------------------------ the rival racers: lofted, smooth-shaded bodies
-function rowNear(body, u) {
-  let best = body.rows[0];
-  for (const r of body.rows) if (Math.abs(r.u - u) < Math.abs(best.u - u)) best = r;
-  return best;
-}
 
 // small helpers for flat decals on the nose / tail / flanks
 const DARKC = [0.02, 0.02, 0.025];
@@ -413,39 +293,6 @@ export function noah(A) {
 
 export function hiace(A) {
   return sportsCar(A, 'hiace', { tyreW: 0.22, pipes: [0.5] });
-}
-
-function pradoLike(A, extraOpts = {}) {
-  return sportsCar(A, 'prado', {
-    tyreW: 0.28, tailW: 0.24, headW: 0.46,
-    ...extraOpts,
-    extra: (B, body, white, Lt) => {
-      const r = 4.8 / 2;
-      B.wheel(0, 0.98, r + 0.18, 0.36, 0.22, 16, [1, 1, 1], A.get('tyre'), A.get('rim'));
-      for (const x of [-0.72, 0.72]) B.box(x, 1.86, 0.1, 0.05, 0.06, 2.1, 0, { color: TRIM, region: white });
-      for (const x of [-0.99, 0.99]) B.box(x, 0.38, 0, 0.1, 0.05, 2.4, 0, { color: TRIM, region: white });
-      extraOpts.more?.(B, body, white, Lt);
-    },
-  });
-}
-
-export function pradoModel(A) {
-  return pradoLike(A);
-}
-
-export function rabSUV(A) {
-  // black Land Cruiser in RAB livery with a light bar
-  return pradoLike(A, {
-    tint: [0.07, 0.07, 0.08],
-    finish: { colorFixed: true },
-    more: (B, body, white, Lt) => {
-      const L = 4.8;
-      sideDecal(B, A.get('rab_side'), 0.95, -L * 0.34, L * 0.3, 0.62, 1.16);
-      Lt.beacon.box(-0.35, 1.86, 0.1, 0.55, 0.12, 0.26, 0, { color: [0.2, 0.4, 3] });
-      Lt.beacon.box(0.35, 1.86, 0.1, 0.55, 0.12, 0.26, 0, { color: [3, 0.1, 0.1] });
-      B.quad([-0.6, 0.9, L / 2 + 0.25], [0.6, 0.9, L / 2 + 0.25], [0.6, 1.12, L / 2 + 0.25], [-0.6, 1.12, L / 2 + 0.25], [0, 0, 1, 1], [1, 1, 1], A.get('rab_back'));
-    },
-  });
 }
 
 export function supra(A) {

@@ -829,12 +829,13 @@ export const LANDMARKS = {
       const q2 = F.L(i * 10, 12.5, span / 2 + 0.05);
       ctx.B.neon.box(q2[0], q2[1], q2[2], 0.1, 2.2, 6, F.yaw, { color: [2.4, 2.6, 2.6] });
     }
-    // pillars on both sides of the road
+    // pillars on both sides of the road, just outside it (the frame is centred on the whole span, so measure from there)
+    const mid = (hwR - hwL) / 2;
     for (let i = -3; i <= 3; i++) {
-      for (const lz of [-hwL - 4, hwR + 4]) {
-        const q = F.L(i * 20, -0.1, lz);
+      for (const wx of [-hwL - 4, hwR + 4]) {
+        const q = F.L(i * 20, -0.1, wx - mid);
         B.box(q[0], q[1], q[2], 1.6, 9.6, 1.6, F.yaw, { color: [0.85, 0.84, 0.8], region: conc });
-        ctx.obstacle(s + i * 20, lz + (hwR - hwL) / 2, 1, 1, 'solid');
+        ctx.obstacle(s + i * 20, wx, 1, 1, 'solid');
       }
     }
   },

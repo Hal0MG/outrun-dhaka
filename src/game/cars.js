@@ -94,25 +94,6 @@ function stickerTexture(text, bg = 'rgba(0,0,0,0)', fg = '#ffffff') {
   return t;
 }
 
-// extrude a side profile (u along length, +u = front; v up) across the width
-function profileBody(points, arches, width, bevel = 0.05) {
-  const shape = new THREE.Shape();
-  shape.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length; i++) shape.lineTo(points[i][0], points[i][1]);
-  // bottom: from rear to front, bulging over the wheels
-  const yb = points[points.length - 1][1];
-  for (const [cu, r] of arches) {
-    shape.lineTo(cu - r, yb);
-    shape.absarc(cu, yb, r, Math.PI, 0, true);
-  }
-  shape.closePath();
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: width - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 3, curveSegments: 10 });
-  geo.translate(0, 0, -(width - bevel * 2) / 2);
-  geo.rotateY(Math.PI / 2);
-  geo.computeVertexNormals();
-  return geo;
-}
-
 function wheelMesh(r, w, tyreMat, rimMat) {
   const g = new THREE.Group();
   // tyre with rounded shoulders
@@ -256,9 +237,6 @@ export function buildPlayerCar(def, colorHex, assets) {
     out.driver = headOf('#8a5a3a', '#110d0a', { shades: true });
     out.driver.position.set(0.38, open ? d.hgt * 0.92 : d.hgt * 0.72, d.len * 0.02);
     body.add(out.driver);
-    out.passenger = headOf('#a06a45', '#140e0a', { long: true, flower: true });
-    out.passenger.position.set(-0.38, open ? d.hgt * 0.9 : d.hgt * 0.7, d.len * 0.02);
-    body.add(out.passenger);
     out.headLocal = [new THREE.Vector3(-d.wid * 0.3, 0.6, -rear), new THREE.Vector3(d.wid * 0.3, 0.6, -rear)];
     out.dims = { len: d.len, wid: d.wid, hgt: d.hgt };
   } else if (def.id === 'rosso') {
@@ -361,14 +339,11 @@ export function buildPlayerCar(def, colorHex, assets) {
     addWheel(0.84, 0.37, -1.44, 0.37, 0.28, true);
     addWheel(-0.83, 0.37, 1.4, 0.37, 0.34, false);
     addWheel(0.83, 0.37, 1.4, 0.37, 0.34, false);
-    // driver + Tuntuni
+    // driver
     out.driver = headOf('#8a5a3a', '#110d0a', { shades: true });
     out.driver.position.set(0.4, 1.47, 0.24);
     body.add(out.driver);
-    out.passenger = headOf('#a06a45', '#140e0a', { long: true, flower: true });
-    out.passenger.position.set(-0.4, 1.43, 0.26);
-    body.add(out.passenger);
-    for (const [x, c, y] of [[0.4, '#f4f2ec', 1.17], [-0.4, '#ff2e88', 1.14]]) {
+    for (const [x, c, y] of [[0.4, '#f4f2ec', 1.17]]) {
       const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.42, 0.24), new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
       torso.position.set(x, y, 0.3);
       body.add(torso);
@@ -377,15 +352,6 @@ export function buildPlayerCar(def, colorHex, assets) {
       arm.rotation.x = 0.4;
       body.add(arm);
     }
-    // Tuntuni's orna (scarf) streaming in the wind
-    const scarfGeo = new THREE.PlaneGeometry(0.16, 0.9, 1, 8);
-    scarfGeo.translate(0, -0.45, 0);
-    scarfGeo.rotateX(-Math.PI / 2);
-    const scarf = new THREE.Mesh(scarfGeo, new THREE.MeshStandardMaterial({ color: '#ffb000', side: THREE.DoubleSide, roughness: 0.8 }));
-    scarf.position.set(-0.4, 1.36, 0.36);
-    body.add(scarf);
-    out.scarf = scarf;
-    out.scarfBase = Float32Array.from(scarfGeo.getAttribute('position').array);
     out.headLocal = [new THREE.Vector3(-0.62, 0.66, -2.2), new THREE.Vector3(0.62, 0.66, -2.2)];
     out.dims = { len: 4.5, wid: 1.98, hgt: 1.2 };
   } else if (def.id === 'premio') {
@@ -423,9 +389,6 @@ export function buildPlayerCar(def, colorHex, assets) {
     out.driver = headOf('#8a5a3a', '#1a1a1a', {});
     out.driver.position.set(0.4, 1.12, -0.05);
     body.add(out.driver);
-    out.passenger = headOf('#a06a45', '#140e0a', { long: true });
-    out.passenger.position.set(-0.4, 1.1, -0.05);
-    body.add(out.passenger);
     out.exhaust.push(new THREE.Vector3(-0.55, 0.3, 2.35));
     out.headLocal = [new THREE.Vector3(-0.6, 0.62, -2.35), new THREE.Vector3(0.6, 0.62, -2.35)];
     out.dims = { len: 4.6, wid: 1.74, hgt: 1.4 };
@@ -466,11 +429,8 @@ export function buildPlayerCar(def, colorHex, assets) {
     out.driver = headOf('#8a5a3a', '#110d0a', { shades: true });
     out.driver.position.set(0.4, sp.open ? seatY + 0.2 : seatY - 0.16, cz);
     body.add(out.driver);
-    out.passenger = headOf('#a06a45', '#140e0a', { long: true, flower: true });
-    out.passenger.position.set(-0.4, sp.open ? seatY + 0.16 : seatY - 0.2, cz);
-    body.add(out.passenger);
     if (sp.open) {
-      for (const [x, c, y] of [[0.4, '#f4f2ec', seatY - 0.3], [-0.4, '#ff2e88', seatY - 0.34]]) {
+      for (const [x, c, y] of [[0.4, '#f4f2ec', seatY - 0.3]]) {
         const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.42, 0.24), new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
         torso.position.set(x, y, cz + 0.08);
         body.add(torso);

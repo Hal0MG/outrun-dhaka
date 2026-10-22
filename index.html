@@ -43,6 +43,7 @@
 </svg>
 
 <div id="ui">
+  <div id="cut" aria-hidden="true"></div>
   <!-- ======================== LOADING -->
   <section id="loading" class="screen show">
     <div class="wheel" aria-hidden="true"><div class="hub"></div></div>
@@ -52,37 +53,51 @@
 
   <!-- ======================== TITLE -->
   <section id="title" class="screen">
-    <div class="logo" id="logo">
-      <svg class="fl fl1"><use href="#flower"/></svg>
-      <svg class="fl fl2" style="--f1:#ff2e88;--f2:#22d3ee"><use href="#flower"/></svg>
-      <div class="logo-bn">DHAKA</div>
-      <div class="logo-en">OUTRUN</div>
+    <div class="title-main">
+      <div class="logo" id="logo">
+        <svg class="fl fl1"><use href="#flower"/></svg>
+        <svg class="fl fl2" style="--f1:#ff2e88;--f2:#22d3ee"><use href="#flower"/></svg>
+        <div class="logo-bn">DHAKA</div>
+        <div class="logo-en">OUTRUN</div>
+      </div>
+      <div class="press" id="pressStart">CLICK OR PRESS ENTER</div>
+      <nav class="menu" id="mainMenu" hidden>
+        <button data-act="race"><span>RACE</span></button>
+        <button data-act="garage"><span>GARAGE</span></button>
+        <button data-act="settings"><span>SETTINGS</span></button>
+        <button data-act="howto"><span>HOW TO DRIVE</span></button>
+      </nav>
     </div>
-    <div class="press" id="pressStart">CLICK OR PRESS ENTER</div>
-    <nav class="menu" id="mainMenu" hidden>
-      <button data-act="race"><span>RACE</span><i>PICK A DISTRICT · OR THE RUN</i></button>
-      <button data-act="garage"><span>GARAGE</span><i>PICK A RIDE</i></button>
-      <button data-act="settings"><span>SETTINGS</span><i>TWEAK</i></button>
-      <button data-act="howto"><span>HOW TO DRIVE</span><i>CONTROLS</i></button>
-    </nav>
+    <div class="nowshow" id="nowShow"><i>NOW SHOWING</i><b></b><span></span></div>
     <div class="title-foot">
-      <span class="keys">↑ gas · ↓ brake · ←→ steer · SPACE nitro · H horn · R music on/off · V photo · ESC / P pause</span>
+      <span class="keys">↑ gas · ↓ brake · ←→ steer · SPACE nitro · R music on/off · ESC / P pause</span>
     </div>
   </section>
 
   <!-- ======================== MAP -->
   <section id="map" class="screen">
-    <div class="map-wrap">
-      <canvas id="mapCv" width="960" height="720"></canvas>
-      <div class="panel map-card">
-        <div class="plate-head"><span id="mapKind">CIRCUIT</span><i id="mapMeta"></i></div>
-        <div class="map-bn" id="mapBn"></div>
-        <div class="map-name" id="mapName"></div>
-        <div class="map-sub" id="mapSub"></div>
-        <div class="map-best" id="mapBest"></div>
-        <button class="go" data-act="go">RACE</button>
-        <div class="hint">arrows pick · ENTER race · BACKSPACE back</div>
+    <div class="mp">
+      <div class="mp-head">
+        <div class="mp-title">PICK A RACE</div>
+        <div class="mp-tabs" id="mapTabs">
+          <button data-mode="circuit"><b>CIRCUIT</b><i>one district · 3 laps</i></button>
+          <button data-mode="run"><b>THE RUN</b><i>whole city · knockouts</i></button>
+        </div>
       </div>
+      <div class="mp-body">
+        <canvas id="mapCv"></canvas>
+        <div class="mp-side">
+          <div class="mp-list" id="mapList"></div>
+          <div class="panel map-card">
+            <div class="plate-head"><span id="mapKind">CIRCUIT</span><i id="mapMeta"></i></div>
+            <div class="map-name" id="mapName"></div>
+            <div class="map-sub" id="mapSub"></div>
+            <div class="map-best" id="mapBest"></div>
+            <button class="go" data-act="go">RACE</button>
+          </div>
+        </div>
+      </div>
+      <div class="hint">↑↓ district · ←→ circuit / the run · ENTER race · BACKSPACE back</div>
     </div>
   </section>
 
@@ -119,11 +134,11 @@
       <div class="plate-head"><span>HOW TO DRIVE</span></div>
       <div class="how-grid">
         <div><b>↑ / W</b> gas &nbsp; <b>↓ / S</b> brake &nbsp; <b>← →</b> steer &nbsp; <b>SPACE</b> nitro</div>
-        <div><b>H</b> horn &nbsp; <b>R</b> music on/off &nbsp; <b>V</b> photo mode &nbsp; <b>ESC / P</b> pause &nbsp; <b>F</b> fullscreen</div>
+        <div><b>R</b> music on/off &nbsp; <b>ESC / P</b> pause &nbsp; <b>F</b> fullscreen</div>
         <p>Hold the gas and steer. Corners push you to the outside, harder the faster you go: lean into them early. Bumping cars costs a little speed (and sends them flying); the verge and the rails cost a lot.</p>
         <p>Grab <b>coins</b>, <b>fuel cans</b> (run dry and you roll to a stop) and <b>nitro</b>. Tap SPACE to burn one nitro charge; you can hold three. Nitro in a tight bend will throw you wide.</p>
         <p><b>CIRCUIT</b>: any district, three laps, twenty-four cars strung out along the road, and you are at the back, passing a few at a time. <b>THE RUN</b>: forty-eight cars across the whole city. At each knockout gate everyone below the cut-off is out. Your clock is what counts: finish fast. The tank is about 70% of a race and nitro burns fuel faster, so pick up the fuel row that comes round once a lap. Every eighth car you pass, and time spent on the wrong side at the road works, gives a nitro charge.</p>
-        <p>Gamepad works (RT gas, LT brake, B nitro, RB horn). On a phone the gas is automatic: steer with the two buttons on the left, hold BRAKE and tap NITRO on the right.</p>
+        <p>Gamepad works (RT gas, LT brake, B nitro). On a phone the gas is automatic: steer with the two buttons on the left, hold BRAKE and tap NITRO on the right.</p>
       </div>
       <div class="hint">BACKSPACE back</div>
     </div>
@@ -165,7 +180,7 @@
     </div>
     <canvas id="hMap" width="180" height="135"></canvas>
 
-    <div class="h-bubble" id="hBubble"><canvas id="tuntuni" width="96" height="96"></canvas><div class="bubble" id="hSay"></div></div>
+    <div class="h-bubble" id="hBubble"><div class="bubble" id="hSay"></div></div>
     <div class="h-msg" id="hMsg"></div>
     <div class="h-combo" id="hCombo"></div>
     <div class="h-takedown" id="hTake"></div>
@@ -174,7 +189,6 @@
     <div class="h-cam" id="hCam"></div>
     <button class="h-pause" id="hPause" title="Pause (Esc / P)">II</button>
   </section>
-  <div class="photo-hint" id="photoHint" hidden>PHOTO MODE &nbsp;·&nbsp; ←→ orbit · ↑↓ height · SPACE / H zoom · V exit</div>
 
   <!-- ======================== TOUCH -->
   <div id="touch" hidden>

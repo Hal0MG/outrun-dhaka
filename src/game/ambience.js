@@ -30,25 +30,28 @@ const AMBIENT = {
 const BIRD_COLORS = { crow: [0.1, 0.1, 0.12], pigeon: [0.62, 0.64, 0.68], egret: [0.97, 0.97, 0.94], gull: [0.92, 0.94, 0.96] };
 const KITE_COLORS = ['#e4252b', '#ffb000', '#1d5fa8', '#19a84a', '#ff2e88', '#7b2f9e', '#22d3ee', '#ffe14a'];
 
+// one metro car (the train is six of them, each placed on the viaduct on its own so the train follows its bends)
+export const METRO_CAR = { cars: 6, L: 22, gap: 0.6 };
 export function buildMetroTrain(misc, mats) {
   const B = new MeshBuilder(true);
   const G = new MeshBuilder(false);
   const side = misc.get('mrt_side');
-  const cars = 6, L = 22, W = 2.9, H = 3.3;
-  for (let i = 0; i < cars; i++) {
-    const z = i * (L + 0.6);
-    B.box(0, 0.6, z, W, H, L, 0, { regions: { side, front: misc.get('white'), back: misc.get('white'), top: misc.get('metal') }, color: [1, 1, 1] });
-    G.box(0, 2.1, z, W + 0.04, 0.9, L - 3, 0, { color: [1.6, 1.8, 1.9] });
-  }
-  // nose lights
-  G.box(-0.8, 1.2, -L / 2 - 0.05, 0.4, 0.2, 0.05, 0, { color: [3, 3, 2.6] });
-  G.box(0.8, 1.2, -L / 2 - 0.05, 0.4, 0.2, 0.05, 0, { color: [3, 3, 2.6] });
+  const { L } = METRO_CAR, W = 2.9, H = 3.3;
+  B.box(0, 0.6, 0, W, H, L, 0, { regions: { side, front: misc.get('white'), back: misc.get('white'), top: misc.get('metal') }, color: [1, 1, 1] });
+  G.box(0, 2.1, 0, W + 0.04, 0.9, L - 3, 0, { color: [1.6, 1.8, 1.9] });
   const g = new THREE.Group();
   g.add(new THREE.Mesh(B.build(), mats.misc));
-  const win = new THREE.Mesh(G.build(), new THREE.MeshBasicMaterial({ vertexColors: true }));
-  g.add(win);
-  g.userData.length = cars * (L + 0.6);
+  g.add(new THREE.Mesh(G.build(), new THREE.MeshBasicMaterial({ vertexColors: true })));
   return g;
+}
+
+// the two lamps on the nose of the leading car
+function buildMetroNose() {
+  const G = new MeshBuilder(false);
+  const { L } = METRO_CAR;
+  G.box(-0.8, 1.2, -L / 2 - 0.05, 0.4, 0.2, 0.05, 0, { color: [3, 3, 2.6] });
+  G.box(0.8, 1.2, -L / 2 - 0.05, 0.4, 0.2, 0.05, 0, { color: [3, 3, 2.6] });
+  return new THREE.Mesh(G.build(), new THREE.MeshBasicMaterial({ vertexColors: true }));
 }
 
 export function buildPlane(misc, mats) {
@@ -93,6 +96,7 @@ export class Ambience {
     const A = game.world.assets, mats = game.world.mats;
     this.rng = new RNG(2024);
     this.trainProto = buildMetroTrain(A.misc, mats);
+    this.trainNose = buildMetroNose();
     this.trainWin = this.trainProto.children[1].material;
     this.planeProto = buildPlane(A.misc, mats);
     this.trains = [];
@@ -138,7 +142,7 @@ export class Ambience {
   }
 
   clear() {
-    for (const t of this.trains) t.obj.removeFromParent();
+    for (const t of this.trains) for (const o of t.cars) o.removeFromParent();
     for (const p of this.planes) p.obj.removeFromParent();
     this.trains = [];
     this.planes = [];
@@ -163,18 +167,26 @@ export class Ambience {
       if (this.nextTrain <= 0 && this.trains.length < 3) {
         this.nextTrain = 4 + this.rng.next() * 5;
         const dir = this.rng.chance(0.5) ? 1 : -1;
-        const obj = this.trainProto.clone();
-        scene.add(obj);
-        this.trains.push({ obj, track: tr, s: dir > 0 ? P.s - 150 : P.s + 700, dir, v: dir > 0 ? 27 : 22, lane: dir > 0 ? -1.9 : 1.9 });
+        const cars = [];
+        for (let k = 0; k < METRO_CAR.cars; k++) {
+          const obj = this.trainProto.clone();
+          if (k === 0) obj.add(this.trainNose.clone());
+          scene.add(obj);
+          cars.push(obj);
+        }
+        this.trains.push({ cars, track: tr, s: dir > 0 ? P.s - 150 : P.s + 700, dir, v: dir > 0 ? 27 : 22, lane: dir > 0 ? -1.9 : 1.9 });
       }
     }
     for (let i = this.trains.length - 1; i >= 0; i--) {
       const t = this.trains[i];
       t.s += t.v * t.dir * dt;
-      if (t.track !== tr || t.s < P.s - 300 || t.s > P.s + 1200 || t.s > tr.length - 100) { t.obj.removeFromParent(); this.trains.splice(i, 1); continue; }
-      const x = tr.halfWAt(Math.max(0, t.s)) + medianW(st) / 2 + t.lane;
-      tr.point(Math.max(0, t.s), x, 13.6, t.obj.position);
-      t.obj.rotation.set(0, -(tr.yawAt(Math.max(0, t.s)) + (t.dir < 0 ? Math.PI : 0)), 0);
+      if (t.track !== tr || t.s < P.s - 300 || t.s > P.s + 1200 || t.s > tr.length - 100) { for (const o of t.cars) o.removeFromParent(); this.trains.splice(i, 1); continue; }
+      // every car sits on the viaduct at its own place along the road, so the train bends with it
+      t.cars.forEach((obj, k) => {
+        const sk = clamp(t.s - t.dir * k * (METRO_CAR.L + METRO_CAR.gap), 0, tr.length);
+        tr.point(sk, tr.halfWAt(sk) + medianW(st) / 2 + t.lane, 12.7, obj.position);
+        obj.rotation.set(0, -(tr.yawAt(sk) + (t.dir < 0 ? Math.PI : 0)), 0);
+      });
       this.trainWin.color.setScalar(0.4 + glow * 0.8);
     }
 

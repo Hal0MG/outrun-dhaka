@@ -339,6 +339,28 @@ function drawPerson(seed, kind) {
   return (ctx, e, w, h) => person(ctx, w / 2, h - 1, h * 0.95, new RNG(seed), kind);
 }
 
+// a person holding an umbrella over their head (taller sprite so the canopy fits)
+const UMBRELLA = ['#e4252b', '#1d5fa8', '#2a2a2a', '#f2c230', '#7b2f9e', '#118a4a', '#ff2e88', '#20b2c9', '#e8561c'];
+function drawUmbrellaPerson(seed, kind) {
+  return (ctx, e, w, h) => {
+    const rng = new RNG(seed);
+    person(ctx, w / 2, h - 1, 121, rng, kind);
+    const col = new RNG(seed + 'u').pick(UMBRELLA);
+    const cx = w / 2, by = h - 1 - 119;
+    // handle from the hand up to the canopy
+    ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx + 6, h - 1 - 64); ctx.lineTo(cx + 2, by - 4); ctx.stroke();
+    // canopy: a dome with scalloped edge and ribs
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.ellipse(cx, by, w * 0.46, 19, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = P.shade(col, -0.3);
+    for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.ellipse(cx + k * w * 0.18, by + 1, w * 0.1, 3.5, 0, 0, Math.PI); ctx.fill(); }
+    ctx.strokeStyle = P.shade(col, -0.35); ctx.lineWidth = 1;
+    for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(cx, by - 19); ctx.lineTo(cx + k * w * 0.3, by); ctx.stroke(); }
+    ctx.fillStyle = '#2a2018'; ctx.fillRect(cx - 1, by - 22, 2, 4);
+  };
+}
+
 function drawCrowd(seed, n = 8) {
   return (ctx, e, w, h) => {
     const rng = new RNG(seed);
@@ -825,6 +847,11 @@ const CATALOGUE = [
   ['p_kameez', 48, 128, 1.6, drawPerson('pk', 'kameez')],
   ['p_panjabi', 48, 128, 1.7, drawPerson('pp', 'panjabi')],
   ['p_vendor', 48, 144, 1.95, drawPerson('pv', 'vendor')],
+  ['pu_lungi', 64, 160, 2.1, drawUmbrellaPerson('pl', 'lungi')],
+  ['pu_shirt', 64, 160, 2.15, drawUmbrellaPerson('ps', 'shirt')],
+  ['pu_saree', 64, 160, 1.98, drawUmbrellaPerson('psa', 'saree')],
+  ['pu_kameez', 64, 160, 2.0, drawUmbrellaPerson('pk', 'kameez')],
+  ['pu_panjabi', 64, 160, 2.12, drawUmbrellaPerson('pp', 'panjabi')],
   ['crowd0', 256, 128, 1.75, drawCrowd('c0', 9)],
   ['crowd1', 256, 128, 1.75, drawCrowd('c1', 7)],
   ['crowd2', 256, 128, 1.75, drawCrowd('c2', 11)],

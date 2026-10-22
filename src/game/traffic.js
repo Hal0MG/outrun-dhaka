@@ -15,8 +15,9 @@ const MAX_CARS = 28; // moving cars on the road ahead at once
 const MAX_ONCOMING = 9; // coming the other way on the opposite carriageway
 const SPAWN_AHEAD = [220, 820];
 const KEEP_BEHIND = 70, KEEP_AHEAD = 950;
-const CAR_COLORS = ['#f2f2ee', '#c9ccd0', '#1c1c1e', '#8a1d22', '#2b4a6b', '#e8e2d0', '#5a5a5e', '#d8d2c0', '#3a4a3a'];
-const DARK_COLORS = ['#141416', '#1c1c1e', '#f2f2ee', '#2a2a2e', '#d8d8d4'];
+// no near-black paint: at night it simply vanishes into the road
+const CAR_COLORS = ['#f2f2ee', '#c9ccd0', '#6f8296', '#b02a30', '#3f6fa0', '#e8e2d0', '#8e9097', '#d8d2c0', '#4f8a5a', '#d9a23a', '#7e6aa8'];
+const DARK_COLORS = ['#3c3c44', '#4c4c56', '#f2f2ee', '#62626c', '#d8d8d4'];
 
 // weight is the share of traffic; speeds in m/s (every racer is far quicker)
 const TYPES = {

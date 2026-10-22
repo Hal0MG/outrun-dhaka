@@ -2,10 +2,8 @@
 // it follows hills and curves like the OutRun camera.
 
 import * as THREE from 'three';
-import { clamp, damp, lerp, fx } from '../core/util.js';
+import { damp, fx } from '../core/util.js';
 import { FORK_OFF } from '../world/world.js';
-
-export const CAM_MODES = ['chase', 'far', 'hood', 'low'];
 
 export class CameraRig {
   constructor(camera) {
@@ -23,12 +21,6 @@ export class CameraRig {
     this.camS = 0;
     this.camX = 0;
     this.camH = 2;
-  }
-
-  cycle() {
-    const i = CAM_MODES.indexOf(this.mode);
-    this.mode = CAM_MODES[(i + 1) % CAM_MODES.length];
-    return this.mode;
   }
 
   update(dt, player, opts = {}) {

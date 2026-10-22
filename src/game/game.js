@@ -8,13 +8,16 @@ import { World, FORK_OFF } from '../world/world.js';
 import { Sky } from '../world/sky.js';
 import { Atmosphere } from '../world/atmosphere.js';
 import { shared } from '../world/materials.js';
-import { STAGES, ROUTE, LEVEL_TIME, circuitStage } from '../world/stages.js';
+import { ROUTE, LEVEL_TIME, circuitStage } from '../world/stages.js';
 import { Player } from './player.js';
 import { CameraRig } from './camera.js';
 import { Fleet } from './fleet.js';
 import { Traffic } from './traffic.js';
 import { Peds } from './peds.js';
 import { Stalls, DEBRIS } from './stalls.js';
+import { Litter, SCATTER } from './litter.js';
+import { CarDrops } from './carwet.js';
+import { Attract } from './attract.js';
 import { Dialogue } from '../ui/dialogue.js';
 import { Ambience } from './ambience.js';
 import { contraAt } from '../world/contra.js';
@@ -28,6 +31,8 @@ import { music, TRACKS } from '../audio/music.js';
 import { clamp, lerp, damp, smoothstep, fx } from '../core/util.js';
 
 const MENU_STATES = ['title', 'map', 'garage', 'radio', 'settings', 'howto'];
+// behind these menus the showreel plays (the garage shows your own car instead)
+const ATTRACT_STATES = ['title', 'map', 'settings', 'howto'];
 
 export class Game {
   constructor(R, input, hud, settings) {
@@ -53,11 +58,16 @@ export class Game {
     this.sun = new THREE.DirectionalLight('#ffd59a', 1.5);
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
+    // the moon: a cool directional light at night, so the faces of buildings have some form to them
+    this.moon = new THREE.DirectionalLight('#9fb4ff', 0);
+    this.scene.add(this.moon);
+    this.scene.add(this.moon.target);
     this.scene.fog = new THREE.FogExp2('#e8cfa6', 0.0012);
     this.fleet = new Fleet(this.scene, this.world.assets, this.world);
     this.traffic = new Traffic(this);
     this.peds = new Peds(this.scene, this.world);
     this.stalls = new Stalls(this.scene, this.world);
+    this.litter = new Litter(this);
     this.say = new Dialogue(this.hud);
     this.ambience = new Ambience(this);
     this._cars = [];
@@ -65,10 +75,12 @@ export class Game {
     this.particles = new Particles(this.scene);
     this.weather = new Weather(this.scene);
     this.race = new Race(this);
+    this.attract = null; // built once the first car exists
     this.cam = new CameraRig(this.R.camera);
     this.carIndex = this.settings.car ?? 0;
     this.colorIndex = this.settings.color ?? 0;
     this.buildCar();
+    this.attract = new Attract(this);
     this.resetWorld('dhanmondi');
     for (let i = 0; i < 14; i++) this.world.stream(this.player.track, this.player.s, 4);
   }
@@ -80,6 +92,7 @@ export class Game {
     const color = def.colors[this.colorIndex % def.colors.length];
     this.car = buildPlayerCar(def, color, { misc: this.world.assets.misc, fx: this.world.assets.fx, mats: this.world.mats });
     this.scene.add(this.car.group);
+    this.drops = new CarDrops(this.car);
     if (this.env) applyEnv(this.car, this.env.texture);
     const prev = this.player;
     this.player = new Player(def);
@@ -101,6 +114,7 @@ export class Game {
     this.traffic.clear();
     this.peds.clear();
     this.stalls.clear();
+    this.litter.clear();
     this.ambience.clear();
     this.sky.setSkyline(tr.stage.skyline || 'midrise', true);
     this.cam.init = false;
@@ -127,6 +141,7 @@ export class Game {
   // ------------------------------------------------------------ races
   // kind 'circuit' races `district` for three laps; kind 'run' crosses the whole city
   startRace(kind, district = 'dhanmondi') {
+    this.attract?.stop();
     this.kind = kind;
     this.district = district;
     const stageId = kind === 'circuit' ? circuitStage(district).id : ROUTE[0];
@@ -151,6 +166,7 @@ export class Game {
 
   // back to the title: the car waits on the Dhanmondi start line
   toTitle() {
+    this.attract?.stop();
     this.kind = null;
     this.hud.show(false);
     this.hud.tags([]);
@@ -221,6 +237,10 @@ export class Game {
     shared.uTime.value = this.time;
     const P = this.player;
     const st = this.state;
+    // the showreel plays behind the menus while no race is in progress
+    if (ATTRACT_STATES.includes(st) && this.kind == null) { if (!this.attract.on) this.attract.start(); }
+    else if (this.attract.on) { this.attract.stop(); if (st === 'garage') this.resetWorld('dhanmondi'); }
+    if (this.attract.on) this.attract.update(dt);
 
     let autopilot = null;
     let cinematic = false;
@@ -240,7 +260,7 @@ export class Game {
       this.raceInput();
     }
 
-    if (st !== 'paused' && st !== 'photo') {
+    if (st !== 'paused') {
       P.update(dt, input, this.world, { autopilot });
       this.handlePlayerEvents();
       this.handleFork();
@@ -253,7 +273,7 @@ export class Game {
     }
 
     // camera
-    if (st === 'photo') this.photoCam(dt);
+    if (this.attract.on) this.attract.camera(dt);
     else if (cinematic === 'garage') this.cam.update(dt, P, { cinematic: true, orbitSpeed: 0.25, radius: 7.5, height: 1.9, fov: 42 });
     else if (cinematic === 'title') this.titleCam(dt);
     else if (cinematic === 'ending') this.endingCam(dt);
@@ -267,6 +287,7 @@ export class Game {
 
     this.updateAtmosphere(dt);
     this.updateCarVisual(dt);
+    this.drops?.update(dt, this.weather.rain);
     const cars = this._cars;
     cars.length = 0;
     for (const c of this.race.cars) cars.push(c);
@@ -291,7 +312,8 @@ export class Game {
   movers() {
     const R = this.race, P = this.player;
     const PG = R.playerG();
-    const out = [{ G: PG, x: P.x, v: P.v, hl: P.halfL * 0.9, hw: P.halfW * 0.9, player: true }];
+    // (in the showreel the player's car is hidden and parked at the camera: nothing should hit it)
+    const out = this.attract.on ? [] : [{ G: PG, x: P.x, v: P.v, hl: P.halfL * 0.9, hw: P.halfW * 0.9, player: true }];
     for (const r of R.rivals) if (!r.out && Math.abs(r.G - PG) < 220) out.push({ G: r.G, x: r.x, v: r.v, hl: r.l, hw: r.w });
     return out;
   }
@@ -302,10 +324,41 @@ export class Game {
     if (!R.active) return;
     const P = this.player;
     const go = st === 'race';
+    const live = go || this.attract.on;
     const movers = this.movers();
-    this.traffic.update(dt, go, movers);
-    this.peds.update(dt, P, go, this.traffic.factor * 1.1, this.traffic.cars, movers);
+    this.traffic.update(dt, live, movers);
+    this.peds.rain = this.weather.rain;
+    this.peds.update(dt, P, live, this.traffic.factor * 1.1, this.traffic.cars, movers);
     this.stalls.update(dt, R.playerG(), movers);
+    this.litter.update(dt, this.night, movers, Math.max(this.weather.rain, shared.uWet.value * 0.8));
+    for (const e of this.litter.events) {
+      const it = e.it;
+      const tr = it.tr;
+      if (e.type === 'splash') {
+        // a wheel through a puddle: spray up and to the sides, and a splash you can hear
+        const at = tr.point(Math.min(e.G - tr.base, tr.length), e.x, 0.1, this._bv);
+        this.particles.splash(at, { x: 0, z: 0 }, Math.round(4 + e.v * 0.12));
+        if (e.first) { audio.splash(e.v); this.cam.kick(0.03); }
+        continue;
+      }
+      if (e.type === 'pothole') {
+        // a jolt through the car, a puff of grit and a thump
+        P.bounce += 0.09 + Math.min(e.v, 80) * 0.0009;
+        P.v *= 0.992;
+        this.cam.kick(0.07);
+        audio.bump();
+        const at = tr.point(it.G - tr.base, it.x, 0.1, this._bv);
+        this.particles.dust(at, { x: 0, z: 0 });
+        this.particles.dust(at, { x: 0, z: 0 });
+        this.say.say('pothole', 0.25);
+      } else {
+        const sc = SCATTER[it.kind];
+        const at = tr.point(it.G - tr.base, it.x, 0.15, this._bv);
+        if (sc) this.burst(at, sc.cols, sc.n);
+        if (sc?.dust) { this.particles.dust(at, { x: 0, z: 0 }); this.particles.dust(at, { x: 0, z: 0 }); }
+      }
+    }
+    this.litter.events.length = 0;
     this.say.update(dt);
     for (const e of this.traffic.events) {
       if (e.by !== 'player') continue;
@@ -371,43 +424,6 @@ export class Game {
     }
   }
 
-  // photo mode: frozen world, free orbit around the car
-  togglePhoto() {
-    if (this.state === 'photo') {
-      this.state = this.photoPrev || 'race';
-      this.hud.show(true);
-      document.getElementById('photoHint').hidden = true;
-      return false;
-    }
-    if (this.state !== 'race') return false;
-    this.photoPrev = this.state;
-    this.state = 'photo';
-    this.photo = { a: 0.6, h: 1.6, r: 7.5 };
-    this.hud.show(false);
-    document.body.classList.add('racing');
-    document.getElementById('photoHint').hidden = false;
-    return true;
-  }
-
-  photoCam(dt) {
-    const I = this.input;
-    const ph = this.photo;
-    if (I.held('left')) ph.a += dt * 1.2;
-    if (I.held('right')) ph.a -= dt * 1.2;
-    if (I.held('up')) ph.h = Math.min(14, ph.h + dt * 3);
-    if (I.held('down')) ph.h = Math.max(0.4, ph.h - dt * 3);
-    if (I.held('boost')) ph.r = Math.min(30, ph.r + dt * 6);
-    if (I.held('horn')) ph.r = Math.max(3.5, ph.r - dt * 6);
-    const pose = this.player.pose(this._pp || (this._pp = { pos: new THREE.Vector3() }));
-    const cam = this.R.camera;
-    const yaw = pose.yaw + ph.a;
-    cam.position.set(pose.pos.x + Math.sin(yaw) * ph.r, pose.pos.y + pose.lift + ph.h, pose.pos.z - Math.cos(yaw) * ph.r);
-    cam.up.set(0, 1, 0);
-    cam.lookAt(pose.pos.x, pose.pos.y + pose.lift + 0.8, pose.pos.z);
-    cam.fov = damp(cam.fov, 50, 4, dt);
-    cam.updateProjectionMatrix();
-  }
-
   endingCam(dt) {
     const P = this.player;
     const tr = P.track;
@@ -465,8 +481,6 @@ export class Game {
   raceInput() {
     const I = this.input;
     const P = this.player;
-    if (I.horn && !this.horning) { this.horning = true; audio.horn(audio.engineKind, true); }
-    else if (!I.horn && this.horning) { this.horning = false; audio.horn(audio.engineKind, false); }
     if (P.boosting && !this._wasBoost) { audio.nitro(); this.backfire = 0.15; }
     if (!P.boosting && this._wasBoost && P.nitro < 1) this.say.say('nitroOut', 0.5, false, 45);
     this._wasBoost = P.boosting;
@@ -515,6 +529,7 @@ export class Game {
 
   // ------------------------------------------------------------ lighting
   hourNow() {
+    if (this.attract.on) return this.player.track.stage.hour ?? 17.75;
     if (MENU_STATES.includes(this.state)) return this.settings.titleHour ?? 17.75;
     const P = this.player;
     const tr = P.track;
@@ -544,17 +559,23 @@ export class Game {
     this.S = S;
     this.night = smoothstep(18.2, 19.2, hour) * (1 - smoothstep(29.3, 30.0, hour));
     this.scene.fog.color.copy(S.fog);
-    this.scene.fog.density = S.fogD;
+    // a touch of haze after dark gives the lamps something to glow in
+    const fogD = S.fogD * (1 + this.night * 0.22);
+    this.scene.fog.density = fogD;
     shared.uFogColor.value.copy(S.fog);
-    shared.uFogDensity.value = S.fogD;
+    shared.uFogDensity.value = fogD;
     this.hemi.color.copy(S.amb);
-    this.hemi.groundColor.copy(S.fog).multiplyScalar(0.35);
+    this.hemi.groundColor.copy(S.fog).multiplyScalar(0.35 + this.night * 0.25);
     this.hemi.intensity = S.ambI * 1.25;
     this.sun.color.copy(S.sun);
     this.sun.intensity = S.sunI * S.sunVis * 1.3;
     const cp = this.R.camera.position;
     this.sun.position.set(cp.x + S.sunDir.x * 500, cp.y + Math.max(30, S.sunDir.y * 500), cp.z + S.sunDir.z * 500);
     this.sun.target.position.copy(cp);
+    this.moon.color.set('#9fb4ff');
+    this.moon.intensity = (S.moonVis ?? 0) * this.night * 0.85;
+    this.moon.position.set(cp.x + S.moonDir.x * 500, cp.y + Math.max(30, S.moonDir.y * 500), cp.z + S.moonDir.z * 500);
+    this.moon.target.position.copy(cp);
     shared.uAmb.value.copy(S.amb).multiplyScalar(S.ambI * (0.62 + this.night * 0.55));
     shared.uSun.value.copy(S.sun).multiplyScalar(S.sunI * S.sunVis * clamp(S.sunDir.y + 0.35, 0, 1) * 0.55);
     shared.uLamps.value = S.lamps;
@@ -570,7 +591,8 @@ export class Game {
     shared.uMoonDir.value.copy(S.moonDir);
     shared.uFlash.value = this.weather.flash;
     shared.uRain.value = this.weather.rain;
-    shared.uWet.value = damp(shared.uWet.value, Math.max(this.wetTarget || 0, this.weather.rain), 0.5, dt);
+    // after dark the streets are always a little wet: lamps and tail lights streak across the tarmac, the road shines
+    shared.uWet.value = damp(shared.uWet.value, Math.max(this.wetTarget || 0, this.weather.rain, this.night * 0.6), 0.5, dt);
     shared.uHead.value = smoothstep(18.25, 18.9, hour) * (1 - smoothstep(29.4, 29.9, hour));
     const M = this.world.mats;
     M.lamp.color.setScalar(0.12 + S.lamps * 0.95);
@@ -630,25 +652,9 @@ export class Game {
     C.tailMat.color.setRGB(0.5 + this.night * 0.8 + (P.braking ? 1.8 : 0), 0.03, 0.02);
     C.spot.intensity = head * 45;
     if (C.driver) { C.driver.rotation.z = -P.lean * 2; C.driver.position.x = 0.4 + P.lean * 0.5; }
-    if (C.passenger) C.passenger.rotation.z = -P.lean * 2.4 + Math.sin(this.time * 2) * 0.02;
     if (C.armsUp) C.armsUp.visible = false;
-    if (C.scarf) this.flutter(C.scarf, C.scarfBase, 0.9, 1);
     if (C.ledMat) C.ledMat.color.setHSL((this.time * 0.2) % 1, 1, 0.6).multiplyScalar(2.4);
     g.updateMatrixWorld();
-  }
-
-  flutter(mesh, base, len, amp) {
-    const P = this.player;
-    const pos = mesh.geometry.getAttribute('position');
-    const sp = clamp(P.v / 60, 0, 1);
-    for (let i = 0; i < pos.count; i++) {
-      const z = base[i * 3 + 2];
-      const along = Math.max(0, z) / len;
-      pos.setY(i, base[i * 3 + 1] + Math.sin(this.time * 14 + along * 6) * 0.06 * amp * along * sp - (1 - sp) * along * 0.5);
-      pos.setX(i, base[i * 3] + Math.sin(this.time * 9 + along * 4) * 0.05 * amp * along * sp);
-      pos.setZ(i, z * (0.4 + sp * 0.6));
-    }
-    pos.needsUpdate = true;
   }
 
   updateFx(dt) {
@@ -698,11 +704,11 @@ export class Game {
   updateAudio(dt) {
     const P = this.player;
     const st = P.track.stage;
-    const quiet = this.state === 'paused' || this.state === 'photo';
+    const quiet = this.state === 'paused';
     const river = st.L === 'river' || st.R === 'river' || st.farWater;
     audio.update({
       rpm: P.rpm, throttle: P.throttle, speed: P.v, vmax: P.vmax, slip: P.slip, offroad: P.offroad, scrape: P.scrape,
-      engineOn: !quiet, convertible: P.def.id === 'rosso' || P.def.id === 'miata',
+      engineOn: !quiet && !this.attract.on, convertible: P.def.id === 'rosso' || P.def.id === 'miata',
       rain: this.weather.rain, city: river ? 0.5 : 1 - this.night * 0.3, river: river ? 1 : 0,
       siren: 0, rotor: 0, boost: P.boosting && this.state === 'race',
       crowd: quiet ? 0 : 0.2, rival: quiet || !this.race.active ? null : this.race.nearest(),
@@ -727,7 +733,7 @@ export class Game {
     const tr = P.track;
     const R = this.race;
     if (!R.active) return;
-    // Tuntuni's bubble rides above the car
+    // the driver's speech bubble rides above the car
     const bv = this._bv.copy(this.car.group.position);
     bv.y += this.car.dims.hgt + 0.5;
     bv.project(this.R.camera);

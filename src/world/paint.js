@@ -3,7 +3,6 @@
 
 export const FONT_BN = '"Galada", "Hind Siliguri", "Nirmala UI", "Vrinda", sans-serif';
 export const FONT_BN_SANS = '"Hind Siliguri", "Nirmala UI", "Vrinda", sans-serif';
-export const FONT_BN_SERIF = '"Tiro Bangla", "Hind Siliguri", "Nirmala UI", serif';
 export const FONT_SIGN = '"Bungee", "Impact", "Arial Black", sans-serif';
 
 export function hexToRgb(hex) {

@@ -144,7 +144,8 @@ export const STAGES = {
 
   hatirjheel: {
     id: 'hatirjheel', name: 'Hatirjheel', short: 'HATIRJHEEL', bn: 'হাতিরঝিল', sub: 'Panthapath · Boshundhora City · Police Plaza', level: 2,
-    lanes: 4, L: 'lake', R: 'lake', lakeW: 220,
+    // a lake along one side with the far shore in sight, and the city right up to the road on the other
+    lanes: 4, L: 'lake', R: 'city', lakeW: 90,
     sections: [
       S(200, 0, 0, { L: 'city', R: 'city' }),
       S(370, 0, 0, { L: 'city', R: 'city' }), S(370, 0), S(368, 0),
@@ -353,6 +354,17 @@ export const STAGES = {
   },
 };
 
+// The real places the districts are known for, by the landmark type the stage uses. These are what the showreel
+// films, and what the race announces as you come up on them, so a Dhaka local can tell where they are.
+export const LANDMARK_NAMES = {
+  satmasjid: 'Satmasjid Mosque', sarobar: 'Rabindra Sarobar', curzonHall: 'Curzon Hall', shaheedMinar: 'Shaheed Minar',
+  ganabhaban: 'Ganabhaban', sangsad: 'Jatiya Sangsad Bhaban', novoTheatre: 'Novo Theatre', starMosque: 'Star Mosque',
+  ahsanManzil: 'Ahsan Manzil', fountain: 'Hatirjheel Fountain', baitulMukarram: 'Baitul Mukarram National Mosque',
+  shaplaChattar: 'Shapla Chattar', kamalapur: 'Kamalapur Railway Station', stadium: 'Sher-e-Bangla National Stadium',
+  jfp: 'Jamuna Future Park', kurilLoops: 'Kuril Flyover', airport: 'Hazrat Shahjalal Airport',
+  smritiSoudho: 'National Martyrs’ Memorial', tollPlaza: 'Padma Bridge Toll Plaza', gabtoli: 'Gabtoli Bus Terminal',
+};
+
 // ------------------------------------------------------------------ the single route
 // One road through every stage, dusk to dawn, ending on the Padma Bridge.
 export const ROUTE = [
@@ -428,10 +440,14 @@ export function circuitStage(id) {
   const lapLen = lap.reduce((a, s) => a + s.len, 0);
   const at = (s, i) => s * f + i * lapLen;
   const every = (list, fn) => Array.from({ length: CIRCUIT_LAPS }, (_, i) => (list || []).map((v) => fn(v, i))).flat();
-  const [h0, h1] = LEVEL_TIME[base.level];
+  // A circuit is one evening, not a slice of the Run's long night: most of the night between 22:00 and 04:00 is an
+  // empty dark sky, so the districts are spread across the pretty hours instead. Golden hour into blue hour and the
+  // first neon of the evening for the early ones, and the red dawn for the last few.
+  const lv = base.level;
+  const circuitHour = lv <= 9 ? 17.3 + (lv / 9) * 3.7 : 29.0 + ((lv - 10) / 4) * 1.5;
   STAGES[key] = {
     ...base,
-    id: key, circuit: true, district: id, laps: CIRCUIT_LAPS, lapLen, final: true, hour: (h0 + h1) / 2,
+    id: key, circuit: true, district: id, laps: CIRCUIT_LAPS, lapLen, final: true, hour: circuitHour,
     sections: every(lap, (s) => ({ ...s })),
     landmarks: every(base.landmarks, (l, i) => ({ ...l, s: at(l.s, i), clear: l.clear && [at(l.clear[0], i), at(l.clear[1], i)] })),
     footbridges: every(base.footbridges, at),

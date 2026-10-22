@@ -10,7 +10,6 @@ const SAREE = [
   ['#c8102e', '#ffb000', '#1a7a3c'], ['#1d5fa8', '#ffe14a', '#ff2e88'], ['#0f7a43', '#e4252b', '#ffd23a'],
   ['#ff2e88', '#22d3ee', '#ffffff'], ['#7b2f9e', '#ffb000', '#ff6a2e'], ['#f2a900', '#c8102e', '#1d5fa8'],
 ];
-export const SAREE_CSS = SAREE.map(([a, b, c]) => `repeating-linear-gradient(115deg, ${a} 0 38px, ${b} 38px 46px, ${a} 46px 84px, ${c} 84px 90px)`);
 
 function fabric(ctx, w, h, rng, cols, opts = {}) {
   const [base, border, motif] = cols;

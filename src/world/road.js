@@ -170,9 +170,9 @@ const ROAD_FS = /* glsl */ `
     vec3 light = uAmb + uSun;
     float ls = mod(s - uLampOffset + uLampSpacing * 0.5, uLampSpacing) - uLampSpacing * 0.5;
     float dxl = x - uLampX.x, dxr = x - uLampX.y;
-    float lampL = exp(-(ls * ls) / 55.0 - dxl * dxl / 22.0) * uLampOn.x;
-    float lampR = exp(-(ls * ls) / 55.0 - dxr * dxr / 22.0) * uLampOn.y;
-    light += uLampCol * (lampL + lampR) * uLamps * 1.7;
+    float lampL = exp(-(ls * ls) / 80.0 - dxl * dxl / 30.0) * uLampOn.x;
+    float lampR = exp(-(ls * ls) / 80.0 - dxr * dxr / 30.0) * uLampOn.y;
+    light += uLampCol * (lampL + lampR) * uLamps * 2.3;
     // player headlights: two overlapping lobes
     float ds = s - uPlayerS;
     float dx = x - uPlayerX;

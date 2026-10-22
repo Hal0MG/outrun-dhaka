@@ -199,30 +199,6 @@ export class MeshBuilder {
     }
   }
 
-  // apply a transform to all vertices added since index `from`
-  transformFrom(from, matrix) {
-    const v = new THREE.Vector3(), n = new THREE.Vector3();
-    const nm = new THREE.Matrix3().getNormalMatrix(matrix);
-    for (let i = from; i < this.v; i++) {
-      v.set(this.pos[i * 3], this.pos[i * 3 + 1], this.pos[i * 3 + 2]).applyMatrix4(matrix);
-      this.pos[i * 3] = v.x; this.pos[i * 3 + 1] = v.y; this.pos[i * 3 + 2] = v.z;
-      n.set(this.nor[i * 3], this.nor[i * 3 + 1], this.nor[i * 3 + 2]).applyMatrix3(nm).normalize();
-      this.nor[i * 3] = n.x; this.nor[i * 3 + 1] = n.y; this.nor[i * 3 + 2] = n.z;
-    }
-  }
-
-  // merge another builder's data (already in world coords)
-  append(other) {
-    const base = this.v;
-    this.pos.push(...other.pos);
-    this.nor.push(...other.nor);
-    this.uv.push(...other.uv);
-    this.col.push(...other.col);
-    if (this.withRegion) this.reg.push(...other.reg);
-    for (const i of other.idx) this.idx.push(i + base);
-    this.v += other.v;
-  }
-
   build() {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));

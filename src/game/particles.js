@@ -168,6 +168,16 @@ export class Particles {
     }
   }
 
+  // water thrown up by a wheel through a puddle: bigger, brighter droplets than the road spray
+  splash(p, v, n = 10) {
+    for (let i = 0; i < n; i++) {
+      const side = fx.next() < 0.5 ? -1 : 1;
+      this.soft.add(p.x + (fx.next() - 0.5) * 1.2, p.y + 0.1, p.z + (fx.next() - 0.5) * 1.2,
+        v.x * 0.35 + side * (1.5 + fx.next() * 4), 2.5 + fx.next() * 5, v.z * 0.35 + (fx.next() - 0.5) * 4,
+        0.82, 0.88, 0.95, 0.22 + fx.next() * 0.3, 0.55 + fx.next() * 0.5, { grav: 10, drag: 1.0, grow: 0.6, alpha: 0.4 });
+    }
+  }
+
   sparks(p, dir) {
     for (let i = 0; i < 4; i++) {
       this.add.add(p.x, p.y + 0.3, p.z,

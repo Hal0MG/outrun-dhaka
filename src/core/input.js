@@ -7,7 +7,6 @@ const KEYMAP = {
   ArrowUp: 'up', KeyW: 'up',
   ArrowDown: 'down', KeyS: 'down',
   Space: 'boost', KeyB: 'boost', KeyN: 'boost', ShiftLeft: 'fire', ShiftRight: 'fire', KeyZ: 'fire',
-  KeyH: 'horn', KeyX: 'horn',
   KeyR: 'radio',
   KeyM: 'mute',
   Escape: 'pause', KeyP: 'pause',
@@ -16,7 +15,6 @@ const KEYMAP = {
   KeyF: 'fullscreen',
   KeyL: 'lights',
   KeyT: 'talk',
-  KeyV: 'photo',
 };
 
 export class Input {
@@ -26,9 +24,8 @@ export class Input {
     this.steer = 0;
     this.throttle = 0;
     this.brake = 0;
-    this.horn = false;
     this.lastDevice = 'keyboard';
-    this.touch = { left: false, right: false, gas: false, brake: false, horn: false, boost: false };
+    this.touch = { left: false, right: false, gas: false, brake: false, boost: false };
     this.boostHeld = false;
     this.autoGas = false; // set on touch devices
     this.gpPrev = {};
@@ -63,7 +60,7 @@ export class Input {
 
   poll(dt) {
     // gamepad
-    let gx = 0, gThrottle = 0, gBrake = 0, gHorn = false, gBoost = false;
+    let gx = 0, gThrottle = 0, gBrake = 0, gBoost = false;
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (const gp of pads) {
       if (!gp) continue;
@@ -76,13 +73,12 @@ export class Input {
       if (b(1)) gBoost = true;
       if (b(14)) gx = -1;
       if (b(15)) gx = 1;
-      const map = { 2: 'fire', 3: 'camera', 9: 'pause', 4: 'radio', 5: 'horn', 0: 'confirm', 1: 'back', 8: 'photo', 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
+      const map = { 2: 'fire', 3: 'camera', 9: 'pause', 4: 'radio', 0: 'confirm', 1: 'back', 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
       for (const k in map) {
         const now = b(+k);
         const key = gp.index + ':' + k;
         if (now && !this.gpPrev[key]) this.edges.add(map[k]);
         this.gpPrev[key] = now;
-        if (map[k] === 'horn' && now) gHorn = true;
       }
       if (gThrottle > 0.1 || gBrake > 0.1) this.lastDevice = 'gamepad';
     }
@@ -100,7 +96,6 @@ export class Input {
     const auto = this.autoGas && !this.touch.brake ? 1 : 0;
     this.throttle = Math.max(this.down.has('up') || this.touch.gas ? 1 : 0, gThrottle, auto);
     this.brake = Math.max(this.down.has('down') || this.touch.brake ? 1 : 0, gBrake);
-    this.horn = this.down.has('horn') || this.touch.horn || gHorn;
     this.boostHeld = this.down.has('boost') || this.touch.boost || gBoost;
   }
 

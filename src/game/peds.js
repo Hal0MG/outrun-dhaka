@@ -5,7 +5,7 @@
 // It costs the racer nothing. Painted billboard sprites that rotate in the screen plane.
 
 import * as THREE from 'three';
-import { clamp, damp, fx, RNG } from '../core/util.js';
+import { damp, RNG } from '../core/util.js';
 import { shared } from '../world/materials.js';
 
 const MAX = 200;
@@ -99,6 +99,7 @@ export class Peds {
     this.time = 0;
     this._p = new THREE.Vector3();
     this.usedSpots = new WeakSet();
+    this.rain = 0; // set each frame by the game
   }
 
   clear() { this.list.length = 0; this.usedSpots = new WeakSet(); }
@@ -106,7 +107,12 @@ export class Peds {
   add(track, s, x, kind, opts = {}) {
     if (this.list.length >= MAX) return null;
     const names = KINDS[kind] || KINDS.street;
-    const name = opts.name || this.rng.pick(names);
+    let name = opts.name || this.rng.pick(names);
+    // in the rain, most people have an umbrella up
+    if (!opts.name && this.rain > 0.25 && this.rng.chance(Math.min(0.85, this.rain * 0.9))) {
+      const u = 'pu_' + name.slice(2);
+      if (this.atlas.info[u]) name = u;
+    }
     const inf = this.atlas.info[name];
     if (!inf) return null;
     const p = {

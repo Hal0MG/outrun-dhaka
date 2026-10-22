@@ -23,15 +23,16 @@ const NAMES = ['RAJA', 'NAWAB', 'TURBO SHUMON', 'DJ PIASH', 'CAPTAIN RUBEL', 'RU
   'TANIA', 'BADAL', 'SHAMIM', 'LUCKY', 'FAHIM', 'ROZINA', 'OPU', 'DIPA', 'HRIDOY', 'SABBIR', 'MOON', 'JAHID', 'PRITHU', 'RIPON', 'SATHI',
   'MASUD', 'NAYEEM', 'KONA', 'DULAL', 'SABINA', 'TAPOS'];
 const MODELS = ['skyline', 'supra', 'celica', 'chaser', 'miata', 'premio', 'prado'];
-const COLORS = ['#0b0b0f', '#e8e4da', '#ff6a00', '#ff2e88', '#1d4fd8', '#c8102e', '#6b6f78', '#111214', '#ffd200', '#22d3ee', '#2f8f4e', '#f2f2ee',
-  '#7b2f9e', '#ffb000', '#b9bcc0', '#e4252b', '#0e7c86', '#ff7eb6', '#c0c4cc', '#7a1d22', '#3a7bd5', '#9acd32'];
+// rivals are vivid and saturated, never black, white or grey: that is what the ordinary traffic wears, so a racer
+// stands out from the road at a glance, day or night
+const COLORS = ['#ff2e88', '#ff6a00', '#22d3ee', '#ffd200', '#2f9bff', '#39ff7a', '#b45cff', '#ff3b30', '#00e0c0', '#ff7eb6', '#a6ff00', '#ffa400'];
 export const RIVALS = Array.from({ length: 79 }, (_, i) => ({
   name: NAMES[i] || 'DRIVER ' + (i + 1),
   model: i === 0 ? 'skyline' : MODELS[(i * 3 + 1) % MODELS.length],
   color: COLORS[(i * 7 + (i > 22 ? 5 : 0)) % COLORS.length],
 }));
-// the leader's car is the black Skyline; the rest follow the order above
-RIVALS[0].color = '#0b0b0f';
+// the leader's car is a hot magenta Skyline; the rest follow the order above
+RIVALS[0].color = '#ff2e88';
 
 export const CIRCUIT_FIELD = 24;
 
@@ -77,8 +78,9 @@ export class Race {
     this.passes = 0;
     this.passNitro = 0;
     this.wrongAcc = 0;
-    // medal times for a circuit: a little over the time a perfect run at top speed would take
-    if (kind === 'circuit') { const nom = (tr.goalS - tr.gateS) / P.vmax; this.par = [nom * 1.07, nom * 1.13, nom * 1.22]; } else this.par = null;
+    // medal times for a circuit, as multiples of the time a perfect run at top speed would take (the rolling start,
+    // the bends and the odd bump cost a clean run about 9%, so gold is a clean lap and bronze is a scrappy one)
+    if (kind === 'circuit') { const nom = (tr.goalS - tr.gateS) / P.vmax; this.par = [nom * 1.12, nom * 1.19, nom * 1.28]; } else this.par = null;
     // a rolling start with the field strung out along the road: you start at the back on the line, and every racer
     // ahead is one gap further on (the leader about two kilometres up the road). Nobody is bunched up, so you only
     // ever have a few cars in front of you at a time, however good the first minute is.
@@ -96,11 +98,12 @@ export class Race {
       return {
         ...d, i, G: tr.base + tr.gateS + 25 + (n - i <= PACK ? (n - i) * PACK_GAP : PACK * PACK_GAP + (n - i - PACK) * FIELD_GAP), x, gx: x,
         slipT: 0, mistakeT: 2 + (i % 7), aggro: i === 0 || i % 2 === 0, v: ROLL_V, vx: 0, out: false, done: false, ready: true,
-        // everyone is a touch slower than your top speed and the pace falls only gently down the field: the leader
-        // takes nitro and a clean line to catch, the cars behind are passable one at a time, not all at once
-        skill: (kind === 'run' ? 1.0 : 0.99) - (kind === 'run' ? 0.07 : 0.06) * (i / n), bias: ((i * 7) % 5 - 2) * 0.32, dodge: null, dodgeT: 0,
+        // everyone is slower than your top speed and the pace falls down the field. The leader is the one to beat: on
+        // a circuit they finish about when a very good run does (a clean run is gold, a better one wins), so you
+        // do catch them with nitro and a clean line; the cars behind are passable a few at a time
+        skill: (kind === 'run' ? 0.93 : 0.88) - 0.06 * (i / n), bias: ((i * 7) % 5 - 2) * 0.32, dodge: null, dodgeT: 0,
         w: md.wid / 2, l: md.len / 2,
-        car: { model: d.model, md, track: null, s: 0, x: 0, yaw: 0, roll: 0, color: new THREE.Color(d.color), brake: false },
+        car: { model: d.model, md, track: null, s: 0, x: 0, yaw: 0, roll: 0, color: new THREE.Color(d.color), brake: false, rival: true },
       };
     });
     this.position = this.field;
@@ -222,8 +225,9 @@ export class Race {
       this.lapT += dt;
       P.fuel = Math.max(0, P.fuel - (P.v * dt * (P.boosting ? NITRO_BURN : 1)) / this.tank);
     }
-    this.driveRivals(dt, racing || g.state === 'goal' || g.state === 'gameover');
-    this.contact();
+    const show = !!g.attract?.on; // the title showreel: rivals race on, and nothing touches the (hidden) player
+    this.driveRivals(dt, racing || show || g.state === 'goal' || g.state === 'gameover');
+    if (!show) this.contact();
     this.collect();
     if (racing) { this.awardPasses(); this.wrongWayReward(dt); }
     this.standings();

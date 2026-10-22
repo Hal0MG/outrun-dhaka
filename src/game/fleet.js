@@ -10,10 +10,27 @@ import { shared } from '../world/materials.js';
 
 const MAX_PER_MODEL = 24;
 
+// Cars are drawn with their own copy of the world's materials, with a night lift: a glow in the car's own colour
+// plus a little cold light, so a dark car in a dark street is still a car and not a hole in the road.
+function carMaterial(src, lift) {
+  const m = src.clone();
+  m.onBeforeCompile = (shader) => {
+    src.onBeforeCompile(shader);
+    shader.uniforms.uCarLift = lift;
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', ['#include <common>', 'uniform float uCarLift;'].join('\n'))
+      .replace(/vec3 outgoingLight = /, ['reflectedLight.indirectDiffuse += (diffuseColor.rgb * 0.8 + vec3(0.05, 0.055, 0.07)) * uCarLift;', '\tvec3 outgoingLight = '].join('\n'));
+  };
+  m.customProgramCacheKey = () => 'car' + (src.customProgramCacheKey ? src.customProgramCacheKey() : '');
+  return m;
+}
+
 export class Fleet {
   constructor(scene, assets, world) {
     this.models = { ...buildTrafficModels(assets.misc), ...buildFxModels(assets.fx) };
     this.meshes = {};
+    this.lift = { value: 0 };
+    const carMats = { fx: carMaterial(world.mats.fx, this.lift), misc: carMaterial(world.mats.misc, this.lift) };
     this.tailMat = new THREE.MeshBasicMaterial({ vertexColors: true });
     this.headMat = new THREE.MeshBasicMaterial({ vertexColors: true });
     this.amberMat = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -32,7 +49,7 @@ export class Fleet {
     for (const key in this.models) {
       const m = this.models[key];
       this.meshes[key] = {
-        body: mk(m.body, m.atlas === 'fx' ? world.mats.fx : world.mats.misc),
+        body: mk(m.body, m.atlas === 'fx' ? carMats.fx : carMats.misc),
         tail: mk(m.tail, this.tailMat),
         head: mk(m.head, this.headMat),
         amber: mk(m.amber, this.amberMat),
@@ -58,7 +75,20 @@ export class Fleet {
     const tailK = 0.35 + night * 0.65;
     // kept under the bloom threshold: from beside or behind, headlights should read as lamps, not flares
     const headK = 0.35 + night * 0.4;
-    const bodyK = 1 + night * 1.6;
+    // body brightness at night: lifted enough to read, but capped so pale cars and the plain-bodied models do not blow
+    // out into flat blobs, and with a floor so dark paint is a deep colour rather than a hole in the road
+    this.lift.value = night * 1.0;
+    const bodyK = 1 + night * 0.8;
+    const floor = 0.1 * night;
+    const CAP = 1.6;
+    const shade = (col, k) => {
+      c.copy(col).multiplyScalar(k);
+      const top = Math.max(c.r, c.g, c.b);
+      if (top > CAP) c.multiplyScalar(CAP / top);
+      c.r = Math.max(c.r, floor * 0.9); c.g = Math.max(c.g, floor * 0.9); c.b = Math.max(c.b, floor * 1.3);
+      return c;
+    };
+    const white1 = this._w || (this._w = new THREE.Color(1, 1, 1));
     const flash = Math.sin(this.time * 14) > 0;
     const lights = [];
     for (const v of cars) {
@@ -75,8 +105,10 @@ export class Fleet {
       m.compose(p, q, this._s);
       const wreck = !!v.wreck;
       M.body.setMatrixAt(i, m);
-      M.body.setColorAt(i, v.md.colorFixed ? c.setScalar(1 * (wreck ? 0.45 : 1) * bodyK) : c.copy(v.color).multiplyScalar((wreck ? 0.45 : 1) * bodyK));
-      if (M.tail) { M.tail.setMatrixAt(i, m); M.tail.setColorAt(i, c.setScalar(wreck ? 0.05 : v.brake ? 2.2 : tailK)); }
+      // racers glow a little brighter than the traffic around them
+      const k = (wreck ? 0.45 : 1) * bodyK * (v.rival ? 1.25 : 1);
+      M.body.setColorAt(i, shade(v.md.colorFixed ? white1 : v.color, k));
+      if (M.tail) { M.tail.setMatrixAt(i, m); M.tail.setColorAt(i, c.setScalar(wreck ? 0.05 : v.brake ? 2.2 : tailK * (v.rival ? 1.4 : 1))); }
       if (M.head) { M.head.setMatrixAt(i, m); M.head.setColorAt(i, c.setScalar(wreck ? 0 : headK)); }
       if (M.amber) { M.amber.setMatrixAt(i, m); M.amber.setColorAt(i, c.setScalar(wreck ? (flash ? 1 : 0) : 0.25 + night * 0.6)); }
       if (M.beacon) {

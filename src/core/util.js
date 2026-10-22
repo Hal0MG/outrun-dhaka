@@ -2,17 +2,12 @@
 
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
-export const invLerp = (a, b, v) => clamp((v - a) / (b - a), 0, 1);
 export const smoothstep = (a, b, v) => {
   const t = clamp((v - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
 };
 export const easeIO = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : 0.5 - 0.5 * Math.cos(Math.PI * t));
-export const easeOutCubic = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
-export const easeInCubic = (t) => Math.pow(clamp(t, 0, 1), 3);
 export const damp = (a, b, lambda, dt) => lerp(a, b, 1 - Math.exp(-lambda * dt));
-export const TAU = Math.PI * 2;
-export const DEG = Math.PI / 180;
 export const kmh = (ms) => ms * 3.6;
 
 export function hashStr(str) {
@@ -55,25 +50,10 @@ export class RNG {
     }
     return Object.keys(obj)[0];
   }
-  gauss() {
-    return (this.f() + this.f() + this.f() + this.f() - 2) / 2;
-  }
 }
 
 // Global non-deterministic rng for effects
 export const fx = new RNG((Math.random() * 1e9) | 0);
-
-const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
-export let useBanglaDigits = false;
-export function setBanglaDigits(v) { useBanglaDigits = v; }
-export function bn(n) {
-  const s = String(n);
-  if (!useBanglaDigits) return s;
-  return s.replace(/[0-9]/g, (d) => BN_DIGITS[d]);
-}
-export function toBnAlways(n) {
-  return String(n).replace(/[0-9]/g, (d) => BN_DIGITS[d]);
-}
 
 export function fmtTime(sec, decimals = 2) {
   sec = Math.max(0, sec);
@@ -81,18 +61,6 @@ export function fmtTime(sec, decimals = 2) {
   const s = sec - m * 60;
   const ss = s.toFixed(decimals).padStart(decimals ? 3 + decimals : 2, '0');
   return `${m}'${ss.replace('.', '"')}`;
-}
-
-// 1D value noise for cheap wobble
-export function noise1(x) {
-  const i = Math.floor(x);
-  const f = x - i;
-  const h = (n) => {
-    const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-    return s - Math.floor(s);
-  };
-  const u = f * f * (3 - 2 * f);
-  return lerp(h(i), h(i + 1), u);
 }
 
 export const store = {
