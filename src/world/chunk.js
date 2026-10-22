@@ -81,10 +81,11 @@ export class ChunkCtx {
     return o;
   }
 
-  // landmark breathing room: nothing tall gets placed in a reserved zone
+  // landmark breathing room: nothing is placed between the road and just behind the landmark; the city carries on beyond
+  // it, so the place stands in its street and not alone in an empty lot
   isClear(s, side, ax = 99) {
     for (const z of this.track.clear || []) {
-      if (s >= z.s0 && s <= z.s1 && z.side === side && ax > this.track.halfWAt(s) + 3.5) return true;
+      if (s >= z.s0 && s <= z.s1 && z.side === side && ax > this.track.halfWAt(s) + 3.5 && ax < (z.x1 ?? 1e9)) return true;
     }
     return false;
   }
@@ -363,6 +364,27 @@ export function sectionRuns(track, s0, s1) {
   return out;
 }
 
+// open country is never bare: hamlets of tin huts among trees, tree belts, and a far row of low buildings, so the land
+// reads as lived-in out to the horizon
+function countryside(ctx, a, b, side, xm, opts = {}) {
+  const rng = ctx.rng;
+  const st = ctx.stage;
+  const hamlets = Math.floor((b - a) / (opts.every || 55) + rng.next());
+  for (let i = 0; i < hamlets; i++) {
+    const s0 = rng.range(a, Math.max(a + 1, b - 22));
+    const x0 = xm + rng.range(16, 110);
+    const huts = 2 + Math.floor(rng.next() * 3);
+    for (let k = 0; k < huts; k++) {
+      const s = s0 + k * rng.range(7, 12);
+      if (s > b - 8 || ctx.isClear(s, side, x0)) continue;
+      PR.building(ctx, s, side, x0 + rng.range(-5, 5), rng.range(5, 8), rng.range(4, 6), rng.range(3.2, 4.4), { facade: 'tin', shop: null }, { noRoof: true });
+    }
+    trees(ctx, s0 - 6, Math.min(b, s0 + 40), side, x0 - 8, x0 + 14, 0.12, st.trees);
+  }
+  trees(ctx, a, b, side, xm + 110, xm + 270, opts.belt ?? 0.09, st.trees);
+  placeBuildingsRow(ctx, a, b, side, xm + (opts.farX || 150), { shops: false, facades: opts.facades || ['apt_raw', 'tin', 'apt_cream'], heights: opts.heights || [6, 14], wmin: 8, wmax: 15, gap: opts.gap || 28, noStreets: true, balconies: false, towerP: 0 });
+}
+
 const SIDES = {
   city(ctx, a, b, side, xIn, far = false) {
     const st = ctx.stage;
@@ -456,6 +478,7 @@ const SIDES = {
       const s = ctx.rng.range(a, b - 10);
       PR.building(ctx, s, side, xm + ctx.rng.range(10, 30), ctx.rng.range(5, 8), 5, 3.6, { facade: 'tin', shop: null }, { noRoof: true });
     }
+    countryside(ctx, a, b, side, xm);
     if (st.fieldLife) sidewalkLife(ctx, a, b, side, xm + 1.5, 3, { density: 0.03, life: st.fieldLife });
     if (st.lampL !== false && st.fieldLamps) lampsAlong(ctx, a, b, side, (s) => xIn(s) + 1.5, { h0: 0 });
   },
@@ -472,6 +495,8 @@ const SIDES = {
       if (xx < 12) ctx.obstacle(s, side * xx, 0.6, 0.6, 'soft');
     }
     trees(ctx, a, b, side, xm + 14, xm + 120, 0.04, st.trees);
+    // the new town: blocks of flats standing apart across the plain
+    countryside(ctx, a, b, side, xm, { every: 90, farX: 70, heights: [15, 36], gap: 34, facades: ['apt_cream', 'apt_raw'] });
     if (st.fieldLamps) lampsAlong(ctx, a, b, side, (s) => xIn(s) + 1.5, { h0: 0 });
   },
   wall(ctx, a, b, side, xIn) {

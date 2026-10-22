@@ -69,14 +69,33 @@ export function makeEnvMap(renderer, S, old) {
   return rt;
 }
 
-function plateTexture(text) {
+// Dhaka Metro plates: a series letter and a two-and-four digit number, new each race
+const SERIES = ['গ', 'ঘ', 'ক', 'খ', 'চ', 'ছ', 'ল', 'ব', 'ড', 'ঠ', 'হ'];
+const bnDigits = (n) => String(n).replace(/[0-9]/g, (d) => '০১২৩৪৫৬৭৮৯'[d]);
+export function randomPlate() {
+  const r = (n) => Math.floor(Math.random() * n);
+  return { series: 'ঢাকা মেট্রো-' + SERIES[r(SERIES.length)], text: bnDigits(11 + r(40)) + '-' + bnDigits(1000 + r(9000)) };
+}
+const plateMats = [];
+function plateMat(text) {
+  const m = new THREE.MeshBasicMaterial({ map: plateTexture(text) });
+  plateMats.push(m);
+  return m;
+}
+// a new number on every plate of the player's car
+export function rerollPlates() {
+  const p = randomPlate();
+  for (const m of plateMats) { m.map?.dispose(); m.map = plateTexture(p.text, p.series); m.needsUpdate = true; }
+}
+
+function plateTexture(text, series = 'ঢাকা মেট্রো-গ') {
   const cv = document.createElement('canvas');
   cv.width = 256; cv.height = 64;
   const ctx = cv.getContext('2d');
   ctx.fillStyle = '#f4f4ec';
   ctx.fillRect(0, 0, 256, 64);
   ctx.strokeStyle = '#111'; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 252, 60);
-  P.signText(ctx, 'ঢাকা মেট্রো-গ', 128, 20, { font: `700 22px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
+  P.signText(ctx, series, 128, 20, { font: `700 22px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
   P.signText(ctx, text, 128, 46, { font: `700 28px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -227,7 +246,7 @@ export function buildPlayerCar(def, colorHex, assets) {
     const d = parts.dims;
     const rear = d.len / 2;
     for (const [z, rot, txt] of [[parts.plates.rz + 0.012, 0, '১১-৪২০৪'], [parts.plates.fz - 0.012, Math.PI, '১১-৪২০৪']]) {
-      const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), new THREE.MeshBasicMaterial({ map: plateTexture(txt) }));
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), plateMat(txt));
       pl.position.set(0, parts.plates.y, z);
       pl.rotation.y = rot;
       body.add(pl);
@@ -305,7 +324,7 @@ export function buildPlayerCar(def, colorHex, assets) {
       body.add(slat);
     }
     // plate
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), new THREE.MeshBasicMaterial({ map: plateTexture('৮৬-১৯৮৬') }));
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), plateMat('৮৬-১৯৮৬'));
     plate.position.set(0, 0.42, 2.3);
     body.add(plate);
     // exhausts
@@ -370,7 +389,7 @@ export function buildPlayerCar(def, colorHex, assets) {
       hl.position.set(x, 0.58, -2.3);
       body.add(hl);
     }
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), new THREE.MeshBasicMaterial({ map: plateTexture('১১-৪২০৪') }));
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.13), plateMat('১১-৪২০৪'));
     plate.position.set(0, 0.48, 2.31);
     body.add(plate);
     // the sticker on the rear window (faces backward, follows the glass slope)

@@ -26,7 +26,7 @@ import { Weather } from './weather.js';
 import { loadCarAssets } from './carassets.js';
 import { loadLandmarkModels } from '../world/models.js';
 import { Race } from './race.js';
-import { CARS, buildPlayerCar, makeEnvMap, applyEnv } from './cars.js';
+import { CARS, buildPlayerCar, makeEnvMap, applyEnv, rerollPlates } from './cars.js';
 import { audio } from '../audio/audio.js';
 import { music, TRACKS } from '../audio/music.js';
 import { clamp, lerp, damp, smoothstep, fx } from '../core/util.js';
@@ -143,6 +143,7 @@ export class Game {
   // kind 'circuit' races `district` for three laps; kind 'run' crosses the whole city
   startRace(kind, district = 'dhanmondi') {
     this.attract?.stop();
+    rerollPlates();
     this.kind = kind;
     this.district = district;
     const stageId = kind === 'circuit' ? circuitStage(district).id : ROUTE[0];
@@ -331,7 +332,7 @@ export class Game {
     this.peds.rain = this.weather.rain;
     this.peds.update(dt, P, live, this.traffic.factor * 1.1, this.traffic.cars, movers);
     this.stalls.update(dt, R.playerG(), movers);
-    this.litter.update(dt, this.night, movers, Math.max(this.weather.rain, shared.uWet.value * 0.8));
+    this.litter.update(dt, this.night, movers, Math.max(this.weather.rain, shared.uStreak.value * 0.8));
     for (const e of this.litter.events) {
       const it = e.it;
       const tr = it.tr;
@@ -593,6 +594,7 @@ export class Game {
     shared.uFlash.value = this.weather.flash;
     shared.uRain.value = this.weather.rain;
     // after dark the streets are always a little wet: lamps and tail lights streak across the tarmac, the road shines
+    shared.uStreak.value = damp(shared.uStreak.value, Math.max(this.wetTarget || 0, this.weather.rain), 0.5, dt);
     shared.uWet.value = damp(shared.uWet.value, Math.max(this.wetTarget || 0, this.weather.rain, this.night * 0.6), 0.5, dt);
     shared.uHead.value = smoothstep(18.25, 18.9, hour) * (1 - smoothstep(29.4, 29.9, hour));
     const M = this.world.mats;

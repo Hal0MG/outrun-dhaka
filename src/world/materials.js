@@ -20,6 +20,7 @@ export const shared = {
   uLamps: { value: 0 },
   uHead: { value: 0 },
   uWet: { value: 0 },
+  uStreak: { value: 0 }, // real wetness only (rain, puddles): what makes lamp reflections streak down the road
   uSkyRefl: { value: new THREE.Color(0.5, 0.4, 0.5) },
   uMarkFade: { value: 0.6 },
   uFlash: { value: 0 },

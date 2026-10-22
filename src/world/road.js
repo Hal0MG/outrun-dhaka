@@ -47,6 +47,7 @@ const ROAD_FS = /* glsl */ `
   uniform float uCamX;
   uniform float uCamH;
   uniform float uWet;
+  uniform float uStreak;
   uniform vec3 uSkyRefl;
   uniform vec3 uFogColor;
   uniform float uFogDensity;
@@ -71,36 +72,49 @@ const ROAD_FS = /* glsl */ `
   float vn(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.-2.*f);
     return mix(mix(h12(i),h12(i+vec2(1,0)),u.x), mix(h12(i+vec2(0,1)),h12(i+vec2(1,1)),u.x), u.y); }
 
-  // Pohela Boishakh alpana: lotus medallions, dotted rings, vines
+  // Pohela Boishakh alpana: lotus medallions painted by hand, so no two are alike. Staggered cells, each medallion
+  // jittered, turned, scaled and coloured on its own, a few cells left bare and a few holding only a small ring of
+  // dots. Everything stays inside its cell (extent 3.5 m + 0.5 m jitter in a 4.5 m half-cell), so nothing is cut off.
   vec4 alpana(vec2 p) {
-    vec2 cellSize = vec2(7.0, 7.0);
-    vec2 id = floor(p / cellSize);
-    vec2 q = mod(p, cellSize) - cellSize * 0.5;
+    vec2 cs = vec2(9.0, 9.0);
+    float row = floor(p.y / cs.y);
+    float off = mod(row, 2.0) * 4.5;
+    vec2 id = vec2(floor((p.x + off) / cs.x), row);
+    float k = h12(id), k2 = h12(id + 7.3), k3 = h12(id + 19.1), k4 = h12(id + 31.7);
+    if (k2 < 0.14) return vec4(0.0);
+    vec2 q = vec2(mod(p.x + off, cs.x), mod(p.y, cs.y)) - cs * 0.5;
+    q += (vec2(k3, k4) - 0.5) * 1.0;
+    float sc = 0.55 + 0.45 * k4;
+    q /= sc;
+    float rot = k * 6.2832;
+    q = vec2(q.x * cos(rot) - q.y * sin(rot), q.x * sin(rot) + q.y * cos(rot));
     float r = length(q);
     float a = atan(q.y, q.x + 1e-5);
-    float k = h12(id);
-    float np = k > 0.5 ? 8.0 : 6.0;
+    float np = 5.0 + floor(k2 * 5.0);
+    float small = step(k3, 0.22);
     float petals = pow(max(abs(cos(a * np * 0.5)), 1e-4), 0.6);
-    float petal = 1.0 - smoothstep(-0.03, 0.03, r - (1.0 + 1.5 * petals));
-    float petalIn = 1.0 - smoothstep(-0.03, 0.03, r - (0.7 + 1.0 * petals));
-    float ring = 1.0 - smoothstep(0.06, 0.12, abs(r - 2.9));
-    float dots = (1.0 - smoothstep(0.1, 0.17, length(vec2(mod(a * 2.9 * 3.0, 1.0) - 0.5, (r - 3.25) * 1.2)))) ;
-    float core = 1.0 - smoothstep(-0.03, 0.03, r - 0.45);
-    vec3 c1, c2, c3;
-    if (k < 0.33) { c1 = vec3(0.92, 0.12, 0.10); c2 = vec3(1.0, 0.72, 0.05); c3 = vec3(0.98, 0.96, 0.92); }
-    else if (k < 0.66) { c1 = vec3(0.10, 0.42, 0.86); c2 = vec3(1.0, 0.25, 0.55); c3 = vec3(0.98, 0.96, 0.92); }
-    else { c1 = vec3(0.08, 0.62, 0.30); c2 = vec3(1.0, 0.55, 0.05); c3 = vec3(0.98, 0.96, 0.92); }
+    float petal = (1.0 - smoothstep(-0.03, 0.03, r - (1.0 + 1.5 * petals))) * (1.0 - small);
+    float petalIn = (1.0 - smoothstep(-0.03, 0.03, r - (0.7 + 1.0 * petals))) * (1.0 - small);
+    float ring = (1.0 - smoothstep(0.06, 0.12, abs(r - 2.9))) * (1.0 - small);
+    float nd = 12.0 + floor(k * 8.0);
+    float dots = 1.0 - smoothstep(0.1, 0.17, length(vec2(mod(a * nd / 6.2832, 1.0) - 0.5, (r - 3.25) * 1.2)));
+    dots *= step(2.6, r) * step(r, 3.5);
+    float core = 1.0 - smoothstep(-0.03, 0.03, r - mix(0.45, 1.3, small));
+    float sel = h12(id + 3.9);
+    vec3 c1, c2;
+    vec3 c3 = vec3(0.98, 0.96, 0.92);
+    if (sel < 0.2) { c1 = vec3(0.92, 0.12, 0.10); c2 = vec3(1.0, 0.72, 0.05); }
+    else if (sel < 0.4) { c1 = vec3(0.10, 0.42, 0.86); c2 = vec3(1.0, 0.25, 0.55); }
+    else if (sel < 0.6) { c1 = vec3(0.08, 0.62, 0.30); c2 = vec3(1.0, 0.55, 0.05); }
+    else if (sel < 0.8) { c1 = vec3(0.55, 0.15, 0.65); c2 = vec3(1.0, 0.85, 0.2); }
+    else { c1 = vec3(0.95, 0.45, 0.10); c2 = vec3(1.0, 0.82, 0.25); }
     vec3 col = vec3(0.0);
     float m = 0.0;
     if (petal > 0.0) { col = c1; m = petal; }
     if (petalIn > 0.0) { col = mix(col, c2, petalIn); m = max(m, petalIn); }
-    if (core > 0.0) { col = mix(col, c3, core); m = max(m, core); }
-    float rr = max(ring, dots * step(2.6, r));
+    if (core > 0.0) { col = mix(col, small > 0.5 ? c2 : c3, core); m = max(m, core); }
+    float rr = max(ring, dots);
     if (rr > 0.0) { col = mix(col, c3, rr); m = max(m, rr); }
-    // white vine linking medallions along lane centres
-    float vine = 1.0 - smoothstep(0.05, 0.1, abs(q.x - sin(p.y * 0.9) * 0.5) ) ;
-    vine *= step(3.3, r);
-    col = mix(col, c3, vine * 0.9); m = max(m, vine * 0.9);
     return vec4(col, m);
   }
 
@@ -127,13 +141,11 @@ const ROAD_FS = /* glsl */ `
 
     // --- asphalt
     float n1 = vn(vec2(lx * 1.7, s * 1.7));
-    float n2 = vn(vec2(lx * 0.21 + 5.0, s * 0.09));
+    float n2 = vn(vec2(lx * 0.3 + 5.0, s * 0.3));
     float n3 = h12(floor(vec2(lx, s) * 18.0));
-    vec3 col = vec3(0.080, 0.082, 0.090) * (0.8 + 0.32 * n1) * (0.82 + 0.36 * n2) * (0.9 + 0.22 * n3);
-    float pn = vn(vec2(lx * 0.35 + 17.0, s * 0.06));
-    col = mix(col, col * 0.78, smoothstep(0.68, 0.74, pn));
-    float pn2 = vn(vec2(lx * 0.5 - 3.0, s * 0.11 + 9.0));
-    col = mix(col, vec3(0.13, 0.125, 0.12), smoothstep(0.76, 0.8, pn2) * 0.35);
+    vec3 col = vec3(0.080, 0.082, 0.090) * (0.8 + 0.32 * n1) * (0.92 + 0.16 * n2) * (0.9 + 0.22 * n3);
+    float pn = vn(vec2(lx * 0.4 + 17.0, s * 0.4));
+    col = mix(col, col * 0.9, smoothstep(0.62, 0.8, pn));
     // cracks
     float cr = (1.0 - smoothstep(0.0, 0.012, abs(vn(vec2(lx * 1.6, s * 1.6)) - 0.5))) * smoothstep(0.72, 0.86, vn(vec2(lx * 0.1, s * 0.05 + 40.0)));
     col *= 1.0 - cr * 0.28;
@@ -162,8 +174,11 @@ const ROAD_FS = /* glsl */ `
     }
 
     // --- wetness
-    float pud = feat.g * smoothstep(0.52, 0.58, vn(vec2(lx * 0.25 + 3.0, s * 0.15)));
+    // puddle patches belong to real rain: on a dry night they showed as long pale strips down the road
+    float pud = feat.g * smoothstep(0.52, 0.58, vn(vec2(lx * 0.25 + 3.0, s * 0.15))) * clamp(uStreak * 2.0, 0.0, 1.0);
     float wet = clamp(uWet + pud, 0.0, 1.0);
+    // lamp and tail-light reflections streak only in real rain, not on dry night asphalt or in a puddle patch
+    float wetS = clamp(uStreak, 0.0, 1.0);
     col *= mix(1.0, 0.42, wet);
 
     // --- lighting
@@ -194,9 +209,9 @@ const ROAD_FS = /* glsl */ `
       float cq2 = cs + 2.2;
       float g = exp(-cx * cx / 1.4) * exp(-cq2 * cq2 / 5.0);
       tl += lc * g * c.z * 1.4;
-      if (wet > 0.05) {
+      if (wetS > 0.05) {
         float d = s - uCamS;
-        tl += lc * lampStreak(d, x, c.x, c.y, 0.9) * c.z * wet * 1.0 * smoothstep(14.0, 30.0, c.x - uCamS);
+        tl += lc * lampStreak(d, x, c.x, c.y, 0.9) * c.z * wetS * 0.35 * smoothstep(14.0, 30.0, c.x - uCamS);
       }
     }
     light += tl;
@@ -206,7 +221,7 @@ const ROAD_FS = /* glsl */ `
     vec3 V = normalize(cameraPosition - vWorld);
     float fres = pow(1.0 - clamp(V.y, 0.0, 1.0), 4.0);
     c += uSkyRefl * wet * (0.06 + 0.5 * fres) * 0.35;
-    if (wet > 0.05) {
+    if (wetS > 0.05) {
       float d = s - uCamS;
       float k0 = floor(((uCamS + d / (uCamH / (uCamH + 8.5))) - uLampOffset) / uLampSpacing + 0.5);
       float st = 0.0;
@@ -215,7 +230,7 @@ const ROAD_FS = /* glsl */ `
         st += lampStreak(d, x, sL, uLampX.x, 8.5) * uLampOn.x;
         st += lampStreak(d, x, sL, uLampX.y, 8.5) * uLampOn.y;
       }
-      c += uLampCol * min(st, 0.7) * uLamps * wet * 0.32;
+      c += uLampCol * min(st, 0.5) * uLamps * wetS * 0.07;
       // rain ripples sparkle
       float rp = step(0.995, h12(floor(vec2(lx, s) * 6.0) + floor(uTime * 12.0)));
       c += vec3(0.6) * rp * uRain * 0.4;
@@ -238,6 +253,7 @@ export function makeRoadMaterial(track, featTex, stage) {
     uLamps: shared.uLamps,
     uHead: shared.uHead,
     uWet: shared.uWet,
+    uStreak: shared.uStreak,
     uSkyRefl: shared.uSkyRefl,
     uFogColor: shared.uFogColor,
     uFogDensity: shared.uFogDensity,

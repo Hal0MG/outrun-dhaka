@@ -81,11 +81,16 @@ function wheels(B, A, W, z0, z1, r, w = 0.24) {
   }
 }
 
+// each model gets its own plate: the front takes the next one and the rear matches it
+let plateN = Math.floor(Math.random() * 16), plateCur = 0;
+function nextPlate(A) { plateCur = plateN++ % 16; return A.get('plate' + plateCur); }
+
 function plate(B, A, z, y, back = true) {
+  const region = back ? A.get('plate' + plateCur) : nextPlate(A);
   const hw = 0.26, hh = 0.07;
   const zz = z + (back ? 0.012 : -0.012);
-  if (back) B.quad([-hw, y - hh, zz], [hw, y - hh, zz], [hw, y + hh, zz], [-hw, y + hh, zz], [0, 0, 1, 1], [1, 1, 1], A.get('plate'));
-  else B.quad([hw, y - hh, zz], [-hw, y - hh, zz], [-hw, y + hh, zz], [hw, y + hh, zz], [0, 0, 1, 1], [1, 1, 1], A.get('plate'));
+  if (back) B.quad([-hw, y - hh, zz], [hw, y - hh, zz], [hw, y + hh, zz], [-hw, y + hh, zz], [0, 0, 1, 1], [1, 1, 1], region);
+  else B.quad([hw, y - hh, zz], [-hw, y - hh, zz], [-hw, y + hh, zz], [hw, y + hh, zz], [0, 0, 1, 1], [1, 1, 1], region);
 }
 
 function finish(m, len, wid, hgt, extra = {}) {
@@ -396,7 +401,7 @@ export function tesla(A, variant = 0) {
 function fromPack(A, name, fit, opts = {}) {
   const B = new MeshBuilder(true);
   const Lt = lights();
-  const dims = emitTraffic(B, Lt, name, fit, A.get('white'), opts.tint || [1, 1, 1], { plateRegion: A.get('plate'), ...opts });
+  const dims = emitTraffic(B, Lt, name, fit, A.get('white'), opts.tint || [1, 1, 1], { plateRegion: nextPlate(A), ...opts });
   opts.extra?.(B, Lt, A, dims);
   return finish({ B, Lt }, dims.len, dims.wid, dims.hgt, opts.finish);
 }

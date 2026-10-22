@@ -332,7 +332,13 @@ export const LANDMARKS = {
     const cc = F.L(0, 0, 0);
     B.cylinder(cc[0], cc[1] - 1, cc[2], 19, 19, 47, 8, [0.66, 0.64, 0.6], conc, { cap: true, capColor: [0.5, 0.48, 0.45], uRep: 5, tileV: 8 });
     // lake around it
-    const water = new THREE.Mesh(new THREE.CircleGeometry(140, 48), ctx.track.waterMat || ctx.world.mats.water);
+    const lakeGeo = new THREE.CircleGeometry(140, 48);
+    // the land climbs along the road: tilt the lake with it, so the road never ends up below the water
+    {
+      const g0 = ctx.track.groundAt(s), fx = Math.sin(F.yaw), fz = -Math.cos(F.yaw), P = lakeGeo.attributes.position;
+      for (let i = 0; i < P.count; i++) P.setZ(i, ctx.track.groundAt(s + P.getX(i) * fx - P.getY(i) * fz) - g0);
+    }
+    const water = new THREE.Mesh(lakeGeo, ctx.track.waterMat || ctx.world.mats.water);
     water.rotation.x = -Math.PI / 2;
     water.position.set(F.p[0], F.p[1] + 0.08, F.p[2]);
     ctx.extra.push(water);

@@ -199,7 +199,7 @@ export class World {
     for (let i = 0; i < tr.n; i += 10) ym += tr.yaw[i];
     tr.meanYaw = ym / Math.ceil(tr.n / 10);
     // reserved zones for landmarks
-    tr.clear = (stage.landmarks || []).filter((l) => l.clear).map((l) => ({ s0: tr.mapS(l.clear[0]), s1: tr.mapS(l.clear[1]), side: l.side }));
+    tr.clear = (stage.landmarks || []).filter((l) => l.clear).map((l) => ({ s0: tr.mapS(l.clear[0]), s1: tr.mapS(l.clear[1]), side: l.side, x1: (l.dist || 40) + Math.max(40, (l.dist || 40) * 0.5) }));
     // features
     const alp = (stage.alpana || []).map(([a, b]) => [tr.mapS(a), tr.mapS(b)]);
     const pud = (stage.puddles || []).map(([a, b]) => [tr.mapS(a), tr.mapS(b)]);

@@ -72,12 +72,18 @@ export function buildFxAtlas() {
     for (let x = 0; x < w; x += 5) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 4, h); c.stroke(); }
     c.fillStyle = '#c9ccd0'; c.fillRect(w / 2 - 6, h / 2 - 4, 12, 8);
   });
-  A.add('plate', 128, 32, (c, e, w, h) => {
-    c.fillStyle = '#f4f4ec'; c.fillRect(0, 0, w, h);
-    c.strokeStyle = '#111'; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
-    P.signText(c, 'ঢাকা মেট্রো-গ', w / 2, 10, { font: `700 10px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
-    P.signText(c, '১১-' + Math.floor(1000 + rng.next() * 8999).toString().replace(/[0-9]/g, (d) => '০১২৩৪৫৬৭৮৯'[d]), w / 2, 23, { font: `700 13px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
-  });
+  // sixteen different plates, drawn fresh each time the game loads, so the traffic does not all carry one number
+  const SERIES = ['গ', 'ঘ', 'ক', 'খ', 'চ', 'ছ', 'ল', 'ব', 'ড', 'ঠ', 'হ'];
+  const bn = (n) => String(n).replace(/[0-9]/g, (d) => '০১২৩৪৫৬৭৮৯'[d]);
+  for (let i = 0; i < 16; i++) {
+    A.add('plate' + i, 128, 32, (c, e, w, h) => {
+      c.fillStyle = '#f4f4ec'; c.fillRect(0, 0, w, h);
+      c.strokeStyle = '#111'; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
+      P.signText(c, 'ঢাকা মেট্রো-' + SERIES[Math.floor(Math.random() * SERIES.length)], w / 2, 10, { font: `700 10px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
+      P.signText(c, bn(11 + Math.floor(Math.random() * 40)) + '-' + bn(1000 + Math.floor(Math.random() * 9000)), w / 2, 23, { font: `700 13px ${P.FONT_BN_SANS}`, fill: '#111', stroke: null, lw: 0 });
+    });
+  }
+
   A.add('taxi_sign', 64, 32, (c, e, w, h) => {
     c.fillStyle = '#ffd200'; c.fillRect(0, 0, w, h);
     P.signText(c, 'TAXI', w / 2, h / 2, { font: `400 16px ${P.FONT_SIGN}`, fill: '#111', stroke: null, lw: 0 });
