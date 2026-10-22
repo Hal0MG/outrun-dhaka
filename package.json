@@ -10,7 +10,8 @@
     "dev": "vite --port 5173 --strictPort",
     "build": "vite build",
     "preview": "vite preview --port 5174",
-    "artifact": "vite build && node scripts/make-artifact.mjs"
+    "artifact": "vite build && node scripts/make-artifact.mjs",
+    "exe": "vite build && node scripts/make-exe.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"

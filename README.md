@@ -14,7 +14,8 @@ Runs in the browser. No install, no assets to download: the world, the music and
 
 ## Play
 
-- **Quickest:** build it (below) and open `dist/index.html` in Chrome or Edge. It is one self-contained file. Fonts load from Google Fonts when online.
+- **Windows:** `npm run exe`, then run `dist/OutrunDhaka.exe` (see Build).
+- **Any browser:** build it (below) and open `dist/index.html` in Chrome or Edge. It is one self-contained file. Fonts load from Google Fonts when online.
 - **Dev server:** `npm install`, `npm run dev`, then open http://127.0.0.1:5173
 
 Controls: ↑/W gas · ↓/S brake · ←→ steer · SPACE/B nitro · R music · ESC/P pause · F fullscreen. Gamepads work. On a phone, gas is automatic: two steer buttons on the left, brake and nitro on the right.
@@ -36,9 +37,14 @@ Dhanmondi → Shahbag → Manik Mia → Kawran Bazar → Hatirjheel → Gulshan 
 npm install
 npm run build      # dist/index.html, a single file
 npm run artifact   # also dist/outrun-dhaka.artifact.html (no document skeleton)
+npm run exe        # dist/OutrunDhaka.exe, a 2 MB Windows launcher (see below)
 ```
 
 Built with [three.js](https://threejs.org) and Vite. Deployed as a static site (see `render.yaml`).
+
+### Windows exe
+
+`npm run exe` builds `dist/OutrunDhaka.exe`: one 2 MB file with the game inside. It opens the game in its own Edge app window (no tabs or address bar), so there is no Electron and nothing to install: Edge ships with Windows 10 and 11 (Chrome is used if Edge is missing). It is built with the C# compiler that comes with Windows; the source is `tools/launcher/Launcher.cs`. Settings and best times are kept in `%LOCALAPPDATA%/OutrunDhaka`.
 
 ### Optional recordings and models
 
