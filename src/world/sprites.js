@@ -373,7 +373,9 @@ function person(ctx, x, by, s, rng, kind) {
 // Stylised people (art direction): one chunky silhouette per figure (big head, rounded body, no separate limbs),
 // a shaded right side, and an ink rim around the whole figure like the trees.
 const INK = '#1d1620';
-function flatPerson(ctx, x, by, s, rng, kind) {
+// stride: 0 standing, 1 mid-step (legs apart, a lungi or saree hem swung forward): two frames make the walk cycle.
+// It never touches the rng, so both frames of a figure get the same clothes.
+function flatPerson(ctx, x, by, s, rng, kind, stride = 0) {
   const skin = rng.pick(SKIN), hair = '#1a1410';
   const hh = s * 0.94;
   const sw = hh * 0.16, head = hh * 0.115;
@@ -399,17 +401,25 @@ function flatPerson(ctx, x, by, s, rng, kind) {
   const waist = -hh * 0.46;
   // lower body: a flared wrap (lungi, saree) or two legs
   ctx.fillStyle = lower;
+  const sk = stride * sw * 0.45; // how far the hem swings and the feet part
   if (skirt) {
     ctx.beginPath();
-    ctx.moveTo(-sw * 0.9, waist); ctx.lineTo(sw * 0.9, waist); ctx.lineTo(sw * 1.05, -hh * 0.03); ctx.lineTo(-sw * 1.05, -hh * 0.03);
+    ctx.moveTo(-sw * 0.9, waist); ctx.lineTo(sw * 0.9, waist); ctx.lineTo(sw * 1.05 + sk, -hh * 0.03); ctx.lineTo(-sw * 1.05 + sk * 0.4, -hh * 0.03);
     ctx.closePath(); ctx.fill();
   } else {
-    P.roundRect(ctx, -sw * 0.85, waist, sw * 0.78, -waist - hh * 0.02, sw * 0.25); ctx.fill();
-    P.roundRect(ctx, sw * 0.07, waist, sw * 0.78, -waist - hh * 0.02, sw * 0.25); ctx.fill();
+    const leg = (x0, ang) => {
+      ctx.save();
+      ctx.translate(x0 + sw * 0.39, waist);
+      ctx.rotate(ang);
+      P.roundRect(ctx, -sw * 0.39, 0, sw * 0.78, -waist - hh * 0.02, sw * 0.25); ctx.fill();
+      ctx.restore();
+    };
+    leg(-sw * 0.85, stride * 0.28);
+    leg(sw * 0.07, -stride * 0.28);
   }
   ctx.fillStyle = '#2a1e18';
-  ctx.fillRect(-sw * 0.85, -hh * 0.035, sw * 0.7, hh * 0.035);
-  ctx.fillRect(sw * 0.15, -hh * 0.035, sw * 0.7, hh * 0.035);
+  ctx.fillRect(-sw * 0.85 - sk, -hh * 0.035, sw * 0.7, hh * 0.035);
+  ctx.fillRect(sw * 0.15 + sk, -hh * 0.035, sw * 0.7, hh * 0.035);
   // torso: one rounded block (with a long tunic for kameez and panjabi), right side in shade
   const tTop = -hh * 0.83, tBot = waist + hh * (0.03 + tunic);
   const torso = () => P.roundRect(ctx, -sw, tTop, sw * 2, tBot - tTop, sw * 0.55);
@@ -464,17 +474,17 @@ function withInk(ctx, w, h, draw, r = 2) {
   ctx.drawImage(c, 0, 0);
 }
 
-function drawPerson(seed, kind) {
-  if (P.FLAT) return (ctx, e, w, h) => withInk(ctx, w, h, (c) => flatPerson(c, w / 2, h - 3, h * 0.92, new RNG(seed), kind));
+function drawPerson(seed, kind, stride = 0) {
+  if (P.FLAT) return (ctx, e, w, h) => withInk(ctx, w, h, (c) => flatPerson(c, w / 2, h - 3, h * 0.92, new RNG(seed), kind, stride));
   return (ctx, e, w, h) => person(ctx, w / 2, h - 1, h * 0.95, new RNG(seed), kind);
 }
 
 // a person holding an umbrella over their head (taller sprite so the canopy fits)
 const UMBRELLA = ['#e4252b', '#1d5fa8', '#2a2a2a', '#f2c230', '#7b2f9e', '#118a4a', '#ff2e88', '#20b2c9', '#e8561c'];
-function drawUmbrellaPerson(seed, kind) {
+function drawUmbrellaPerson(seed, kind, stride = 0) {
   const body = (ctx, e, w, h) => {
     const rng = new RNG(seed);
-    (P.FLAT ? flatPerson : person)(ctx, w / 2, h - (P.FLAT ? 3 : 1), 121, rng, kind);
+    (P.FLAT ? flatPerson : person)(ctx, w / 2, h - (P.FLAT ? 3 : 1), 121, rng, kind, stride);
     const col = new RNG(seed + 'u').pick(UMBRELLA);
     const cx = w / 2, by = h - 1 - 119;
     // handle from the hand up to the canopy
@@ -1016,7 +1026,13 @@ export function buildSpriteAtlas() {
   const A = new Atlas(2048, { emissive: true, emissiveScale: 0.5, alpha: true });
   A.pad = 3;
   const info = {};
-  for (const [name, w, h, worldH, fn] of CATALOGUE) {
+  // walk-cycle frames: every walker gets a mid-stride twin, name~w (the pedestrians alternate the two)
+  const walkers = CATALOGUE.filter(([name]) => /^pu?_/.test(name)).map(([name, w, h, worldH]) => {
+    const kind = name.replace(/^pu?_/, '');
+    const seed = { lungi: 'pl', shirt: 'ps', saree: 'psa', kameez: 'pk', panjabi: 'pp', vendor: 'pv' }[kind];
+    return [name + '~w', w, h, worldH, name.startsWith('pu_') ? drawUmbrellaPerson(seed, kind, 1) : drawPerson(seed, kind, 1)];
+  });
+  for (const [name, w, h, worldH, fn] of CATALOGUE.concat(walkers)) {
     // stylised: stalls, animals and the remaining plants get the same ink rim as people and trees
     const inked = P.FLAT && INKED.has(name);
     A.add(name, w, h, inked ? (ctx, e, ww, hh) => withInk(ctx, ww, hh, (c) => fn(c, e, ww, hh)) : fn, { wrap: false });

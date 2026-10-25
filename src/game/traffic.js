@@ -11,8 +11,8 @@ import { oppLayout } from '../world/zones.js';
 import * as THREE from 'three';
 import { clamp, RNG } from '../core/util.js';
 
-const MAX_CARS = 28; // moving cars on the road ahead at once
-const MAX_ONCOMING = 9; // coming the other way on the opposite carriageway
+const MAX_CARS = 40; // moving cars on the road ahead at once
+const MAX_ONCOMING = 14; // coming the other way on the opposite carriageway
 const SPAWN_AHEAD = [220, 820];
 const KEEP_BEHIND = 70, KEEP_AHEAD = 950;
 // no near-black paint: at night it simply vanishes into the road
@@ -146,6 +146,14 @@ export class Traffic {
     const dx = clamp(c.tx - c.x, -3.2 * dt, 3.2 * dt);
     c.x += dx;
     c.yaw = dx ? -Math.sign(dx) * 0.12 : c.yaw * 0.9;
+    // alive on its springs: the body leans out of a lane change, and the light ones (rickshaws, CNGs, bikes,
+    // e-rickshaws) jiggle over every rut in the road
+    c.ph = (c.ph ?? this.rng.range(0, 6)) + dt * (c.weave > 0.5 ? 13 : 7);
+    const jig = c.weave > 0.5 ? 0.025 : c.type === 'rickshaw' ? 0.035 : 0.006;
+    c.lean = clamp((c.lean || 0) * 0.9 + (dt ? (dx / dt) * 0.006 : 0), -0.06, 0.06);
+    c.roll = c.lean + Math.sin(c.ph) * jig;
+    c.pitch = Math.sin(c.ph * 0.7 + 1) * jig * 0.5;
+    c.lift = Math.abs(Math.sin(c.ph * 0.5)) * jig * 0.6;
   }
 
   // movers: everything that can hit traffic, [{G, x, v, hl, hw, player}]

@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { damp, RNG } from '../core/util.js';
 import { shared } from '../world/materials.js';
 
-const MAX = 200;
+const MAX = 260;
 const KINDS = {
   street: ['p_lungi', 'p_shirt', 'p_saree', 'p_kameez', 'p_panjabi', 'p_vendor', 'p_lungi', 'p_shirt'],
   commuter: ['p_shirt', 'p_kameez', 'p_saree', 'p_panjabi', 'p_shirt'],
@@ -119,6 +119,7 @@ export class Peds {
       track, s, x, h: opts.h || 0, vx: opts.vx ?? 0, vs: 0, vh: 0, rot: 0, rotV: 0,
       name, inf, flip: this.rng.chance(0.5), state: opts.vx ? 'walk' : 'idle', t: 0, panic: this.rng.next(),
       w: inf.worldH * inf.aspect, hgt: inf.worldH * this.rng.range(0.95, 1.05), stars: 0,
+      infW: this.atlas.info[name + '~w'] || inf,
     };
     this.list.push(p);
     return p;
@@ -153,14 +154,14 @@ export class Peds {
     if (active && rate > 0.12) {
       this.spawnT -= dt;
       if (this.spawnT <= 0) {
-        this.spawnT = this.rng.range(0.35, 1.0) / Math.max(rate, 0.5);
+        this.spawnT = this.rng.range(0.22, 0.6) / Math.max(rate, 0.5);
         const s = P.s + this.rng.range(120, 300);
         if (s < tr.length - 300 && tr.elevAt(s) < 1) {
           let sp = s;
           for (const fb of tr.stage.footbridges || []) { const fs = tr.mapS(fb); if (Math.abs(fs - s) < 120 && this.rng.chance(0.6)) sp = fs + this.rng.range(-3, 3); }
           // half cross from the kerb, half are already strolling in the road
-          if (this.rng.chance(0.5)) this.crossing(tr, sp, this.rng.int(1, 4));
-          else this.roam(tr, sp, this.rng.int(1, 3));
+          if (this.rng.chance(0.5)) this.crossing(tr, sp, this.rng.int(2, 5));
+          else this.roam(tr, sp, this.rng.int(1, 4));
         }
       }
     }
@@ -243,10 +244,15 @@ export class Peds {
     for (const p of this.list) {
       if (n >= MAX - 1) break;
       p.track.point(p.s, p.x, p.h + (p.state === 'down' ? -p.hgt * 0.5 + 0.18 : 0), v);
-      const bob = p.state === 'walk' || p.state === 'run' ? Math.abs(Math.sin(this.time * (p.state === 'run' ? 16 : 9) + p.s)) * 0.06 : 0;
+      const moving = p.state === 'walk' || p.state === 'run';
+      // the walk cycle: stand, stride, stand, stride; a step lifts the body a touch, running faster and higher
+      const ph = this.time * (p.state === 'run' ? 8 : 4.2) + p.panic * 7;
+      const bob = moving ? Math.abs(Math.sin(ph * Math.PI)) * (p.state === 'run' ? 0.09 : 0.05) : 0;
+      const frame = moving && Math.floor(ph * 2) % 2 === 1 ? p.infW : p.inf;
       pos[n * 4] = v.x; pos[n * 4 + 1] = v.y + bob; pos[n * 4 + 2] = v.z; pos[n * 4 + 3] = 1;
-      size[n * 3] = p.w * (p.flip ? -1 : 1) * (p.vx < 0 ? -1 : 1); size[n * 3 + 1] = p.hgt; size[n * 3 + 2] = p.rot;
-      reg.set(p.inf.region, n * 4);
+      // a runner leans into it
+      size[n * 3] = p.w * (p.flip ? -1 : 1) * (p.vx < 0 ? -1 : 1); size[n * 3 + 1] = p.hgt; size[n * 3 + 2] = p.rot + (p.state === 'run' ? -Math.sign(p.vx) * 0.12 : 0);
+      reg.set(frame.region, n * 4);
       n++;
       if (p.stars && stars) {
         p.track.point(p.s, p.x, p.state === 'down' ? 0.6 : p.hgt + 0.1, v);
