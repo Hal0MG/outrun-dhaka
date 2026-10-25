@@ -73,7 +73,8 @@ export class Atmosphere {
     // stage colour grading: pull horizon & fog toward the stage's signature hue
     if (stageTint) {
       const tc = this._a.set(stageTint.color || '#ffffff');
-      const amt = stageTint.amount || 0;
+      // doubled: each district owns its colour (art direction), not a hint of it
+      const amt = Math.min(0.4, (stageTint.amount || 0) * 2);
       S.hor.lerp(tc, amt * 0.6);
       S.fog.lerp(tc, amt);
       S.cloud.lerp(tc, amt * 0.3);
@@ -85,13 +86,14 @@ export class Atmosphere {
       const grey = this._a.set('#5a6070');
       S.hor.lerp(grey, rain * 0.45);
       S.zen.lerp(grey.multiplyScalar(0.5), rain * 0.4);
-      S.fog.lerp(this._a.set('#4c5262').multiplyScalar(S.ambI + 0.3), rain * 0.5);
-      S.fogD *= 1 + rain * 0.9;
+      // after dark the rain haze stays dark: a pale grey fog lifted the whole night frame to flat grey
+      S.fog.lerp(this._a.set('#4c5262').multiplyScalar((S.ambI + 0.3) * (0.35 + 0.65 * Math.min(1, S.sunI))), rain * 0.5);
+      S.fogD *= 1 + rain * 0.3; // modest: the base fog is already heavy
       S.sunI *= 1 - rain * 0.7;
       S.stars *= 1 - rain;
     }
     if (mist > 0) {
-      S.fogD *= 1 + mist * 1.4;
+      S.fogD *= 1 + mist * 0.5;
       S.fog.lerp(S.hor, mist * 0.5);
     }
     // load shedding: city lights die. stars come out (the only upside)

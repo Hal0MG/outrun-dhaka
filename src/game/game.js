@@ -562,7 +562,9 @@ export class Game {
     this.night = smoothstep(18.2, 19.2, hour) * (1 - smoothstep(29.3, 30.0, hour));
     this.scene.fog.color.copy(S.fog);
     // a touch of haze after dark gives the lamps something to glow in
-    const fogD = S.fogD * (1 + this.night * 0.22);
+    // heavy aerial perspective (art direction): the city steps back in layers that fade into the sky colour
+    // (eased off in rain and in strong daylight, where the fog is pale and would wash the frame out)
+    const fogD = S.fogD * (2.8 - this.weather.rain * 1.6 - Math.min(2, S.sunI) * 0.5) * (1 + this.night * 0.22);
     this.scene.fog.density = fogD;
     shared.uFogColor.value.copy(S.fog);
     shared.uFogDensity.value = fogD;
@@ -601,7 +603,7 @@ export class Game {
     M.lamp.color.setScalar(0.12 + S.lamps * 0.95);
     M.neon.color.setScalar(0.15 + S.glow * 0.9);
     M.always.color.setScalar(0.6 + this.night * 0.5);
-    this.R.bloom.strength = 0.28 + this.night * 0.14;
+    this.R.bloom.strength = 0.18 + this.night * 0.12;
     this.R.bloom.threshold = 0.92;
     this.R.renderer.toneMappingExposure = 1.0 + this.night * 0.08;
     const fd = this.world.farDisc;

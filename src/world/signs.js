@@ -66,6 +66,16 @@ function shopSign(ctx, w, h, rng, [title, sub], latin) {
     ['#e8561c', '#8a2a05', '#ffffff', '#ffe14a'],
   ]);
   const [b1, b2, t1, t2] = pal;
+  if (P.FLAT) {
+    // stylised: one flat colour, the name in big lettering, nothing else (no tagline, logo, border or phone number)
+    ctx.fillStyle = b1;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = b2;
+    ctx.fillRect(0, h * 0.86, w, h * 0.14);
+    const f = latin ? `400 ${Math.round(h * 0.42)}px ${P.FONT_SIGN}` : `700 ${Math.round(h * 0.56)}px ${P.FONT_BN}`;
+    P.signText(ctx, title, w / 2, h * 0.47, { font: f, fill: t1, stroke: null, lw: 0, maxW: w * 0.88 });
+    return;
+  }
   ctx.fillStyle = P.linGrad(ctx, 0, 0, 0, h, [[0, b1], [1, b2]]);
   ctx.fillRect(0, 0, w, h);
   if (style === 0) {
@@ -94,7 +104,7 @@ function shopSign(ctx, w, h, rng, [title, sub], latin) {
   const cx = left + (w - left) / 2;
   const font = latin ? `400 ${Math.round(h * 0.36)}px ${P.FONT_SIGN}` : `700 ${Math.round(h * 0.42)}px ${rng.chance(0.6) ? P.FONT_BN : P.FONT_BN_SANS}`;
   P.signText(ctx, title, cx, h * 0.4, { font, fill: t1, stroke: '#000', lw: Math.max(2, h * 0.05), shadow: 'rgba(0,0,0,0.45)', shadowOff: 2, maxW: (w - left) * 0.9 });
-  P.signText(ctx, sub, cx, h * 0.78, { font: `600 ${Math.round(h * 0.18)}px ${latin ? '"Hind Siliguri", sans-serif' : P.FONT_BN_SANS}`, fill: t2, stroke: null, lw: 0, maxW: (w - left) * 0.86 });
+  P.signText(ctx, sub, cx, h * 0.78, { font: `600 ${Math.round(h * 0.18)}px ${latin ? '"Mina", sans-serif' : P.FONT_BN_SANS}`, fill: t2, stroke: null, lw: 0, maxW: (w - left) * 0.86 });
   if (!latin && rng.chance(0.5)) {
     P.signText(ctx, 'মোবাইল: ০১৭' + bnNum(rng.int(10000000, 99999999)), w - 6, h - 6, { font: `500 ${Math.round(h * 0.11)}px ${P.FONT_BN_SANS}`, fill: 'rgba(255,255,255,0.75)', stroke: null, lw: 0, align: 'right', baseline: 'bottom' });
   }
@@ -105,7 +115,28 @@ function shopSign(ctx, w, h, rng, [title, sub], latin) {
 
 // ------------------------------------------------------------ billboards
 
+// stylised billboard: a flat field, one big disc as the picture, a darker band and the title. No faces, no gradients.
+const POSTER_BG = { action: '#8a1010', romance: '#e8679c', cricket: '#0f7a43', realestate: '#f0a35a', tea: '#7a1d0c', concert: '#1c1844', mosquito: '#178a52', metro: '#e9ebe8', food: '#ef9a1b' };
+const POSTER_DISC = { action: '#ff6a00', cricket: '#d4202a', metro: '#0f7a43', concert: '#ff2e88', tea: '#f4f0e6', food: '#7a4a1d' };
+function flatPoster(ctx, w, h, spec) {
+  const bg = POSTER_BG[spec.kind] || spec.c1 || '#1d5fa8';
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = POSTER_DISC[spec.kind] || P.shade(bg, 0.3);
+  ctx.beginPath(); ctx.arc(w * 0.8, h * 0.5, h * 0.36, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = P.shade(bg, -0.35);
+  ctx.fillRect(0, h * 0.84, w, h * 0.16);
+  const tx = spec.tx != null && spec.tx > 0.5 ? w * 0.36 : w * 0.34;
+  P.signText(ctx, spec.title, tx, h * 0.46, { font: `700 ${Math.round(h * 0.3)}px ${P.FONT_BN}`, fill: spec.tc || '#ffe14a', stroke: null, lw: 0, maxW: w * 0.6 });
+  if (spec.tag) {
+    ctx.fillStyle = spec.tagBg || '#ffe14a';
+    ctx.fillRect(0, h * 0.06, w * 0.24, h * 0.12);
+    P.signText(ctx, spec.tag, w * 0.12, h * 0.12, { font: `400 ${Math.round(h * 0.07)}px ${P.FONT_SIGN}`, fill: '#111', stroke: null, lw: 0, maxW: w * 0.22 });
+  }
+}
+
 function poster(ctx, w, h, rng, spec) {
+  if (P.FLAT) return flatPoster(ctx, w, h, spec);
   const { title, sub, tag, kind } = spec;
   if (kind === 'action') {
     ctx.fillStyle = P.linGrad(ctx, 0, 0, 0, h, [[0, '#1a0505'], [0.5, '#8a1010'], [1, '#ff6a00']]);

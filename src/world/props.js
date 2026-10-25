@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { STEP } from './track.js';
+import { FLAT as P_FLAT } from './paint.js';
 
 const UP = [0, 1, 0];
 
@@ -222,7 +223,7 @@ export function building(ctx, s, side, xNear, w, d, h, style, opts = {}) {
       tile: [12, 3.75], uvOff: [uo[0], -below / 3.75], color: tint, skip: { top: true },
     });
     // shop sign band on the front
-    if (ctx.rng.chance(opts.signP ?? 0.75)) shopSign(ctx, sc, side, xNear - 0.12, Math.min(w * 0.9, 9), gf + 0.2, yaw);
+    if (ctx.rng.chance((opts.signP ?? 0.75) * (P_FLAT ? 0.45 : 1))) shopSign(ctx, sc, side, xNear - 0.12, Math.min(w * 0.9, 9), gf + 0.2, yaw);
   }
   const upper = h - gf;
   if (upper > 0.5) {

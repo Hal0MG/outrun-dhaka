@@ -4,6 +4,7 @@
 // (fract inside region) does not bleed.
 
 import * as THREE from 'three';
+import { GRIME } from './paint.js';
 
 export class Atlas {
   constructor(size, { emissive = true, emissiveScale = 0.5, alpha = false, bg = '#7f7f7f' } = {}) {
@@ -117,6 +118,7 @@ export class Atlas {
 // cached grain pattern
 let grainCv = null;
 export function grain(ctx, x, y, w, h, alpha = 0.12, seed = 7) {
+  if (!GRIME) return;
   if (!grainCv) {
     grainCv = document.createElement('canvas');
     grainCv.width = grainCv.height = 128;

@@ -48,7 +48,8 @@ export class Weather {
           // streak along apparent velocity (fall + our motion)
           vec3 dir = normalize(vec3(-uVel.x * 0.04, -1.0, -uVel.z * 0.04));
           p += dir * isEnd * (0.7 + seed * 0.5);
-          vA = step(seed, uAmount) * 0.5;
+          // half the streaks of before (art direction: rain as a few graphic lines, not a grey sheet)
+          vA = step(seed, uAmount * 0.5) * 0.5;
           gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
         }`,
       fragmentShader: /* glsl */ `

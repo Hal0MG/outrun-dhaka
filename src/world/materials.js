@@ -37,9 +37,21 @@ export const shared = {
   uMoonDir: { value: new THREE.Vector3(0.3, 0.4, -1).normalize() },
 };
 
-// Lambert material that samples a tile inside an atlas region (aRegion attribute).
+// two flat light bands instead of a smooth falloff: lit and shade, close together (art direction: toon)
+let toonRamp = null;
+export function toonGradient() {
+  if (!toonRamp) {
+    toonRamp = new THREE.DataTexture(new Uint8Array([200, 200, 200, 255, 255, 255, 255, 255]), 2, 1);
+    toonRamp.minFilter = toonRamp.magFilter = THREE.NearestFilter;
+    toonRamp.needsUpdate = true;
+  }
+  return toonRamp;
+}
+
+// Toon material that samples a tile inside an atlas region (aRegion attribute).
 export function makeAtlasMaterial(atlas, opts = {}) {
-  const m = new THREE.MeshLambertMaterial({
+  const m = new THREE.MeshToonMaterial({
+    gradientMap: toonGradient(),
     map: atlas.map,
     emissiveMap: atlas.emap || null,
     emissive: atlas.emap ? new THREE.Color(1, 1, 1) : new THREE.Color(0, 0, 0),

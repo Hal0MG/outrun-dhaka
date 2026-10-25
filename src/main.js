@@ -10,11 +10,12 @@ import { music } from './audio/music.js';
 
 const DEFAULTS = {
   quality: 'high', qualityAuto: false, difficulty: 'normal', manual: false, musicVol: 0.6, sfxVol: 0.8,
-  camera: 'chase', blur: true, crt: true, touch: 'auto', car: 0, color: 0, station: 0, slowmo: true,
+  camera: 'chase', blur: true, crt: false, touch: 'auto', car: 0, color: 0, station: 0, slowmo: true,
 };
-// v2 presets: high resolution and the CRT filter on for everyone, once
+// v3 presets: the CRT filter goes off for everyone, once (it stays in the settings)
 const saved = store.get('settings', {});
-if (saved.v !== 2) Object.assign(saved, { v: 2, quality: 'high', qualityAuto: false, crt: true });
+if (saved.v !== 2 && saved.v !== 3) Object.assign(saved, { quality: 'high', qualityAuto: false });
+if (saved.v !== 3) Object.assign(saved, { v: 3, crt: false });
 const settings = { ...DEFAULTS, ...saved };
 const saveSettings = () => store.set('settings', settings);
 
@@ -25,7 +26,7 @@ const nextFrame = () => new Promise((r) => { let done = false; const go = () => 
 
 async function loadFonts() {
   if (!document.fonts) return;
-  const want = ['700 40px "Galada"', '700 40px "Hind Siliguri"', '600 20px "Hind Siliguri"', '400 40px "Bungee"', '400 40px "Bungee Shade"', '400 40px "Tiro Bangla"'];
+  const want = ['700 40px "Atma"', '700 40px "Mina"', '700 40px "Hind Siliguri"', '600 20px "Hind Siliguri"', '400 40px "Bungee"', '400 40px "Bungee Shade"'];
   const t = new Promise((r) => setTimeout(r, 3500));
   try {
     await Promise.race([Promise.all(want.map((f) => document.fonts.load(f, 'ঢাকা Dhaka'))), t]);

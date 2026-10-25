@@ -145,7 +145,7 @@ export function buildFxAtlas() {
     A.add('bossbus_back' + i, 128, 128, (c, e, w, h) => {
       c.fillStyle = c1; c.fillRect(0, 0, w, h);
       c.fillStyle = '#1a222c'; c.fillRect(10, 10, w - 20, 42);
-      P.signText(c, i ? 'ধাক্কা দিলে খবর আছে' : 'বাপের রাস্তা', w / 2, 72, { font: `700 14px ${P.FONT_BN}`, fill: '#ffe14a', stroke: '#000', lw: 2, maxW: w - 12 });
+      P.signText(c, i ? 'ধাক্কা দিলে খবর আছে' : 'সাবধানে চালান', w / 2, 72, { font: `700 14px ${P.FONT_BN}`, fill: '#ffe14a', stroke: '#000', lw: 2, maxW: w - 12 });
       P.signText(c, i ? 'HONK IF YOU DARE' : 'DADDY’S ROAD', w / 2, 96, { font: `400 9px ${P.FONT_SIGN}`, fill: '#fff', stroke: null, lw: 0 });
       P.flower(c, 20, 112, 9, 8, ['#ffb000', '#fff', '#e4252b']);
       P.flower(c, 108, 112, 9, 8, ['#ffb000', '#fff', '#e4252b']);

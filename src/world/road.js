@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { shared } from './materials.js';
 import { STEP, LANE_W } from './track.js';
+import { FLAT } from './paint.js';
 
 const ROAD_VS = /* glsl */ `
   attribute float aHalfW;
@@ -73,7 +74,7 @@ const ROAD_FS = /* glsl */ `
     return mix(mix(h12(i),h12(i+vec2(1,0)),u.x), mix(h12(i+vec2(0,1)),h12(i+vec2(1,1)),u.x), u.y); }
 
   // Pohela Boishakh alpana: lotus medallions painted by hand, so no two are alike. Staggered cells, each medallion
-  // jittered, turned, scaled and coloured on its own, a few cells left bare and a few holding only a small ring of
+  // jittered, turned, scaled and coloured on its own; most cells are left bare so each one reads, a few hold only a small ring of
   // dots. Everything stays inside its cell (extent 3.5 m + 0.5 m jitter in a 4.5 m half-cell), so nothing is cut off.
   vec4 alpana(vec2 p) {
     vec2 cs = vec2(9.0, 9.0);
@@ -81,7 +82,7 @@ const ROAD_FS = /* glsl */ `
     float off = mod(row, 2.0) * 4.5;
     vec2 id = vec2(floor((p.x + off) / cs.x), row);
     float k = h12(id), k2 = h12(id + 7.3), k3 = h12(id + 19.1), k4 = h12(id + 31.7);
-    if (k2 < 0.14) return vec4(0.0);
+    if (k2 < 0.8) return vec4(0.0);
     vec2 q = vec2(mod(p.x + off, cs.x), mod(p.y, cs.y)) - cs * 0.5;
     q += (vec2(k3, k4) - 0.5) * 1.0;
     float sc = 0.55 + 0.45 * k4;
@@ -110,6 +111,14 @@ const ROAD_FS = /* glsl */ `
     else { c1 = vec3(0.95, 0.45, 0.10); c2 = vec3(1.0, 0.82, 0.25); }
     vec3 col = vec3(0.0);
     float m = 0.0;
+    if (${FLAT ? 'true' : 'false'}) {
+      // stylised: one round six-petal flower in a single colour with a white heart; no inner petals, ring or dots
+      float fp = pow(max(abs(cos(a * 3.0)), 1e-4), 1.4);
+      float fl = 1.0 - smoothstep(-0.04, 0.04, r - (1.3 + 1.2 * fp));
+      float fc = 1.0 - smoothstep(-0.04, 0.04, r - 0.75);
+      col = mix(c1, c3, fc);
+      return vec4(col, max(fl, fc));
+    }
     if (petal > 0.0) { col = c1; m = petal; }
     if (petalIn > 0.0) { col = mix(col, c2, petalIn); m = max(m, petalIn); }
     if (core > 0.0) { col = mix(col, small > 0.5 ? c2 : c3, core); m = max(m, core); }
@@ -185,9 +194,10 @@ const ROAD_FS = /* glsl */ `
     vec3 light = uAmb + uSun;
     float ls = mod(s - uLampOffset + uLampSpacing * 0.5, uLampSpacing) - uLampSpacing * 0.5;
     float dxl = x - uLampX.x, dxr = x - uLampX.y;
-    float lampL = exp(-(ls * ls) / 80.0 - dxl * dxl / 30.0) * uLampOn.x;
-    float lampR = exp(-(ls * ls) / 80.0 - dxr * dxr / 30.0) * uLampOn.y;
-    light += uLampCol * (lampL + lampR) * uLamps * 2.3;
+    // wide, soft pools: tight bright ones blew out through the bloom into glowing discs
+    float lampL = exp(-(ls * ls) / 180.0 - dxl * dxl / 60.0) * uLampOn.x;
+    float lampR = exp(-(ls * ls) / 180.0 - dxr * dxr / 60.0) * uLampOn.y;
+    light += uLampCol * (lampL + lampR) * uLamps * 0.8;
     // player headlights: two overlapping lobes
     float ds = s - uPlayerS;
     float dx = x - uPlayerX;

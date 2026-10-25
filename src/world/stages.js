@@ -34,8 +34,8 @@ export const STAGES = {
     medianPlants: { bush0: 2, bougain0: 3 },
     billboards: ['band', 'kacchi', 'gfun', 'swapno', 'tea', 'ononto', 'coaching', 'pathaw'],
     lampColor: '#ffad48', lampSpacing: 34, lakeW: 120, boats: 'swan',
-    tint: { color: '#ffb070', amount: 0.08 },
-    skyline: 'midrise', fairyP: 0.15,
+    palette: ['#ffcf9e', '#f29a8c'], tint: { color: '#ffb070', amount: 0.08 },
+    skyline: 'midrise', fairyP: 0.05,
     landmarks: [
       { type: 'satmasjid', s: 170, side: 1, dist: 52, clear: [90, 260] },
       { type: 'sarobar', s: 1260, side: -1, dist: 28 },
@@ -56,11 +56,11 @@ export const STAGES = {
     facades: ['brick', 'apt_cream', 'apt_pink', 'apt_raw', 'apt_white', 'old_ochre'], wallFacades: ['brick', 'apt_cream'],
     shops: ['shop_a', 'shop_old'], heights: [10, 22], backHeights: [14, 30],
     trees: { krishnachura0: 4, krishnachura1: 4, radhachura0: 2, mango0: 1, banyan0: 1, palm2: 0.5 },
-    life: { p_saree: 4, p_kameez: 3, p_panjabi: 3, crowd0: 1.5, crowd1: 1.5, crowd2: 1, mask_owl: 0.5, mask_tiger: 0.5, mask_horse: 0.4, mask_fish: 0.4, flowerstall: 1, bookstall: 0.6, fuchka: 0.6, teastall: 0.5 },
+    life: { p_saree: 4, p_kameez: 3, p_panjabi: 3, crowd0: 1.5, crowd1: 1.5, crowd2: 1, flowerstall: 1, bookstall: 0.6, fuchka: 0.6, teastall: 0.5 },
     lifeDensity: 0.12, wallLife: 0.12, wallTrees: 0.14,
     billboards: ['rong', 'band', 'coaching', 'tea', 'kolija', 'safety'],
     lampColor: '#ffb04a', festival: 'boishakh',
-    tint: { color: '#ff7a8a', amount: 0.12 },
+    palette: ['#ff9aa2', '#ffcf6e'], tint: { color: '#ff7a8a', amount: 0.12 },
     skyline: 'midrise',
     alpana: [[0, 3100]],
     landmarks: [
@@ -86,7 +86,7 @@ export const STAGES = {
     lifeDensity: 0.1,
     billboards: ['ononto', 'gfun', 'metro', 'walto', 'jfp', 'dana'],
     lampColor: '#ffd9a0', lampSpacing: 36,
-    tint: { color: '#ff86b0', amount: 0.1 },
+    palette: ['#f7a8c4', '#bfa8ff'], tint: { color: '#ff86b0', amount: 0.1 },
     skyline: 'midrise', bonus: 6,
     landmarks: [
       { type: 'ganabhaban', s: 420, side: -1, dist: 72, clear: [330, 520] },
@@ -98,7 +98,7 @@ export const STAGES = {
   // ======================================================================== LEVEL 2
   oldDhaka: {
     id: 'oldDhaka', name: 'Puran Dhaka', short: 'OLD DHAKA', bn: 'পুরান ঢাকা', sub: 'Chankharpul · Nazira Bazar · Shakhari Bazar — Shakrain', level: 2,
-    lanes: 6, twoWay: true, L: 'cityLow', R: 'cityLow', lampR: false, lampL: false, poles: true, wireDensity: 2.6,
+    lanes: 6, twoWay: true, L: 'cityLow', R: 'cityLow', lampR: false, lampL: false, poles: true, wireDensity: 1.0,
     sections: [
       S(220, 0), S(260, 0.004), S(240, -0.005), S(300, 0.0025, 1), S(260, -0.004, -1), S(280, 0.006),
       S(240, -0.003), S(300, 0), S(260, 0.0045), S(280, -0.0055), S(300, 0.002), S(240, 0),
@@ -108,8 +108,8 @@ export const STAGES = {
     life: { p_lungi: 4, p_panjabi: 3, p_vendor: 2, teastall: 1.5, crowd0: 1, crowd1: 1, cow0: 0.6, cow1: 0.5, dog: 0.8, fruitvan: 0.8 },
     billboards: ['kacchi', 'mastan', 'chanachur', 'coil'],
     lampColor: '#ff9a3a', poleSpacing: 30,
-    tint: { color: '#ff8a3a', amount: 0.22, fogMul: 1.35 },
-    skyline: 'dense', fairyP: 0.35, markFade: 0.9, roadTint: '#e8dccc',
+    palette: ['#ffb067', '#e07f62'], tint: { color: '#ff8a3a', amount: 0.22, fogMul: 1.35 },
+    skyline: 'dense', fairyP: 0.12, markFade: 0.9, roadTint: '#e8dccc',
     landmarks: [
       { type: 'starMosque', s: 900, side: 1, dist: 7.5, clear: [860, 940] },
     ],
@@ -128,8 +128,8 @@ export const STAGES = {
     life: { ...STREET_LIFE, crowd0: 1.2, crowd1: 1, crowd2: 0.8, p_vendor: 1.5 },
     lifeDensity: 0.12,
     billboards: ['gfun', 'teletalk', 'swapno', 'jfp', 'walto', 'pathaw', 'chanachur', 'coaching', 'metro', 'ononto', 'kolija'],
-    bbP: 0.28, lampColor: '#f2f4ff',
-    tint: { color: '#6a8aff', amount: 0.08 },
+    bbP: 0.12, lampColor: '#f2f4ff',
+    palette: ['#93a9ff', '#c2cbe6'], tint: { color: '#6a8aff', amount: 0.08 },
     skyline: 'modern', weather: { rain: 0.3, wet: 0.6 }, bonus: 14,
     landmarks: [
       { type: 'cinemaHall', s: 300, side: -1, dist: 10, clear: [270, 340] },
@@ -160,7 +160,7 @@ export const STAGES = {
     railColor: [0.9, 0.9, 0.92], boats: 'taxi',
     billboards: ['hatir', 'gfun', 'swapno'],
     lampColor: '#e8f0ff', lampSpacing: 30,
-    tint: { color: '#ff3bd8', amount: 0.16 },
+    palette: ['#ff8fe0', '#9a9cff'], tint: { color: '#ff3bd8', amount: 0.16 },
     skyline: 'lake', waterDeep: '#120a2a', waterLights: '#ff5ad8', bonus: 16,
     landmarks: [
       { type: 'fountain', s: 2600, side: -1, dist: 70 },
@@ -179,8 +179,8 @@ export const STAGES = {
     life: { p_lungi: 4, p_vendor: 2, crowd0: 1, crowd1: 1, teastall: 1.2, dog: 0.6, fruitvan: 0.5 },
     launches: true, boats: 'nouka',
     billboards: ['dana', 'coil', 'chanachur'],
-    lampColor: '#ff9f40', wireDensity: 1.6,
-    tint: { color: '#3a8a8a', amount: 0.15, fogMul: 1.25 },
+    lampColor: '#ff9f40', wireDensity: 0.6,
+    palette: ['#86d0c0', '#cdb98a'], tint: { color: '#3a8a8a', amount: 0.15, fogMul: 1.25 },
     skyline: 'river', weather: { mist: 0.6, wet: 0.3 },
     waterDeep: '#0d1d1c', waterLights: '#ffb060', farWater: true,
     landmarks: [
@@ -200,7 +200,7 @@ export const STAGES = {
     life: { p_shirt: 4, p_lungi: 2, crowd0: 0.8, p_vendor: 1, teastall: 1, police: 0.3 },
     billboards: ['swapno', 'dana', 'walto', 'teletalk', 'safety'],
     lampColor: '#f4f2ff',
-    tint: { color: '#3a6aaa', amount: 0.12 },
+    palette: ['#8fb0e0', '#b4c0d4'], tint: { color: '#3a6aaa', amount: 0.12 },
     skyline: 'modern', weather: { rain: 0.9, wet: 1, storm: true }, bonus: 6,
     puddles: [[200, 3000]],
     landmarks: [
@@ -226,7 +226,7 @@ export const STAGES = {
     lifeDensity: 0.05, lakeW: 160,
     billboards: ['swapno', 'dana', 'walto', 'gfun', 'pathaw', 'jfp'],
     lampColor: '#f2f6ff', lampSpacing: 30,
-    tint: { color: '#40c8ff', amount: 0.1 },
+    palette: ['#98e2ff', '#e2efff'], tint: { color: '#40c8ff', amount: 0.1 },
     skyline: 'modern', weather: { wet: 0.5 },
     landmarks: [
       { type: 'embassy', s: 1200, side: -1, dist: 12, clear: [1160, 1240] },
@@ -247,7 +247,7 @@ export const STAGES = {
     lifeDensity: 0.12,
     billboards: ['bpl', 'gfun', 'pathaw', 'walto', 'chanachur', 'metro'],
     lampColor: '#ffd28a',
-    tint: { color: '#40ff8a', amount: 0.08 },
+    palette: ['#a4efbd', '#f0e49a'], tint: { color: '#40ff8a', amount: 0.08 },
     skyline: 'stadium',
     landmarks: [
       { type: 'stadium', s: 1850, side: -1, dist: 120, clear: [1700, 2000] },
@@ -269,7 +269,7 @@ export const STAGES = {
     trees: { palm0: 2, betel0: 2, banana0: 2, mango1: 1, bamboo0: 1 },
     fieldTrees: 0.05, hutP: 0.2,
     lampColor: '#ffe6c0', bridgeTruss: true, boats: 'fishing', pillarSpacing: 40,
-    tint: { color: '#ff6a4a', amount: 0.08 },
+    palette: ['#ffaa8a', '#9cc0e2'], tint: { color: '#ff6a4a', amount: 0.08 },
     skyline: 'river', weather: { mist: 0.5 }, waterDeep: '#1b2a3a', farWater: true,
     landmarks: [{ type: 'tollPlaza', s: 1350 }],
     banners: [{ s: 1600, lines: ['পদ্মা সেতু', 'PADMA MULTIPURPOSE BRIDGE'], c1: '#0f7a43', c2: '#04301a' }],
@@ -287,7 +287,7 @@ export const STAGES = {
     trees: { palm0: 2, palm1: 1, betel0: 2, banana0: 2, bamboo0: 2, mango0: 1 },
     fieldTrees: 0.07, hutP: 0.35, fieldLife: { p_lungi: 2, cow0: 1, cow1: 1, teastall: 1 },
     lampColor: '#ffcf8a', boats: 'nouka',
-    tint: { color: '#ffa060', amount: 0.08 },
+    palette: ['#ffc488', '#dcc0a0'], tint: { color: '#ffa060', amount: 0.08 },
     skyline: 'rural', weather: { mist: 0.7 },
     landmarks: [
       { type: 'highwayHotel', s: 900, side: -1, dist: 24 },
@@ -307,7 +307,7 @@ export const STAGES = {
     facades: CITY_FACADES, heights: [10, 30],
     trees: { palm0: 1, betel0: 1, banana0: 1, mango0: 1 },
     lampColor: '#ffe0b0', lampSpacing: 40,
-    tint: { color: '#ffb28a', amount: 0.06 },
+    palette: ['#ffc6a4', '#c6b6e8'], tint: { color: '#ffb28a', amount: 0.06 },
     skyline: 'rural', bonus: 14,
     landmarks: [
       { type: 'kurilLoops', s: 180, side: 1, dist: 72 },
@@ -327,7 +327,7 @@ export const STAGES = {
     trees: { palm0: 1, mango0: 1, krishnachura0: 1 },
     lampColor: '#fff0d0',
     billboards: ['dana', 'swapno', 'walto'],
-    tint: { color: '#ffa0a0', amount: 0.06 },
+    palette: ['#ffbcbc', '#bccef2'], tint: { color: '#ffa0a0', amount: 0.06 },
     skyline: 'modern',
     landmarks: [{ type: 'airport', s: 1650, side: 1, dist: 175 }],
   },
@@ -345,7 +345,7 @@ export const STAGES = {
     trees: { palm0: 2, betel0: 1, banana0: 2, mango0: 1, bamboo0: 1, krishnachura0: 1 },
     fieldTrees: 0.06, hutP: 0.3, fieldLife: { p_lungi: 2, cow0: 1, cow1: 1 },
     lampColor: '#ffd8a0', boats: 'nouka',
-    tint: { color: '#ff8a6a', amount: 0.06 },
+    palette: ['#ffae90', '#e2d0a0'], tint: { color: '#ff8a6a', amount: 0.06 },
     skyline: 'rural', weather: { mist: 0.4 },
     landmarks: [
       { type: 'gabtoli', s: 140, side: -1, dist: 26, clear: [60, 220] },

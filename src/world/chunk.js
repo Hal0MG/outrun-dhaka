@@ -8,14 +8,25 @@ import { buildRoadStrip } from './road.js';
 import { LANE_W, STEP } from './track.js';
 import { RNG, hashStr } from '../core/util.js';
 import * as PR from './props.js';
+import { FLAT } from './paint.js';
 
 export const CHUNK = 100;
 
 // Districts blend into each other: across the ~600 m either side of a boundary,
 // each chunk borrows the look (buildings, trees, street life) of the neighbouring
 // district with a probability that ramps, so the city changes gradually.
-const STYLE_KEYS = ['facades', 'shops', 'heights', 'backHeights', 'trees', 'lakeTrees', 'streetTrees', 'parkTrees', 'life', 'medianPlants', 'billboards', 'fairyP', 'lifeDensity', 'wallLife', 'groundTint'];
+const STYLE_KEYS = ['facades', 'shops', 'heights', 'backHeights', 'trees', 'lakeTrees', 'streetTrees', 'parkTrees', 'life', 'medianPlants', 'billboards', 'fairyP', 'lifeDensity', 'wallLife', 'groundTint', 'palette'];
 const BLEND = 600;
+const palCache = new Map();
+// palette hex -> rgb scaled so the brightest channel is 1 (hue and saturation only; the facade keeps its value)
+const PALETTE_RGB = (hex) => {
+  let v = palCache.get(hex);
+  if (!v) {
+    const c = new THREE.Color(hex), m = Math.max(c.r, c.g, c.b) || 1;
+    palCache.set(hex, (v = [c.r / m, c.g / m, c.b / m]));
+  }
+  return v;
+};
 function blendedStage(world, track, ci) {
   const st = track.stage;
   const mid = ci * CHUNK + CHUNK / 2;
@@ -69,10 +80,15 @@ export class ChunkCtx {
     return [v.x, v.y, v.z];
   }
 
+  // building colour: one of the district's palette hues over the (muted) facade texture, so a street reads as one
+  // colour family instead of a random pastel each
   tint() {
     const r = this.rng;
-    const b = r.range(0.86, 1.04);
-    return [b * r.range(0.95, 1.05), b * r.range(0.95, 1.03), b * r.range(0.93, 1.02)];
+    const b = r.range(0.88, 1.03);
+    const pal = this.stage.palette;
+    if (!pal) return [b * r.range(0.95, 1.05), b * r.range(0.95, 1.03), b * r.range(0.93, 1.02)];
+    const c = PALETTE_RGB(r.pick(pal)), k = r.range(0.4, 0.6);
+    return [b * (1 - k + c[0] * k), b * (1 - k + c[1] * k), b * (1 - k + c[2] * k)];
   }
 
   obstacle(s, x, hw, hl, kind = 'solid', extra = null) {
@@ -267,7 +283,7 @@ function placeBuildingsRow(ctx, a, b, side, xIn, opts) {
     PR.building(ctx, s, side, xIn + setback, w, d, h, style, { signP: opts.signP });
     if (style.shop && opts.balconies !== false && rng.chance(0.7)) PR.balconies(ctx, s, side, xIn + setback, w, h, 3.75);
     // rooftop billboard
-    if (opts.billboards && rng.chance(opts.bbP || 0.12) && h < 40) {
+    if (opts.billboards && rng.chance((opts.bbP || 0.06) * (FLAT ? 0.25 : 1)) && h < 40) {
       PR.billboard(ctx, s + w / 2, side, xIn + setback + d * 0.4, h + 5, rng.pick(opts.billboards), { legs: 5, ground: true, obstacle: false });
     }
     s += w + rng.range(0, opts.gap ?? 2.2);
@@ -400,13 +416,13 @@ const SIDES = {
       if (side > 0) ctx.B.misc.quad(pa, pb, pc, pd, [0, 0, 1, 4], [0.2, 0.2, 0.21], ctx.misc.get('concrete'));
       else ctx.B.misc.quad(pd, pc, pb, pa, [0, 0, 1, 4], [0.2, 0.2, 0.21], ctx.misc.get('concrete'));
     }
-    placeBuildingsRow(ctx, a, b, side, front, { billboards: st.billboards, bbP: st.bbP ?? 0.14 });
+    placeBuildingsRow(ctx, a, b, side, front, { billboards: st.billboards, bbP: st.bbP ?? 0.06 });
     // back rows: taller, sparser, no shops
     placeBuildingsRow(ctx, a, b, side, front + 11 + ctx.rng.range(0, 4), { shops: false, heights: st.backHeights || [18, 45], wmin: 10, wmax: 22, gap: 6, towerP: st.towerP ?? 0.12 });
     if (ctx.rng.chance(0.7)) placeBuildingsRow(ctx, a, b, side, front + 32 + ctx.rng.range(0, 14), { shops: false, heights: st.farHeights || [24, 70], wmin: 14, wmax: 26, gap: 14, towerP: 0.2 });
     if (!far) {
       if (st.lampL !== false || side > 0) lampsAlong(ctx, a, b, side, (s) => xIn(s) + 0.9);
-      if (st.poles !== false && side < 0) polesAlong(ctx, a, b, side, (s) => xIn(s) + 2.6, st.wireDensity ?? 1);
+      if (st.poles !== false && side < 0) polesAlong(ctx, a, b, side, (s) => xIn(s) + 2.6, st.wireDensity ?? 0.5);
       sidewalkLife(ctx, a, b, side, xm + 0.3, sw);
       if (st.streetTrees) trees(ctx, a, b, side, xm + 1.4, xm + sw - 0.3, st.streetTrees, st.trees);
     } else {
@@ -420,10 +436,10 @@ const SIDES = {
     PR.curb(ctx, a, b, side, xIn, 0.2, 0.14);
     PR.sidewalk(ctx, a, b, side, (s) => xIn(s) + 0.2, sw, 0.14);
     const xm = xIn((a + b) / 2);
-    placeBuildingsRow(ctx, a, b, side, xm + 0.2 + sw, { gap: 0.3, setback: 0.2, heights: st.heights, wmin: 5, wmax: 10, signP: 0.95, billboards: st.billboards, bbP: 0.06 });
+    placeBuildingsRow(ctx, a, b, side, xm + 0.2 + sw, { gap: 0.3, setback: 0.2, heights: st.heights, wmin: 5, wmax: 10, signP: 0.6, billboards: st.billboards, bbP: 0.03 });
     placeBuildingsRow(ctx, a, b, side, xm + sw + 9, { shops: false, gap: 0.5, heights: [12, 24], wmin: 6, wmax: 12 });
     placeBuildingsRow(ctx, a, b, side, xm + sw + 22, { shops: false, gap: 2, heights: [15, 30], wmin: 8, wmax: 16 });
-    polesAlong(ctx, a, b, side, (s) => xIn(s) + 0.9, st.wireDensity ?? 2.2);
+    polesAlong(ctx, a, b, side, (s) => xIn(s) + 0.9, st.wireDensity ?? 1.0);
     sidewalkLife(ctx, a, b, side, xm + 0.2, sw, { density: 0.12 });
   },
   park(ctx, a, b, side, xIn) {
@@ -516,7 +532,7 @@ const SIDES = {
     lampsAlong(ctx, a, b, side, (s) => xIn(s) + 0.25, { h0: 1.1, h: 8 });
     // the city below
     const xm = xIn((a + b) / 2);
-    placeBuildingsRow(ctx, a, b, side, xm + 5, { heights: st.heights, billboards: st.billboards, bbP: 0.2 });
+    placeBuildingsRow(ctx, a, b, side, xm + 5, { heights: st.heights, billboards: st.billboards, bbP: 0.08 });
     placeBuildingsRow(ctx, a, b, side, xm + 20, { shops: false, heights: st.backHeights || [18, 45], wmin: 10, wmax: 22, gap: 6 });
   },
   bridge(ctx, a, b, side, xIn) {
@@ -588,7 +604,7 @@ const SIDES = {
     // under a jump: the city, at street level
     const st = ctx.stage;
     const xm = xIn((a + b) / 2);
-    placeBuildingsRow(ctx, a, b, side, xm + 6, { heights: st.heights, billboards: st.billboards, bbP: 0.25 });
+    placeBuildingsRow(ctx, a, b, side, xm + 6, { heights: st.heights, billboards: st.billboards, bbP: 0.1 });
     placeBuildingsRow(ctx, a, b, side, xm + 36, { shops: false, heights: st.backHeights || [18, 45], wmin: 10, wmax: 22, gap: 6 });
   },
   interior(ctx, a, b, side, xIn) {
