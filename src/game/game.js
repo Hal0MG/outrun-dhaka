@@ -31,8 +31,8 @@ import { audio } from '../audio/audio.js';
 import { music, TRACKS } from '../audio/music.js';
 import { clamp, lerp, damp, smoothstep, fx } from '../core/util.js';
 
-const MENU_STATES = ['title', 'map', 'garage', 'radio', 'settings', 'howto'];
-// behind these menus the showreel plays (the garage shows your own car instead)
+const MENU_STATES = ['title', 'map', 'radio', 'settings', 'howto'];
+// behind these menus the showreel plays
 const ATTRACT_STATES = ['title', 'map', 'settings', 'howto'];
 
 export class Game {
@@ -102,7 +102,7 @@ export class Game {
       this.player.s = prev.s;
       this.player.x = prev.x;
     }
-    audio.setEngineKind(def.engine || (def.id === 'rosso' ? 'v12' : def.id === 'premio' ? 'i4' : def.id === 'cng' ? 'cng' : 'jet'));
+    audio.setEngineKind(def.engine);
   }
 
   resetWorld(stageId) {
@@ -238,14 +238,14 @@ export class Game {
     const st = this.state;
     // the showreel plays behind the menus while no race is in progress
     if (ATTRACT_STATES.includes(st) && this.kind == null) { if (!this.attract.on) this.attract.start(); }
-    else if (this.attract.on) { this.attract.stop(); if (st === 'garage') this.resetWorld('dhanmondi'); }
+    else if (this.attract.on) this.attract.stop();
     if (this.attract.on) this.attract.update(dt);
 
     let autopilot = null;
     let cinematic = false;
     if (MENU_STATES.includes(st)) {
       autopilot = { throttle: 0, steer: 0, brake: 1 };
-      cinematic = st === 'garage' ? 'garage' : 'title';
+      cinematic = 'title';
     } else if (st === 'countdown') {
       // the rolling start: hold the formation speed until GO
       autopilot = { throttle: P.v < 22 ? 1 : 0, steer: 0, brake: P.v > 26 ? 0.6 : 0 };
@@ -273,7 +273,6 @@ export class Game {
 
     // camera
     if (this.attract.on) this.attract.camera(dt);
-    else if (cinematic === 'garage') this.cam.update(dt, P, { cinematic: true, orbitSpeed: 0.25, radius: 7.5, height: 1.9, fov: 42 });
     else if (cinematic === 'title') this.titleCam(dt);
     else if (cinematic === 'ending') this.endingCam(dt);
     else this.cam.update(dt, P);

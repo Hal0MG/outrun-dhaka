@@ -1,5 +1,6 @@
-// Screen flow: title -> map (pick a district circuit or the Run) -> race ->
-// results -> map. The garage and settings hang off the title.
+// Screen flow: title -> map (pick a district circuit or the Run, and the car) -> race ->
+// results -> map. Settings and how-to hang off the title. Every screen has clickable
+// buttons; the keys do the same things.
 
 import { CARS } from '../game/cars.js';
 import { audio } from '../audio/audio.js';
@@ -9,7 +10,7 @@ import { drawDhaka, hitOnMap } from './dhakamap.js';
 import { store, fmtTime } from '../core/util.js';
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ['loading', 'title', 'map', 'garage', 'settings', 'howto', 'pause', 'results'];
+const SCREENS = ['loading', 'title', 'map', 'settings', 'howto', 'pause', 'results'];
 const ord = (n) => n + (n % 10 === 1 && n !== 11 ? 'ST' : n % 10 === 2 && n !== 12 ? 'ND' : n % 10 === 3 && n !== 13 ? 'RD' : 'TH');
 
 export class Menus {
@@ -50,8 +51,18 @@ export class Menus {
     click('mainMenu', (a) => this.mainAction(a));
     $('hPause').addEventListener('click', () => this.pause());
     click('pauseMenu', (a) => this.pauseAction(a));
-    click('garage', (a) => this.garageAction(a));
-    click('map', (a) => { if (a === 'go') this.startRace(); });
+    click('map', (a) => {
+      if (a === 'go') this.startRace();
+      else if (a === 'back') { audio.back(); this.toTitle(); }
+      else if (a === 'prevCar' || a === 'nextCar') this.pickCar(a === 'nextCar' ? 1 : -1);
+    });
+    click('settings', (a) => { if (a === 'back') this.leaveSettings(); });
+    click('howto', (a) => { if (a === 'back') this.leaveHowto(); });
+    click('overBtns', (a) => {
+      if (!this.resultsReady) return;
+      if (a === 'again') this.startRace();
+      else { audio.back(); this.toMap(); }
+    });
     $('title').addEventListener('click', () => {
       audio.init();
       if ($('mainMenu').hidden) this.openMenu();
@@ -88,11 +99,8 @@ export class Menus {
     $('carColors').addEventListener('click', (e) => {
       const b = e.target.closest('b');
       if (!b) return;
-      this.game.colorIndex = +b.dataset.i;
-      this.game.buildCar();
-      this.refresh();
+      this.pickColour(+b.dataset.i);
     });
-    $('results').addEventListener('click', () => this.input.tap('confirm'));
   }
 
   openMenu() {
@@ -139,24 +147,19 @@ export class Menus {
         this.pickDistrict(ROUTE[(i + (down ? 1 : ROUTE.length - 1)) % ROUTE.length], false);
       }
       if (left || right) this.setMapMode(left ? 'circuit' : 'run');
+      if (I.pressed('prevCar') || I.pressed('nextCar')) this.pickCar(I.pressed('nextCar') ? 1 : -1);
+      if (I.pressed('colour')) this.pickColour((this.game.colorIndex + 1) % CARS[this.game.carIndex].colors.length);
       if (ok) this.startRace();
       if (back) { audio.back(); this.toTitle(); }
-    } else if (s === 'garage') {
-      if (left) this.garageAction('prevCar');
-      if (right) this.garageAction('nextCar');
-      const nc = CARS[this.game.carIndex].colors.length;
-      if (up || down) { this.game.colorIndex = (this.game.colorIndex + (up ? nc - 1 : 1)) % nc; this.game.buildCar(); audio.blip(); this.refresh(); }
-      if (ok) this.garageAction('pickCar');
-      if (back) { audio.back(); this.show('title'); this.game.state = 'title'; }
     } else if (s === 'settings') {
       const rows = this.settingRows();
       if (up) { this.sel = (this.sel + rows.length - 1) % rows.length; audio.blip(); this.refresh(); }
       if (down) { this.sel = (this.sel + 1) % rows.length; audio.blip(); this.refresh(); }
       if (left) this.changeSetting(-1);
       if (right || ok) this.changeSetting(1);
-      if (back) { audio.back(); this.save(); this.show(this.returnTo); this.game.state = this.returnTo === 'title' ? 'title' : 'paused'; }
+      if (back) this.leaveSettings();
     } else if (s === 'howto') {
-      if (back || ok) { audio.back(); this.show('title'); this.game.state = 'title'; $('mainMenu').hidden = false; $('pressStart').style.display = 'none'; }
+      if (back || ok) this.leaveHowto();
     } else if (s === 'pause') {
       const n = $('pauseMenu').children.length;
       if (up) { this.sel = (this.sel + n - 1) % n; audio.blip(); this.refresh(); }
@@ -173,7 +176,6 @@ export class Menus {
   mainAction(a) {
     audio.confirm();
     if (a === 'race') { this.game.state = 'map'; this.show('map'); }
-    else if (a === 'garage') { this.show('garage'); this.game.state = 'garage'; }
     else if (a === 'settings') { this.returnTo = 'title'; this.show('settings'); this.game.state = 'settings'; }
     else if (a === 'howto') { this.show('howto'); this.game.state = 'howto'; }
   }
@@ -181,24 +183,39 @@ export class Menus {
   // the car is unlocked by winning any race
   locked(def) { return def.locked && !store.get('wins', 0); }
 
-  garageAction(a) {
+  leaveSettings() {
+    audio.back();
+    this.save();
+    this.show(this.returnTo);
+    this.game.state = this.returnTo === 'title' ? 'title' : 'paused';
+  }
+
+  leaveHowto() {
+    audio.back();
+    this.show('title');
+    this.game.state = 'title';
+    $('mainMenu').hidden = false;
+    $('pressStart').style.display = 'none';
+  }
+
+  // the car is picked on the race card: step to the next one you can drive (locked ones are skipped), and it sticks
+  pickCar(dir) {
     const g = this.game;
-    if (a === 'prevCar' || a === 'nextCar') {
-      g.carIndex = (g.carIndex + (a === 'nextCar' ? 1 : CARS.length - 1)) % CARS.length;
-      g.colorIndex = 0;
-      g.buildCar();
-      audio.blip();
-      this.refresh();
-    } else if (a === 'pickCar') {
-      const def = CARS[g.carIndex];
-      if (this.locked(def)) { audio.back(); return; }
-      audio.confirm();
-      this.settings.car = g.carIndex;
-      this.settings.color = g.colorIndex;
-      this.save();
-      this.game.state = 'map';
-      this.show('map');
-    }
+    let i = g.carIndex;
+    do i = (i + dir + CARS.length) % CARS.length; while (this.locked(CARS[i]) && i !== g.carIndex);
+    g.carIndex = i;
+    this.pickColour(0, true);
+  }
+
+  pickColour(i, quiet) {
+    const g = this.game;
+    g.colorIndex = i;
+    g.buildCar();
+    this.settings.car = g.carIndex;
+    this.settings.color = g.colorIndex;
+    this.save();
+    if (!quiet) audio.blip(1100); else audio.blip();
+    this.refresh();
   }
 
   // pick a district circuit; picking the one already picked (a second tap) races it
@@ -218,14 +235,13 @@ export class Menus {
     this.refresh();
   }
 
-  // race whatever is picked on the map, in the garage car
+  // race whatever is picked on the map, in the picked car
   startRace() {
     audio.confirm();
     store.set('mapSel', this.mapSel);
     store.set('mapLast', this.mapLast);
     const g = this.game;
-    // a locked car on the drive (browsing the garage) falls back to the first one
-    if (this.locked(CARS[g.carIndex])) { g.carIndex = this.settings.car ?? 0; g.colorIndex = this.settings.color ?? 0; g.buildCar(); }
+    if (this.locked(CARS[g.carIndex])) { g.carIndex = 0; g.colorIndex = 0; g.buildCar(); }
     this.hideAll();
     if (this.mapSel === 'run') g.startRace('run');
     else g.startRace('circuit', this.mapSel);
@@ -280,7 +296,6 @@ export class Menus {
       rows.push(['DISTRICTS', `${ROUTE.indexOf(res.reached?.id) + 1} / ${ROUTE.length}`]);
     }
     $('overTally').innerHTML = rows.map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join('');
-    $('overHint').textContent = 'ENTER race again · BACKSPACE map';
     this.game.hud.show(false);
     this.game.hud.tags([]);
     this.show('results');
@@ -317,14 +332,6 @@ export class Menus {
       [...$('pauseMenu').children].forEach((b, i) => b.classList.toggle('sel', i === this.sel));
     } else if (s === 'map') {
       this.refreshMap();
-    } else if (s === 'garage') {
-      const def = CARS[this.game.carIndex];
-      const locked = this.locked(def);
-      $('carName').innerHTML = def.name + (locked ? '<span class="lock">WIN A RACE</span>' : '');
-      $('carBn').textContent = '';
-      $('carBlurb').textContent = '';
-      $('carStats').textContent = 'EVERY CAR DRIVES THE SAME';
-      $('carColors').innerHTML = def.colors.map((c, i) => `<b data-i="${i}" style="background:${c}" class="${i === this.game.colorIndex ? 'sel' : ''}"></b>`).join('');
     } else if (s === 'settings') {
       $('setList').innerHTML = this.settingRows().map(([label, key, opts, fmt], i) => {
         const v = this.settings[key];
@@ -375,6 +382,11 @@ export class Menus {
       $('mapName').textContent = st.name.toUpperCase();
       $('mapSub').textContent = st.sub;
     }
+    // the car
+    const def = CARS[this.game.carIndex];
+    $('mapCar').textContent = def.name;
+    $('mapMotor').textContent = def.motor || '';
+    $('carColors').innerHTML = def.colors.map((c, i) => `<b data-i="${i}" style="background:${c}" class="${i === this.game.colorIndex ? 'sel' : ''}"></b>`).join('');
     const m = this.medals[id];
     $('mapBest').textContent = best ? `BEST ${fmtTime(best)}${m ? ' · ' + ['', 'GOLD', 'SILVER', 'BRONZE'][m] : ''}` : 'NOT RACED YET';
   }
