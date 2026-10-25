@@ -32,6 +32,7 @@ import { music, TRACKS } from '../audio/music.js';
 import { clamp, lerp, damp, smoothstep, fx } from '../core/util.js';
 
 const MENU_STATES = ['title', 'map', 'radio', 'settings', 'howto'];
+const MENU_TRACK = 'sarobar';
 // behind these menus the showreel plays
 const ATTRACT_STATES = ['title', 'map', 'settings', 'howto'];
 
@@ -239,7 +240,7 @@ export class Game {
     // the showreel plays behind the menus while no race is in progress
     if (ATTRACT_STATES.includes(st) && this.kind == null) { if (!this.attract.on) this.attract.start(); }
     else if (this.attract.on) this.attract.stop();
-    if (this.attract.on) this.attract.update(dt);
+    if (this.attract.on) { this.attract.update(dt); this.menuMusic(); }
 
     let autopilot = null;
     let cinematic = false;
@@ -704,13 +705,29 @@ export class Game {
     const st = P.track.stage;
     const quiet = this.state === 'paused';
     const river = st.L === 'river' || st.R === 'river' || st.farWater;
+    const busy = quiet ? 0 : clamp((st.lifeDensity ?? 0.08) / 0.1, 0.35, 1.2) * (this.attract.on ? 0.6 : 1) * (river ? 0.6 : 1);
     audio.update({
       rpm: P.rpm, throttle: P.throttle, speed: P.v, vmax: P.vmax, slip: P.slip, offroad: P.offroad, scrape: P.scrape,
       engineOn: !quiet && !this.attract.on, convertible: P.def.id === 'rosso' || P.def.id === 'miata',
       rain: this.weather.rain, city: river ? 0.5 : 1 - this.night * 0.3, river: river ? 1 : 0,
       siren: 0, rotor: 0, boost: P.boosting && this.state === 'race',
-      crowd: quiet ? 0 : 0.2, rival: quiet || !this.race.active ? null : this.race.nearest(),
+      crowd: quiet ? 0 : 0.25 + 0.35 * Math.min(1, busy), rival: quiet || !this.race.active || this.attract.on ? null : this.race.nearest(),
     });
+    // the street around you: horns, rickshaw bells, dogs, sellers calling and shop radios, more of them where the
+    // district is busy, fewer by the river and behind the menus
+    const A = (this.ambT ||= { horn: 1, bell: 3, bark: 9, hawker: 5, radio: 9 });
+    const side = () => (fx.next() < 0.5 ? -1 : 1) * (0.35 + fx.next() * 0.65);
+    if (busy > 0) {
+      for (const k in A) {
+        A[k] -= dt * busy;
+        if (A[k] > 0) continue;
+        if (k === 'horn') { A[k] = 0.8 + fx.next() * 2.4; const r = fx.next(); audio.horn(side(), 8 + fx.next() * 50, r < 0.6 ? 'car' : r < 0.8 ? 'bus' : r < 0.93 ? 'bike' : 'truck'); }
+        else if (k === 'bell') { A[k] = 2 + fx.next() * 4; audio.bell(side(), 0.04 + fx.next() * 0.05); }
+        else if (k === 'bark') { A[k] = 10 + fx.next() * 14; audio.bark(side(), 15 + fx.next() * 40); }
+        else if (k === 'hawker') { A[k] = 6 + fx.next() * 9; audio.hawker(side(), 6 + fx.next() * 20); }
+        else { A[k] = 12 + fx.next() * 14; audio.shopRadio(side(), 6 + fx.next() * 14); }
+      }
+    }
     // the city around you
     this.birdT = (this.birdT || 3) - dt;
     if (this.birdT <= 0) {
@@ -756,6 +773,13 @@ export class Game {
     const z = contraAt(P.track, P.s, 700);
     if (!z || P.wrongWay) return null;
     return { d: Math.max(0, z.s0 - P.s) };
+  }
+
+  // the menus have their own song (the night drive); a race fades it into the district's
+  menuMusic() {
+    if (this.musicOff || !audio.ready) return;
+    const i = TRACKS.findIndex((t) => t.id === MENU_TRACK);
+    if (music.index !== i || !music.playing) music.play(i, 2);
   }
 
   // ------------------------------------------------------------ music: each district has its own song

@@ -48,6 +48,8 @@ export class AudioEngine {
     this.music.connect(this.master);
     this.sfx.connect(this.comp).connect(this.master);
     this.amb.connect(this.sfx);
+    // the car sits under the music, not on top of it
+    this.eng.gain.value = 0.4;
     this.eng.connect(this.sfx);
     // reverb
     this.reverb = ctx.createConvolver();
@@ -135,7 +137,7 @@ export class AudioEngine {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.master.gain.setTargetAtTime(this.muted ? 0 : this.vol.master, t, 0.05);
-    this.music.gain.setTargetAtTime(this.vol.music * 0.55, t, 0.05);
+    this.music.gain.setTargetAtTime(this.vol.music * 0.7, t, 0.05);
     this.sfx.gain.setTargetAtTime(this.vol.sfx, t, 0.05);
   }
 
@@ -404,7 +406,8 @@ export class AudioEngine {
       const P = this.W.parameters;
       P.get('rpm').setTargetAtTime(m.rpm, t, 0.02);
       P.get('throttle').setTargetAtTime(m.thr, t, 0.02);
-      P.get('gain').setTargetAtTime(on * (k === 'jet' ? 0.2 : 0.3) * (0.55 + m.thr * 0.45) * (p.boost ? 1.15 : 1), t, 0.05);
+      const lvl = (ENGINES[k] || ENGINES.v12).level ?? 1;
+      P.get('gain').setTargetAtTime(on * (k === 'jet' ? 0.2 : 0.3) * lvl * (0.55 + m.thr * 0.45) * (p.boost ? 1.15 : 1), t, 0.05);
       vol = 0;
     }
     const f = base + rpm * span;
@@ -427,7 +430,7 @@ export class AudioEngine {
     L.road.g.gain.setTargetAtTime(clamp(p.speed / 30, 0, 1) * 0.1 * (1 + (p.rain || 0) * 0.6), t, 0.1);
     L.road.flt.frequency.setTargetAtTime(180 + wv * 220, t, 0.1);
     L.whistle.g.gain.setTargetAtTime(0, t, 0.2);
-    this.chat.gain.setTargetAtTime((p.crowd || 0) * 0.07 * (1 - clamp(p.speed / 110, 0, 0.7)), t, 0.4);
+    this.chat.gain.setTargetAtTime((p.crowd || 0) * 0.16 * (1 - clamp(p.speed / 140, 0, 0.5)), t, 0.4);
     const rv = p.rival;
     if (rv) {
       const fr = 38 + rv.v * 0.9;
@@ -508,7 +511,111 @@ export class AudioEngine {
     // rickshaw bell: tring-tring (inharmonic partials, fast decay)
     for (let r = 0; r < 2; r++) {
       for (const [mul, a] of [[1, 1], [2.76, 0.5], [5.4, 0.25], [8.9, 0.12]]) {
-        this.tone('sine', 1850 * mul * (1 + r * 0.01), 0.35, vol * a * 0.6, { delay: r * 0.13, pan });
+        this.tone('sine', 1850 * mul * (1 + r * 0.01), 0.35, vol * a * 0.6, { delay: r * 0.13, pan, dest: this.amb });
+      }
+    }
+  }
+
+  // street life ---------------------------------------------------------
+  // One-shots around the road, placed with a pan and a distance in metres: further away is quieter and duller.
+  far(pan, dist, vol) {
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.max(700, 7000 - dist * 90);
+    const g = ctx.createGain(); g.gain.value = vol / (1 + dist / 18);
+    const pn = ctx.createStereoPanner(); pn.pan.value = clamp(pan, -1, 1);
+    lp.connect(g).connect(pn).connect(this.amb);
+    g.connect(this.sfxRev);
+    setTimeout(() => { lp.disconnect(); pn.disconnect(); }, 6000);
+    return { t, dest: lp };
+  }
+
+  // Dhaka's soundtrack: car horns (a tap or a lean), the bus's three-honk, a bike's beep, a truck's tune
+  horn(pan = 0, dist = 20, kind = 'car') {
+    if (!this.ready) return;
+    const { t, dest } = this.far(pan, dist, 0.5);
+    const play = (fs, at, dur, type = 'square', vol = 0.12) => {
+      for (const f of fs) {
+        const o = this.ctx.createOscillator(); o.type = type; o.frequency.value = f;
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t + at);
+        g.gain.linearRampToValueAtTime(vol, t + at + 0.015);
+        g.gain.setValueAtTime(vol, t + at + dur);
+        g.gain.linearRampToValueAtTime(0.0001, t + at + dur + 0.04);
+        o.connect(g).connect(dest);
+        o.start(t + at); o.stop(t + at + dur + 0.08);
+      }
+    };
+    if (kind === 'bus') { for (let i = 0; i < 3; i++) play([311, 370], i * 0.32, i === 2 ? 0.7 : 0.2, 'sawtooth', 0.07); }
+    else if (kind === 'bike') play([880, 1046], 0, 0.16, 'square', 0.06);
+    else if (kind === 'truck') { [523, 659, 784, 659].forEach((f, i) => play([f, f * 1.5], i * 0.2, 0.18, 'sawtooth', 0.05)); }
+    else if (fx.next() < 0.5) { play([415, 523], 0, 0.12); play([415, 523], 0.2, 0.12); }
+    else play([415, 523], 0, 0.35 + fx.next() * 0.6);
+  }
+
+  bark(pan = 0, dist = 25) {
+    if (!this.ready) return;
+    const { t, dest } = this.far(pan, dist, 0.6);
+    const n = 2 + (fx.next() * 2 | 0);
+    for (let i = 0; i < n; i++) {
+      const at = t + i * (0.22 + fx.next() * 0.1);
+      const o = this.ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(520, at); o.frequency.exponentialRampToValueAtTime(330, at + 0.12);
+      const bp = this.ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 2;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.14, at + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.14);
+      o.connect(bp).connect(g).connect(dest);
+      o.start(at); o.stop(at + 0.18);
+    }
+  }
+
+  // a street seller's call: a voice-like sing-song of three or four syllables through vowel formants
+  hawker(pan = 0, dist = 15) {
+    if (!this.ready) return;
+    const { t, dest } = this.far(pan, dist, 0.7);
+    const base = 190 + fx.next() * 60;
+    const tune = [[0, 'a', 0.22], [3, 'e', 0.16], [5, 'a', 0.16], [0, 'o', 0.45]].slice(0, 3 + (fx.next() < 0.5 ? 1 : 0));
+    const F = { a: [800, 1200], e: [400, 2000], o: [500, 850] };
+    let at = t;
+    for (const [st, v, dur] of tune) {
+      const o = this.ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(base * Math.pow(2, st / 12), at);
+      o.frequency.linearRampToValueAtTime(base * Math.pow(2, (st - 1) / 12), at + dur);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.09, at + 0.03); g.gain.setValueAtTime(0.09, at + dur - 0.04); g.gain.linearRampToValueAtTime(0.0001, at + dur);
+      for (const [f, q] of [[F[v][0], 7], [F[v][1], 9]]) {
+        const bp = this.ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+        o.connect(bp).connect(g);
+      }
+      g.connect(dest);
+      o.start(at); o.stop(at + dur + 0.02);
+      at += dur + 0.04;
+    }
+  }
+
+  // a song leaking out of a shop's tinny speaker as you pass: a few bars, band-limited like a cheap radio
+  shopRadio(pan = 0, dist = 12) {
+    if (!this.ready) return;
+    const { t, dest } = this.far(pan, dist, 0.6);
+    const ctx = this.ctx;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 1.4;
+    bp.connect(dest);
+    const root = 62 + (fx.next() * 5 | 0);
+    const scale = [0, 2, 4, 7, 9, 12, 9, 7];
+    const step = 0.21;
+    for (let i = 0; i < 16; i++) {
+      const m = root + scale[(i * 3 + (fx.next() * 3 | 0)) % scale.length];
+      const o = ctx.createOscillator(); o.type = 'square';
+      o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+      const g = ctx.createGain();
+      const at = t + i * step;
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.05, at + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, at + step * 1.6);
+      o.connect(g).connect(bp);
+      o.start(at); o.stop(at + step * 1.7);
+      if (i % 2 === 0) {
+        const k = ctx.createOscillator(); k.type = 'sine'; k.frequency.setValueAtTime(140, at); k.frequency.exponentialRampToValueAtTime(60, at + 0.08);
+        const kg = ctx.createGain(); kg.gain.setValueAtTime(0.08, at); kg.gain.exponentialRampToValueAtTime(0.0001, at + 0.1);
+        k.connect(kg).connect(bp); k.start(at); k.stop(at + 0.12);
       }
     }
   }

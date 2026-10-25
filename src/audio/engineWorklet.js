@@ -157,24 +157,26 @@ class EngineProcessor extends AudioWorkletProcessor {
 registerProcessor('engine-proc', EngineProcessor);
 `;
 
-// Engine characters, one per real engine: rpm range, gears, the exhaust model and any turbo.
+// Engine characters, one per real engine: rpm range, gears, the exhaust model and any turbo. level evens out how
+// loud they sound (A-weighted, averaged over 50-95% of the revs on full throttle); the V12 sits a touch under the rest, as its
+// scream lands in the music's melody range.
 export const ENGINES = {
   // Toyota 2JZ-GTE (Supra): smooth straight six, sequential twin turbos, a deep, even hum and a clean psssh
-  '2jz': { idle: 750, red: 6800, gears: 6, cfg: { imbalance: 0.08, cyl: 6, stroke: 4, header: 0.95, muffler: 2.8, fb1: 0.5, fb2: 0.52, pulse: 0.0024, grit: 0.12, bright: 0.18, intake: 0.14, whine: 0.003, crackle: 0.3, drive: 1.15, turbo: 1, spool: 0.9, bov: 0.9, whineF: 2900 } },
+  '2jz': { level: 0.74, idle: 750, red: 6800, gears: 6, cfg: { imbalance: 0.08, cyl: 6, stroke: 4, header: 0.95, muffler: 2.8, fb1: 0.5, fb2: 0.52, pulse: 0.0024, grit: 0.12, bright: 0.18, intake: 0.14, whine: 0.003, crackle: 0.3, drive: 1.15, turbo: 1, spool: 0.9, bov: 0.9, whineF: 2900 } },
   // Nissan RB26DETT (Skyline GT-R): higher-revving six with a harder, raspier edge, twin turbos that flutter on lift
-  rb26: { idle: 900, red: 8000, gears: 5, cfg: { imbalance: 0.14, cyl: 6, stroke: 4, header: 0.78, muffler: 2.3, fb1: 0.54, fb2: 0.46, pulse: 0.0017, grit: 0.22, bright: 0.34, intake: 0.22, whine: 0.004, crackle: 0.55, drive: 1.4, turbo: 0.9, spool: 0.75, bov: 0.8, flutter: 0.85, whineF: 3400 } },
+  rb26: { level: 0.85, idle: 900, red: 8000, gears: 5, cfg: { imbalance: 0.14, cyl: 6, stroke: 4, header: 0.78, muffler: 2.3, fb1: 0.54, fb2: 0.46, pulse: 0.0017, grit: 0.22, bright: 0.34, intake: 0.22, whine: 0.004, crackle: 0.55, drive: 1.4, turbo: 0.9, spool: 0.75, bov: 0.8, flutter: 0.85, whineF: 3400 } },
   // Toyota 1JZ-GTE (Chaser): the smaller six, smoother and lighter-voiced, one turbo
-  '1jz': { idle: 750, red: 7200, gears: 5, cfg: { imbalance: 0.07, cyl: 6, stroke: 4, header: 0.85, muffler: 2.6, fb1: 0.5, fb2: 0.5, pulse: 0.002, grit: 0.12, bright: 0.24, intake: 0.16, whine: 0.003, crackle: 0.3, drive: 1.2, turbo: 0.85, spool: 0.6, bov: 0.75, whineF: 3600 } },
+  '1jz': { level: 0.85, idle: 750, red: 7200, gears: 5, cfg: { imbalance: 0.07, cyl: 6, stroke: 4, header: 0.85, muffler: 2.6, fb1: 0.5, fb2: 0.5, pulse: 0.002, grit: 0.12, bright: 0.24, intake: 0.16, whine: 0.003, crackle: 0.3, drive: 1.2, turbo: 0.85, spool: 0.6, bov: 0.75, whineF: 3600 } },
   // Toyota 3S-GTE (Celica GT-Four): turbo four, gruff and uneven, a big whistle and a loud dump valve
-  '3sgte': { idle: 850, red: 7000, gears: 5, cfg: { imbalance: 0.16, cyl: 4, stroke: 4, header: 0.9, muffler: 2.5, fb1: 0.5, fb2: 0.48, pulse: 0.0019, grit: 0.22, bright: 0.26, intake: 0.24, whine: 0.004, crackle: 0.45, drive: 1.4, turbo: 1, spool: 0.8, bov: 1, whineF: 4200 } },
+  '3sgte': { level: 0.77, idle: 850, red: 7000, gears: 5, cfg: { imbalance: 0.16, cyl: 4, stroke: 4, header: 0.9, muffler: 2.5, fb1: 0.5, fb2: 0.48, pulse: 0.0019, grit: 0.22, bright: 0.26, intake: 0.24, whine: 0.004, crackle: 0.45, drive: 1.4, turbo: 1, spool: 0.8, bov: 1, whineF: 4200 } },
   // Mazda BP 1.8 (Miata): naturally aspirated four, light, rorty and all intake honk, a crackle on the overrun
-  bp: { idle: 850, red: 7000, gears: 5, cfg: { imbalance: 0.14, cyl: 4, stroke: 4, header: 0.7, muffler: 2.1, fb1: 0.52, fb2: 0.42, pulse: 0.0016, grit: 0.24, bright: 0.38, intake: 0.38, whine: 0.003, crackle: 0.4, drive: 1.45 } },
+  bp: { level: 0.95, idle: 850, red: 7000, gears: 5, cfg: { imbalance: 0.14, cyl: 4, stroke: 4, header: 0.7, muffler: 2.1, fb1: 0.52, fb2: 0.42, pulse: 0.0016, grit: 0.24, bright: 0.38, intake: 0.38, whine: 0.003, crackle: 0.4, drive: 1.45 } },
   // flat-twelve wedge: twelve even pulses, short headers, a howl at the top
-  v12: { idle: 950, red: 8400, gears: 6, cfg: { imbalance: 0.32, cyl: 12, stroke: 4, header: 0.8, muffler: 2.6, fb1: 0.5, fb2: 0.55, pulse: 0.0026, grit: 0.12, bright: 0.25, intake: 0.12, whine: 0.004, crackle: 0.35, drive: 1.1 } },
+  v12: { level: 0.85, idle: 950, red: 8400, gears: 6, cfg: { imbalance: 0.32, cyl: 12, stroke: 4, header: 0.8, muffler: 2.6, fb1: 0.5, fb2: 0.55, pulse: 0.0026, grit: 0.12, bright: 0.25, intake: 0.12, whine: 0.004, crackle: 0.35, drive: 1.1 } },
   // Toyota 1NZ (the uncle Premio): buzzy economy four through a long quiet exhaust and a four-speed automatic
-  i4: { idle: 700, red: 6200, gears: 4, cfg: { imbalance: 0.12, cyl: 4, stroke: 4, header: 0.95, muffler: 2.9, fb1: 0.48, fb2: 0.5, pulse: 0.0018, grit: 0.18, bright: 0.15, intake: 0.2, whine: 0.003, crackle: 0.12, drive: 1.3 } },
+  i4: { level: 1.2, idle: 700, red: 6200, gears: 4, cfg: { imbalance: 0.12, cyl: 4, stroke: 4, header: 0.95, muffler: 2.9, fb1: 0.48, fb2: 0.5, pulse: 0.0018, grit: 0.18, bright: 0.15, intake: 0.2, whine: 0.003, crackle: 0.12, drive: 1.3 } },
   // single-cylinder two-stroke three-wheeler: rattly, nasal, ring-ding-ding
-  cng: { idle: 1700, red: 7600, gears: 4, cfg: { cyl: 1, stroke: 2, header: 0.5, muffler: 1.4, fb1: 0.58, fb2: 0.4, pulse: 0.0022, grit: 0.35, bright: 0.35, intake: 0.15, whine: 0.002, crackle: 0.5, drive: 1.7 } },
+  cng: { level: 1.3, idle: 1700, red: 7600, gears: 4, cfg: { cyl: 1, stroke: 2, header: 0.5, muffler: 1.4, fb1: 0.58, fb2: 0.4, pulse: 0.0022, grit: 0.35, bright: 0.35, intake: 0.15, whine: 0.002, crackle: 0.5, drive: 1.7 } },
   // inline-six: smooth, even firing, a deep hum (2JZ)
   i6: { idle: 800, red: 7400, gears: 6, cfg: { imbalance: 0.1, cyl: 6, stroke: 4, header: 0.9, muffler: 2.7, fb1: 0.5, fb2: 0.5, pulse: 0.0022, grit: 0.14, bright: 0.2, intake: 0.16, whine: 0.003, crackle: 0.4, drive: 1.2 } },
   // RB26: six with a hard, raspy edge
@@ -182,5 +184,5 @@ export const ENGINES = {
   // small turbo four
   i4t: { idle: 800, red: 7200, gears: 6, cfg: { imbalance: 0.14, cyl: 4, stroke: 4, header: 0.9, muffler: 2.7, fb1: 0.48, fb2: 0.5, pulse: 0.0018, grit: 0.18, bright: 0.2, intake: 0.22, whine: 0.004, crackle: 0.45, drive: 1.3 } },
   // Rickshaw 9000: cross-plane V8 burble under the jet
-  jet: { idle: 800, red: 7200, gears: 6, cfg: { cyl: 8, stroke: 4, offs: [0, 0.09, 0.25, 0.34, 0.5, 0.59, 0.75, 0.84], imbalance: 0.28, header: 0.85, muffler: 2.6, fb1: 0.5, fb2: 0.5, pulse: 0.0018, grit: 0.15, bright: 0.2, intake: 0.15, whine: 0.003, crackle: 0.45, drive: 1.2 } },
+  jet: { level: 1.3, idle: 800, red: 7200, gears: 6, cfg: { cyl: 8, stroke: 4, offs: [0, 0.09, 0.25, 0.34, 0.5, 0.59, 0.75, 0.84], imbalance: 0.28, header: 0.85, muffler: 2.6, fb1: 0.5, fb2: 0.5, pulse: 0.0018, grit: 0.15, bright: 0.2, intake: 0.15, whine: 0.003, crackle: 0.45, drive: 1.2 } },
 };
