@@ -92,6 +92,24 @@ function drawPalm(seed) {
     trunk(ctx, bx, h, tx, ty, 9, 6, '#8b7660', true);
     // crown
     const cols = ['#2f6e2c', '#3d8a34', '#25591f'];
+    if (P.FLAT) {
+      // stylised crown: seven plain tapered leaves in two greens and a dark heart, no leaflets or coconuts
+      for (let i = 0; i < 7; i++) {
+        const a = -Math.PI / 2 + ((i / 6) - 0.5) * Math.PI * 1.6 + rng.range(-0.08, 0.08);
+        const len = rng.range(w * 0.36, w * 0.46), droop = 0.35 * Math.abs(Math.cos(a));
+        const ex = tx + Math.cos(a) * len, ey = ty + Math.sin(a) * len + len * droop;
+        const nx = -Math.sin(a), ny = Math.cos(a), wd = len * 0.16;
+        const mx = (tx + ex) / 2, my = (ty + ey) / 2 - len * 0.1;
+        ctx.fillStyle = i % 2 ? cols[0] : cols[1];
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.quadraticCurveTo(mx + nx * wd, my + ny * wd, ex, ey);
+        ctx.quadraticCurveTo(mx - nx * wd, my - ny * wd, tx, ty);
+        ctx.fill();
+      }
+      blob(ctx, tx, ty + 3, 7, '#24401a');
+      return;
+    }
     const n = 12;
     for (let i = 0; i < n; i++) {
       const a = -Math.PI / 2 + ((i / (n - 1)) - 0.5) * Math.PI * 1.7 + rng.range(-0.1, 0.1);
@@ -117,7 +135,24 @@ function drawBetel(seed) {
   };
 }
 
+// stylised canopy: a handful of big lobes with an ink rim, a shadowed lower half and a lit upper half
+function flatCanopy(ctx, cx, cy, rx, ry, rng, cols, topCols) {
+  const lobes = [];
+  const k = Math.round(rng.range(13, 17));
+  for (let i = 0; i < k; i++) {
+    const a = (i / k) * Math.PI * 2 + rng.range(-0.3, 0.3);
+    const d = rng.range(0.62, 0.78);
+    lobes.push([cx + Math.cos(a) * rx * d, cy + Math.sin(a) * ry * d, Math.min(rx, ry) * rng.range(0.36, 0.5)]);
+  }
+  for (let i = 0; i < 3; i++) lobes.push([cx + rx * (i - 1) * 0.4, cy, ry * 0.8]);
+  const base = cols[0], top = topCols ? topCols[0] : P.shade(base, 0.22);
+  for (const [x, y, r] of lobes) blob(ctx, x, y, r + 3, P.mix(P.shade(base, -0.6), '#1a1420', 0.4));
+  for (const [x, y, r] of lobes) blob(ctx, x, y, r, P.shade(base, -0.18));
+  for (const [x, y, r] of lobes) if (y < cy - ry * 0.15) blob(ctx, x - r * 0.15, y - r * 0.25, r * 0.6, top);
+}
+
 function canopy(ctx, cx, cy, rx, ry, rng, cols, n = 260, rmin = 5, rmax = 14, topCols = null) {
+  if (P.FLAT) return flatCanopy(ctx, cx, cy, rx, ry, rng, cols, topCols);
   for (let i = 0; i < n; i++) {
     const a = rng.next() * Math.PI * 2;
     const r = Math.sqrt(rng.next());
@@ -146,7 +181,7 @@ function drawFlameTree(seed, flowerCols) {
     canopy(ctx, cx, h * 0.34, w * 0.46, h * 0.18, rng, ['#2f6a2a', '#3f7d33', '#24521f'], 220, 6, 14);
     canopy(ctx, cx, h * 0.28, w * 0.44, h * 0.14, rng, flowerCols, 340, 4, 10, flowerCols.map((c) => P.shade(c, 0.2)));
     // scattered petals on the ground
-    for (let i = 0; i < 26; i++) blob(ctx, cx + rng.range(-w * 0.4, w * 0.4), h - rng.range(1, 6), rng.range(1.5, 3), rng.pick(flowerCols));
+    if (!P.FLAT) for (let i = 0; i < 26; i++) blob(ctx, cx + rng.range(-w * 0.4, w * 0.4), h - rng.range(1, 6), rng.range(1.5, 3), rng.pick(flowerCols));
   };
 }
 
@@ -167,7 +202,7 @@ function drawBigTree(seed, kind = 'mango') {
     const cols = kind === 'mango' ? ['#1f4d1f', '#2a5e25', '#346b2b', '#183f18'] : ['#2b5a26', '#356b2d', '#22481f', '#3e7a33'];
     canopy(ctx, cx, h * 0.36, w * 0.45, h * 0.3, rng, cols, 520, 7, 16);
     // highlights
-    for (let i = 0; i < 60; i++) blob(ctx, cx + rng.range(-w * 0.3, w * 0.25), h * 0.2 + rng.range(0, h * 0.2), rng.range(3, 7), 'rgba(140,190,90,0.6)');
+    if (!P.FLAT) for (let i = 0; i < 60; i++) blob(ctx, cx + rng.range(-w * 0.3, w * 0.25), h * 0.2 + rng.range(0, h * 0.2), rng.range(3, 7), 'rgba(140,190,90,0.6)');
   };
 }
 
@@ -335,16 +370,121 @@ function person(ctx, x, by, s, rng, kind) {
   ctx.restore();
 }
 
-function drawPerson(seed, kind) {
+// Stylised people (art direction): one chunky silhouette per figure (big head, rounded body, no separate limbs),
+// a shaded right side, and an ink rim around the whole figure like the trees.
+const INK = '#1d1620';
+// stride: 0 standing, 1 mid-step (legs apart, a lungi or saree hem swung forward): two frames make the walk cycle.
+// It never touches the rng, so both frames of a figure get the same clothes.
+function flatPerson(ctx, x, by, s, rng, kind, stride = 0) {
+  const skin = rng.pick(SKIN), hair = '#1a1410';
+  const hh = s * 0.94;
+  const sw = hh * 0.16, head = hh * 0.115;
+  let cloth, lower, skirt, tunic = 0;
+  if (kind === 'saree') {
+    cloth = lower = rng.pick(['#c8102e', '#ff2e88', '#f2b81f', '#118a4a', '#1d5fa8', '#e8561c', '#7b2f9e']);
+    skirt = true;
+  } else if (kind === 'kameez') {
+    cloth = rng.pick(['#ff7eb6', '#20b2c9', '#f2c230', '#9b4dca', '#2ea36b', '#f4f0e0']);
+    lower = rng.pick(['#f4f0e0', '#1a1a1a', '#c8102e']);
+    tunic = 0.22;
+  } else if (kind === 'panjabi') {
+    cloth = rng.pick(['#f4f0e0', '#d6c8a8', '#2a62c9', '#c8102e']);
+    lower = '#ece6d4';
+    tunic = 0.2;
+  } else {
+    cloth = rng.pick(SHIRT);
+    skirt = kind === 'lungi' || kind === 'vendor';
+    lower = skirt ? rng.pick(LUNGI) : rng.pick(['#2a2a2a', '#3a4a5a', '#5a4a3a']);
+  }
+  ctx.save();
+  ctx.translate(x, by);
+  const waist = -hh * 0.46;
+  // lower body: a flared wrap (lungi, saree) or two legs
+  ctx.fillStyle = lower;
+  const sk = stride * sw * 0.45; // how far the hem swings and the feet part
+  if (skirt) {
+    ctx.beginPath();
+    ctx.moveTo(-sw * 0.9, waist); ctx.lineTo(sw * 0.9, waist); ctx.lineTo(sw * 1.05 + sk, -hh * 0.03); ctx.lineTo(-sw * 1.05 + sk * 0.4, -hh * 0.03);
+    ctx.closePath(); ctx.fill();
+  } else {
+    const leg = (x0, ang) => {
+      ctx.save();
+      ctx.translate(x0 + sw * 0.39, waist);
+      ctx.rotate(ang);
+      P.roundRect(ctx, -sw * 0.39, 0, sw * 0.78, -waist - hh * 0.02, sw * 0.25); ctx.fill();
+      ctx.restore();
+    };
+    leg(-sw * 0.85, stride * 0.28);
+    leg(sw * 0.07, -stride * 0.28);
+  }
+  ctx.fillStyle = '#2a1e18';
+  ctx.fillRect(-sw * 0.85 - sk, -hh * 0.035, sw * 0.7, hh * 0.035);
+  ctx.fillRect(sw * 0.15 + sk, -hh * 0.035, sw * 0.7, hh * 0.035);
+  // torso: one rounded block (with a long tunic for kameez and panjabi), right side in shade
+  const tTop = -hh * 0.83, tBot = waist + hh * (0.03 + tunic);
+  const torso = () => P.roundRect(ctx, -sw, tTop, sw * 2, tBot - tTop, sw * 0.55);
+  ctx.fillStyle = cloth;
+  torso(); ctx.fill();
+  ctx.save();
+  torso(); ctx.clip();
+  ctx.fillStyle = P.shade(cloth, -0.2);
+  ctx.fillRect(sw * 0.35, tTop, sw, tBot - tTop);
+  if (kind === 'saree') {
+    // aanchal over the shoulder
+    ctx.fillStyle = P.shade(cloth, 0.35);
+    ctx.beginPath(); ctx.moveTo(-sw, tTop + sw * 0.2); ctx.lineTo(-sw * 0.3, tTop); ctx.lineTo(sw, tBot - sw * 0.4); ctx.lineTo(sw * 0.3, tBot); ctx.closePath(); ctx.fill();
+  }
+  if (kind === 'kameez') {
+    ctx.fillStyle = P.shade(cloth, -0.35);
+    ctx.fillRect(-sw, tTop + sw * 0.35, sw * 2, sw * 0.35); // orna
+  }
+  ctx.restore();
+  // head and hair
+  const hy = tTop - head * 0.82;
+  blob(ctx, 0, hy, head, skin);
+  ctx.fillStyle = hair;
+  ctx.beginPath(); ctx.arc(0, hy, head * 1.04, Math.PI * 1.05, Math.PI * 1.95); ctx.closePath(); ctx.fill();
+  if (kind === 'saree' || kind === 'kameez') blob(ctx, -head * 0.85, hy + head * 0.15, head * 0.5, hair);
+  if (kind === 'panjabi' && rng.chance(0.5)) {
+    ctx.fillStyle = '#f4f4f0';
+    ctx.beginPath(); ctx.arc(0, hy - head * 0.15, head * 0.95, Math.PI, 0); ctx.fill(); // tupi
+  }
+  if (kind === 'vendor') {
+    ctx.fillStyle = '#b08a4a';
+    ctx.beginPath(); ctx.ellipse(0, hy - head * 1.2, sw * 1.3, head * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f2c230';
+    ctx.beginPath(); ctx.ellipse(0, hy - head * 1.5, sw * 1.0, head * 0.35, 0, Math.PI, 0); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// draw a figure offscreen, then stamp its silhouette in ink a few pixels around it before the figure itself
+function withInk(ctx, w, h, draw, r = 2) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'));
+  const k = document.createElement('canvas');
+  k.width = w; k.height = h;
+  const kx = k.getContext('2d');
+  kx.drawImage(c, 0, 0);
+  kx.globalCompositeOperation = 'source-in';
+  kx.fillStyle = INK;
+  kx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 8; i++) ctx.drawImage(k, Math.round(Math.cos(i * Math.PI / 4) * r), Math.round(Math.sin(i * Math.PI / 4) * r));
+  ctx.drawImage(c, 0, 0);
+}
+
+function drawPerson(seed, kind, stride = 0) {
+  if (P.FLAT) return (ctx, e, w, h) => withInk(ctx, w, h, (c) => flatPerson(c, w / 2, h - 3, h * 0.92, new RNG(seed), kind, stride));
   return (ctx, e, w, h) => person(ctx, w / 2, h - 1, h * 0.95, new RNG(seed), kind);
 }
 
 // a person holding an umbrella over their head (taller sprite so the canopy fits)
 const UMBRELLA = ['#e4252b', '#1d5fa8', '#2a2a2a', '#f2c230', '#7b2f9e', '#118a4a', '#ff2e88', '#20b2c9', '#e8561c'];
-function drawUmbrellaPerson(seed, kind) {
-  return (ctx, e, w, h) => {
+function drawUmbrellaPerson(seed, kind, stride = 0) {
+  const body = (ctx, e, w, h) => {
     const rng = new RNG(seed);
-    person(ctx, w / 2, h - 1, 121, rng, kind);
+    (P.FLAT ? flatPerson : person)(ctx, w / 2, h - (P.FLAT ? 3 : 1), 121, rng, kind, stride);
     const col = new RNG(seed + 'u').pick(UMBRELLA);
     const cx = w / 2, by = h - 1 - 119;
     // handle from the hand up to the canopy
@@ -359,6 +499,7 @@ function drawUmbrellaPerson(seed, kind) {
     for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(cx, by - 19); ctx.lineTo(cx + k * w * 0.3, by); ctx.stroke(); }
     ctx.fillStyle = '#2a2018'; ctx.fillRect(cx - 1, by - 22, 2, 4);
   };
+  return P.FLAT ? (ctx, e, w, h) => withInk(ctx, w, h, (c) => body(c, null, w, h)) : body;
 }
 
 function drawCrowd(seed, n = 8) {
@@ -368,7 +509,8 @@ function drawCrowd(seed, n = 8) {
     const order = [];
     for (let i = 0; i < n; i++) order.push({ x: rng.range(w * 0.08, w * 0.92), s: rng.range(h * 0.72, h * 0.95), k: rng.pick(kinds) });
     order.sort((a, b) => a.s - b.s);
-    order.forEach((o) => person(ctx, o.x, h - 1, o.s, rng, o.k));
+    if (P.FLAT) withInk(ctx, w, h, (c) => order.forEach((o) => flatPerson(c, o.x, h - 3, o.s * 0.95, rng, o.k)));
+    else order.forEach((o) => person(ctx, o.x, h - 1, o.s, rng, o.k));
   };
 }
 
@@ -823,6 +965,8 @@ function drawKiln(ctx, e, w, h) {
 // ---------------------------------------------------------------- catalogue
 
 // name: [px w, px h, world height (m), drawFn]
+const INKED = new Set(['palm0', 'palm1', 'palm2', 'betel0', 'betel1', 'banana0', 'bamboo0', 'bush0', 'bougain0', 'teastall', 'fuchka', 'flowerstall', 'bookstall', 'sareeshop', 'fruitvan', 'cow0', 'cow1', 'dog', 'kiln', 'flag']);
+
 const CATALOGUE = [
   ['palm0', 192, 384, 12, drawPalm('p0')],
   ['palm1', 192, 384, 13.5, drawPalm('p1')],
@@ -855,7 +999,7 @@ const CATALOGUE = [
   ['crowd0', 256, 128, 1.75, drawCrowd('c0', 9)],
   ['crowd1', 256, 128, 1.75, drawCrowd('c1', 7)],
   ['crowd2', 256, 128, 1.75, drawCrowd('c2', 11)],
-  ['police', 64, 144, 1.9, drawPolice],
+  ['police', 64, 144, 1.9, P.FLAT ? (ctx, e, w, h) => withInk(ctx, w, h, (c) => drawPolice(c, null, w, h)) : drawPolice],
   ['teastall', 256, 224, 3.2, drawTeaStall],
   ['fuchka', 224, 192, 2.4, drawFuchka],
   ['flowerstall', 256, 192, 2.6, drawFlowerStall],
@@ -882,8 +1026,16 @@ export function buildSpriteAtlas() {
   const A = new Atlas(2048, { emissive: true, emissiveScale: 0.5, alpha: true });
   A.pad = 3;
   const info = {};
-  for (const [name, w, h, worldH, fn] of CATALOGUE) {
-    A.add(name, w, h, fn, { wrap: false });
+  // walk-cycle frames: every walker gets a mid-stride twin, name~w (the pedestrians alternate the two)
+  const walkers = CATALOGUE.filter(([name]) => /^pu?_/.test(name)).map(([name, w, h, worldH]) => {
+    const kind = name.replace(/^pu?_/, '');
+    const seed = { lungi: 'pl', shirt: 'ps', saree: 'psa', kameez: 'pk', panjabi: 'pp', vendor: 'pv' }[kind];
+    return [name + '~w', w, h, worldH, name.startsWith('pu_') ? drawUmbrellaPerson(seed, kind, 1) : drawPerson(seed, kind, 1)];
+  });
+  for (const [name, w, h, worldH, fn] of CATALOGUE.concat(walkers)) {
+    // stylised: stalls, animals and the remaining plants get the same ink rim as people and trees
+    const inked = P.FLAT && INKED.has(name);
+    A.add(name, w, h, inked ? (ctx, e, ww, hh) => withInk(ctx, ww, hh, (c) => fn(c, e, ww, hh)) : fn, { wrap: false });
     info[name] = { region: A.get(name), worldH, aspect: w / h };
   }
   A.info = info;

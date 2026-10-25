@@ -16,7 +16,7 @@
   --shadow: #000000;
   --f-display: "Bungee", "Impact", "Arial Black", sans-serif;
   --f-shade: "Bungee Shade", "Bungee", "Impact", sans-serif;
-  --f-bn: "Galada", "Hind Siliguri", "Nirmala UI", "Vrinda", sans-serif;
+  --f-bn: "Atma", "Mina", "Nirmala UI", "Vrinda", sans-serif;
   --f-body: "Hind Siliguri", "Nirmala UI", "Segoe UI", system-ui, sans-serif;
   color-scheme: dark;
 }
@@ -99,23 +99,24 @@ button { font: inherit; color: inherit; }
 .plate-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 3px solid #000; padding-bottom: 6px; margin: 8px 0 14px; font-family: var(--f-display); font-size: 22px; letter-spacing: 0.06em; }
 .plate-head i { font-style: normal; font-family: var(--f-display); font-size: 12px; letter-spacing: 0.1em; color: var(--red); }
 
-/* garage */
-#garage { justify-content: flex-end; align-items: flex-start; padding-bottom: 4vh; }
-.garage-card { max-width: 420px; margin-left: 3vw; }
-.car-name { font-family: var(--f-display); font-size: 30px; color: var(--red); text-shadow: 2px 2px 0 #000; -webkit-text-stroke: 1px #000; }
-.car-bn { font-family: var(--f-display); font-size: 11px; letter-spacing: 0.1em; color: #6a4a2a; margin-top: 2px; }
-.car-blurb { font-size: 15px; line-height: 1.4; margin: 8px 0 12px; max-width: 46ch; }
-.stats { display: grid; grid-template-columns: 90px 1fr; gap: 6px 10px; font-family: var(--f-display); font-size: 11px; letter-spacing: 0.06em; align-items: center; }
-.stats .bar { height: 12px; border: 2px solid #000; background: #fff; position: relative; }
-.stats .bar b { position: absolute; inset: 0; right: auto; background: repeating-linear-gradient(90deg, var(--parrot) 0 10px, #138a3c 10px 12px); }
+/* buttons: every screen has real ones (keys still work) */
+.btn-row { display: flex; gap: 12px; justify-content: center; margin-top: 16px; }
+.btn { pointer-events: auto; cursor: pointer; padding: 8px 16px; border: 3px solid #000; background: var(--paper); color: #1a0f08; box-shadow: 4px 4px 0 #000; font-family: var(--f-display); font-size: 15px; letter-spacing: 0.06em; }
+.btn.go { background: var(--red); color: var(--paper); }
+.btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
+.btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
+.keys-hint { margin-top: 12px; font-family: var(--f-display); font-size: 10px; letter-spacing: 0.08em; color: rgba(255, 241, 210, 0.55); text-align: center; }
+body.touch .keys-hint { display: none; }
+/* the car, picked on the race card */
+.map-car { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; }
+.map-car .arrow { padding: 6px 12px; }
+.mc-name { flex: 1; text-align: center; font-family: var(--f-display); line-height: 1.1; }
+.mc-name b { display: block; font-weight: 400; font-size: 18px; letter-spacing: 0.05em; }
+.mc-name i { display: block; font-style: normal; font-size: 10px; letter-spacing: 0.08em; color: #6a4a2a; }
+.map-card .swatches { justify-content: center; margin: 8px 0 12px; }
 .swatches { display: flex; gap: 10px; margin: 14px 0 6px; }
 .swatches b { width: 30px; height: 30px; border: 3px solid #000; box-shadow: 3px 3px 0 #000; cursor: pointer; pointer-events: auto; }
 .swatches b.sel { transform: translate(-2px, -3px); box-shadow: 5px 6px 0 #000; outline: 3px solid var(--marigold); outline-offset: 2px; }
-.garage-nav { display: flex; gap: 10px; margin-top: 12px; }
-.garage-nav button { pointer-events: auto; cursor: pointer; padding: 8px 14px; border: 3px solid #000; background: #fff; box-shadow: 4px 4px 0 #000; font-family: var(--f-display); font-size: 16px; }
-.garage-nav button.go { flex: 1; background: var(--red); color: var(--paper); }
-.garage-nav button:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
-.lock { display: inline-block; margin-left: 8px; padding: 2px 8px; background: #000; color: var(--marigold); font-size: 11px; vertical-align: middle; -webkit-text-stroke: 0; text-shadow: none; }
 
 
 /* settings */
@@ -215,7 +216,6 @@ body.touch .h-radio, body.touch #hMap { display: none; }
   .h-score .row { font-size: 18px; }
   .h-progress { top: calc(100px + env(safe-area-inset-top, 0px)); width: 56vw; }
   .h-combo { right: 4vw; top: 34vh; }
-  .garage-card { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fl, .wheel, .press, .h-time.low { animation: none !important; }
@@ -252,12 +252,8 @@ body.touch .h-radio, body.touch #hMap { display: none; }
 body.touch .h-pause { display: none; }
 
 
-/* ---- fuel gauge and nitro charges; the city map only on the Run */
+/* ---- nitro charges; the city map only on the Run */
 .h-hct { display: flex; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); align-items: center; gap: 18px; font-family: var(--f-display); font-size: 11px; letter-spacing: 0.1em; text-shadow: 1px 1px 0 #000; }
-.h-hct .fuel { display: flex; align-items: center; gap: 6px; color: var(--marigold); }
-.h-hct .fb { width: 150px; height: 12px; border: 2px solid #000; background: rgba(0, 0, 0, 0.45); box-shadow: 3px 3px 0 #000; }
-.h-hct .fb b { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--red), var(--marigold) 35%, var(--parrot)); }
-.h-hct .fuel.low span { color: var(--red); animation: lowtime 0.5s steps(2) infinite; }
 .h-hct .charges { display: flex; align-items: center; gap: 5px; color: var(--cyan); }
 .h-hct .charges i { width: 16px; height: 16px; border: 2px solid #000; transform: rotate(45deg); background: rgba(0, 0, 0, 0.45); box-shadow: 2px 2px 0 #000; }
 .h-hct .charges i.on { background: var(--cyan); }
@@ -350,9 +346,9 @@ body.touch .bubble { font-size: 14px; }
 body.touch .h-cross { top: calc(33vh + env(safe-area-inset-top, 0px)); }
 
 /* ---- phones: a stripped-down HUD. The gas is automatic, so the thumbs only steer (left), and brake and nitro (right).
-   Only the essentials stay on screen: the clock and your position, the lap, speed, fuel and nitro, and pause. */
+   Only the essentials stay on screen: the clock and your position, the lap, speed and nitro, and pause. */
 body.touch .h-radio, body.touch #hMap, body.touch .h-tags, body.touch .h-cam, body.touch .h-score,
-body.touch .h-obj .gap, body.touch .h-obj .par, body.touch .h-hct .charges span, body.touch .h-hct .fuel span,
+body.touch .h-obj .gap, body.touch .h-obj .par, body.touch .h-hct .charges span,
 body.touch .gear, body.touch #tacho, body.touch .kmh i { display: none; }
 body.touch .h-time { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: scale(0.62); transform-origin: left top; min-width: 0; }
 body.touch .h-obj { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(58px + env(safe-area-inset-top, 0px)); }

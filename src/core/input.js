@@ -15,6 +15,7 @@ const KEYMAP = {
   KeyF: 'fullscreen',
   KeyL: 'lights',
   KeyT: 'talk',
+  KeyQ: 'prevCar', KeyE: 'nextCar', KeyC: 'colour',
 };
 
 export class Input {

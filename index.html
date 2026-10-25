@@ -8,7 +8,7 @@
 <meta name="description" content="An arcade racer through Dhaka after Horizon Chase: race any district as a lap circuit, or take on the Run, a knockout race across the whole city.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Galada&family=Hind+Siliguri:wght@400;500;600;700&family=Tiro+Bangla&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Bungee+Shade&family=Atma:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&family=Mina:wght@400;700&display=swap">
 <link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
@@ -63,7 +63,6 @@
       <div class="press" id="pressStart">CLICK OR PRESS ENTER</div>
       <nav class="menu" id="mainMenu" hidden>
         <button data-act="race"><span>RACE</span></button>
-        <button data-act="garage"><span>GARAGE</span></button>
         <button data-act="settings"><span>SETTINGS</span></button>
         <button data-act="howto"><span>HOW TO DRIVE</span></button>
       </nav>
@@ -78,6 +77,7 @@
   <section id="map" class="screen">
     <div class="mp">
       <div class="mp-head">
+        <button class="btn back" data-act="back">◀ BACK</button>
         <div class="mp-title">PICK A RACE</div>
         <div class="mp-tabs" id="mapTabs">
           <button data-mode="circuit"><b>CIRCUIT</b><i>one district · 3 laps</i></button>
@@ -93,29 +93,17 @@
             <div class="map-name" id="mapName"></div>
             <div class="map-sub" id="mapSub"></div>
             <div class="map-best" id="mapBest"></div>
+            <div class="map-car">
+              <button class="btn arrow" data-act="prevCar" aria-label="Previous car">◀</button>
+              <div class="mc-name"><b id="mapCar"></b><i id="mapMotor"></i></div>
+              <button class="btn arrow" data-act="nextCar" aria-label="Next car">▶</button>
+            </div>
+            <div class="swatches" id="carColors"></div>
             <button class="go" data-act="go">RACE</button>
           </div>
         </div>
       </div>
-      <div class="hint">↑↓ district · ←→ circuit / the run · ENTER race · BACKSPACE back</div>
-    </div>
-  </section>
-
-  <!-- ======================== GARAGE -->
-  <section id="garage" class="screen">
-    <div class="panel garage-card">
-      <div class="plate-head"><span>GARAGE</span></div>
-      <div class="car-name" id="carName">ROSSO 86</div>
-      <div class="car-bn" id="carBn"></div>
-      <p class="car-blurb" id="carBlurb"></p>
-      <div class="stats" id="carStats"></div>
-      <div class="swatches" id="carColors"></div>
-      <div class="garage-nav">
-        <button data-act="prevCar">◀</button>
-        <button data-act="pickCar" class="go">SELECT</button>
-        <button data-act="nextCar">▶</button>
-      </div>
-      <div class="hint">←→ car · ↑↓ colour · ENTER select · BACKSPACE back</div>
+      <div class="keys-hint">keys: ↑↓ district · ←→ circuit / run · Q E car · C colour · ENTER race</div>
     </div>
   </section>
 
@@ -124,7 +112,7 @@
     <div class="panel set-card">
       <div class="plate-head"><span>SETTINGS</span></div>
       <div class="set-list" id="setList"></div>
-      <div class="hint">↑↓ choose · ←→ change · BACKSPACE back</div>
+      <div class="btn-row"><button class="btn back" data-act="back">◀ BACK</button></div>
     </div>
   </section>
 
@@ -136,11 +124,11 @@
         <div><b>↑ / W</b> gas &nbsp; <b>↓ / S</b> brake &nbsp; <b>← →</b> steer &nbsp; <b>SPACE</b> nitro</div>
         <div><b>R</b> music on/off &nbsp; <b>ESC / P</b> pause &nbsp; <b>F</b> fullscreen</div>
         <p>Hold the gas and steer. Corners push you to the outside, harder the faster you go: lean into them early. Bumping cars costs a little speed (and sends them flying); the verge and the rails cost a lot.</p>
-        <p>Grab <b>coins</b>, <b>fuel cans</b> (run dry and you roll to a stop) and <b>nitro</b>. Tap SPACE to burn one nitro charge; you can hold three. Nitro in a tight bend will throw you wide.</p>
-        <p><b>CIRCUIT</b>: any district, three laps, twenty-four cars strung out along the road, and you are at the back, passing a few at a time. <b>THE RUN</b>: forty-eight cars across the whole city. At each knockout gate everyone below the cut-off is out. Your clock is what counts: finish fast. The tank is about 70% of a race and nitro burns fuel faster, so pick up the fuel row that comes round once a lap. Every eighth car you pass, and time spent on the wrong side at the road works, gives a nitro charge.</p>
+        <p>Drive through the <b>nitro</b> rows across the road. Tap SPACE to burn one nitro charge; you can hold three. Nitro in a tight bend will throw you wide.</p>
+        <p><b>CIRCUIT</b>: any district, three laps, twenty-four cars strung out along the road, and you are at the back, passing a few at a time. <b>THE RUN</b>: forty-eight cars across the whole city. At each knockout gate everyone below the cut-off is out. Your clock is what counts: finish fast. Every eighth car you pass, and time spent on the wrong side at the road works, gives a nitro charge.</p>
         <p>Gamepad works (RT gas, LT brake, B nitro). On a phone the gas is automatic: steer with the two buttons on the left, hold BRAKE and tap NITRO on the right.</p>
       </div>
-      <div class="hint">BACKSPACE back</div>
+      <div class="btn-row"><button class="btn back" data-act="back">◀ BACK</button></div>
     </div>
   </section>
 
@@ -158,7 +146,6 @@
       <div class="st-en" id="hStageEn"></div>
     </div>
     <div class="h-score">
-      <div class="row"><span class="lbl">COINS</span><span id="hScore">0</span></div>
       <div class="row small"><span class="lbl" id="hLapLbl">LAP</span><span id="hLap">0'00"00</span></div>
     </div>
     <div class="h-progress"><div class="bar" id="hProg"></div><div class="flag"></div></div>
@@ -170,7 +157,6 @@
     </div>
 
     <div class="h-hct" id="hHct">
-      <div class="fuel" id="hFuel"><span>FUEL</span><div class="fb"><b id="hFuelBar"></b></div></div>
       <div class="charges" id="hCharges"><span>NITRO</span><i></i><i></i><i></i></div>
     </div>
 
@@ -219,7 +205,7 @@
       <div class="over-en" id="overEn"></div>
       <div class="over-sub" id="overSub"></div>
       <div class="pc-tally" id="overTally"></div>
-      <div class="hint" id="overHint">ENTER race again · BACKSPACE map</div>
+      <div class="btn-row" id="overBtns"><button class="btn back" data-act="map">◀ MAP</button><button class="btn go" data-act="again">RACE AGAIN</button></div>
     </div>
   </section>
 </div>

@@ -31,8 +31,9 @@ import { audio } from '../audio/audio.js';
 import { music, TRACKS } from '../audio/music.js';
 import { clamp, lerp, damp, smoothstep, fx } from '../core/util.js';
 
-const MENU_STATES = ['title', 'map', 'garage', 'radio', 'settings', 'howto'];
-// behind these menus the showreel plays (the garage shows your own car instead)
+const MENU_STATES = ['title', 'map', 'radio', 'settings', 'howto'];
+const MENU_TRACK = 'sarobar';
+// behind these menus the showreel plays
 const ATTRACT_STATES = ['title', 'map', 'settings', 'howto'];
 
 export class Game {
@@ -102,7 +103,7 @@ export class Game {
       this.player.s = prev.s;
       this.player.x = prev.x;
     }
-    audio.setEngineKind(def.engine || (def.id === 'rosso' ? 'v12' : def.id === 'premio' ? 'i4' : def.id === 'cng' ? 'cng' : 'jet'));
+    audio.setEngineKind(def.engine);
   }
 
   resetWorld(stageId) {
@@ -156,7 +157,6 @@ export class Game {
     this.areaMusic(tr.stage, 1.5);
     this.hud.reset(kind);
     this.say.reset();
-    this._lowFuel = false;
     this.raceT = 0;
     this._warned = new Set();
     this.hud.setStage(tr.stage, kind);
@@ -206,9 +206,7 @@ export class Game {
   }
 
   onPickup(p) {
-    if (p.kind === 'coin') audio.tone('square', 1500 + (this.race.coins % 5) * 120, 0.07, 0.05, { lp: 5000 });
-    else if (p.kind === 'fuel') { audio.checkpoint(); this.hud.combo('FUEL', '+TANK'); this.say.say('fuel', 0.4); }
-    else if (p.kind === 'nitro') { audio.blip(1800); this.hud.combo('NITRO', '+1 CHARGE'); this.say.say('nitroPick', 0.35); }
+    if (p.kind === 'nitro') { audio.blip(1800); this.hud.combo('NITRO', '+1 CHARGE'); this.say.say('nitroPick', 0.35); }
   }
 
   onFinish(res) {
@@ -216,7 +214,7 @@ export class Game {
     const tr = P.track;
     if (res.out) {
       this.state = 'gameover';
-      this.hud.message(res.out === 'fuel' ? 'OUT OF FUEL' : 'KNOCKED OUT', 3);
+      this.hud.message('KNOCKED OUT', 3);
       this.say.say('out', 1, true);
       this.onRaceEnd?.(res, 2400);
       return;
@@ -241,14 +239,14 @@ export class Game {
     const st = this.state;
     // the showreel plays behind the menus while no race is in progress
     if (ATTRACT_STATES.includes(st) && this.kind == null) { if (!this.attract.on) this.attract.start(); }
-    else if (this.attract.on) { this.attract.stop(); if (st === 'garage') this.resetWorld('dhanmondi'); }
-    if (this.attract.on) this.attract.update(dt);
+    else if (this.attract.on) this.attract.stop();
+    if (this.attract.on) { this.attract.update(dt); this.menuMusic(); }
 
     let autopilot = null;
     let cinematic = false;
     if (MENU_STATES.includes(st)) {
       autopilot = { throttle: 0, steer: 0, brake: 1 };
-      cinematic = st === 'garage' ? 'garage' : 'title';
+      cinematic = 'title';
     } else if (st === 'countdown') {
       // the rolling start: hold the formation speed until GO
       autopilot = { throttle: P.v < 22 ? 1 : 0, steer: 0, brake: P.v > 26 ? 0.6 : 0 };
@@ -276,7 +274,6 @@ export class Game {
 
     // camera
     if (this.attract.on) this.attract.camera(dt);
-    else if (cinematic === 'garage') this.cam.update(dt, P, { cinematic: true, orbitSpeed: 0.25, radius: 7.5, height: 1.9, fov: 42 });
     else if (cinematic === 'title') this.titleCam(dt);
     else if (cinematic === 'ending') this.endingCam(dt);
     else this.cam.update(dt, P);
@@ -407,7 +404,6 @@ export class Game {
     // advice is rare: a few well-timed words, not a running commentary
     if (P.nitro >= 1 && !P.boosting && vr > 0.7 && R.position > 1 && Math.max(kAt(60), kAt(140), kAt(220)) < 0.0015) say.say('tipNitro', 0.6, false, 90);
     if (vr > 0.9 && !P.boosting && kAt(95) > 0.0075) say.say('tipBend', 0.5, false, 80);
-    if (P.fuel < 0.3) say.say('tipFuel', 1, false, 90);
     if (P.offroad > 0.85 && P.v > 35) this._grass = (this._grass || 0) + dt; else this._grass = 0;
     if (this._grass > 1.5) say.say('tipGrass', 1, false, 70);
     // the next knockout gate
@@ -486,8 +482,6 @@ export class Game {
     if (P.boosting && !this._wasBoost) { audio.nitro(); this.backfire = 0.15; }
     if (!P.boosting && this._wasBoost && P.nitro < 1) this.say.say('nitroOut', 0.5, false, 45);
     this._wasBoost = P.boosting;
-    if (P.fuel < 0.2 && !this._lowFuel) { this._lowFuel = true; this.hud.message('LOW FUEL', 1.6); this.say.say('fuelLow', 1, true); }
-    else if (P.fuel > 0.4) this._lowFuel = false;
   }
 
   // the Run crosses into the next district at the end of each track
@@ -562,7 +556,9 @@ export class Game {
     this.night = smoothstep(18.2, 19.2, hour) * (1 - smoothstep(29.3, 30.0, hour));
     this.scene.fog.color.copy(S.fog);
     // a touch of haze after dark gives the lamps something to glow in
-    const fogD = S.fogD * (1 + this.night * 0.22);
+    // heavy aerial perspective (art direction): the city steps back in layers that fade into the sky colour
+    // (eased off in rain and in strong daylight, where the fog is pale and would wash the frame out)
+    const fogD = S.fogD * (2.8 - this.weather.rain * 1.6 - Math.min(2, S.sunI) * 0.5) * (1 + this.night * 0.22);
     this.scene.fog.density = fogD;
     shared.uFogColor.value.copy(S.fog);
     shared.uFogDensity.value = fogD;
@@ -601,7 +597,7 @@ export class Game {
     M.lamp.color.setScalar(0.12 + S.lamps * 0.95);
     M.neon.color.setScalar(0.15 + S.glow * 0.9);
     M.always.color.setScalar(0.6 + this.night * 0.5);
-    this.R.bloom.strength = 0.28 + this.night * 0.14;
+    this.R.bloom.strength = 0.18 + this.night * 0.12;
     this.R.bloom.threshold = 0.92;
     this.R.renderer.toneMappingExposure = 1.0 + this.night * 0.08;
     const fd = this.world.farDisc;
@@ -709,13 +705,29 @@ export class Game {
     const st = P.track.stage;
     const quiet = this.state === 'paused';
     const river = st.L === 'river' || st.R === 'river' || st.farWater;
+    const busy = quiet ? 0 : clamp((st.lifeDensity ?? 0.08) / 0.1, 0.35, 1.2) * (this.attract.on ? 0.6 : 1) * (river ? 0.6 : 1);
     audio.update({
       rpm: P.rpm, throttle: P.throttle, speed: P.v, vmax: P.vmax, slip: P.slip, offroad: P.offroad, scrape: P.scrape,
       engineOn: !quiet && !this.attract.on, convertible: P.def.id === 'rosso' || P.def.id === 'miata',
       rain: this.weather.rain, city: river ? 0.5 : 1 - this.night * 0.3, river: river ? 1 : 0,
       siren: 0, rotor: 0, boost: P.boosting && this.state === 'race',
-      crowd: quiet ? 0 : 0.2, rival: quiet || !this.race.active ? null : this.race.nearest(),
+      crowd: quiet ? 0 : 0.25 + 0.35 * Math.min(1, busy), rival: quiet || !this.race.active || this.attract.on ? null : this.race.nearest(),
     });
+    // the street around you: horns, rickshaw bells, dogs, sellers calling and shop radios, more of them where the
+    // district is busy, fewer by the river and behind the menus
+    const A = (this.ambT ||= { horn: 1, bell: 3, bark: 9, hawker: 5, radio: 9 });
+    const side = () => (fx.next() < 0.5 ? -1 : 1) * (0.35 + fx.next() * 0.65);
+    if (busy > 0) {
+      for (const k in A) {
+        A[k] -= dt * busy;
+        if (A[k] > 0) continue;
+        if (k === 'horn') { A[k] = 0.8 + fx.next() * 2.4; const r = fx.next(); audio.horn(side(), 8 + fx.next() * 50, r < 0.6 ? 'car' : r < 0.8 ? 'bus' : r < 0.93 ? 'bike' : 'truck'); }
+        else if (k === 'bell') { A[k] = 2 + fx.next() * 4; audio.bell(side(), 0.04 + fx.next() * 0.05); }
+        else if (k === 'bark') { A[k] = 10 + fx.next() * 14; audio.bark(side(), 15 + fx.next() * 40); }
+        else if (k === 'hawker') { A[k] = 6 + fx.next() * 9; audio.hawker(side(), 6 + fx.next() * 20); }
+        else { A[k] = 12 + fx.next() * 14; audio.shopRadio(side(), 6 + fx.next() * 14); }
+      }
+    }
     // the city around you
     this.birdT = (this.birdT || 3) - dt;
     if (this.birdT <= 0) {
@@ -745,11 +757,11 @@ export class Game {
     if (this.kind === 'circuit') progress = (P.s - tr.gateS) / (tr.goalS - tr.gateS);
     else progress = (ROUTE.indexOf(tr.stageId) + clamp(P.s / tr.length, 0, 1)) / ROUTE.length;
     this.hud.update(dt, {
-      pos: R.position, field: R.field, near: R.neighbours(), coins: R.coins, raceT: R.time, par: R.par, lapT: this.kind === 'circuit' ? R.lapT : R.time,
+      pos: R.position, field: R.field, near: R.neighbours(), raceT: R.time, par: R.par, lapT: this.kind === 'circuit' ? R.lapT : R.time,
       speed: P.kmh, rpm: audio.rpmNorm ?? P.rpm, gearN: audio.vg ? audio.vg.gear : 0,
       progress: clamp(progress, 0, 1), stageId: tr.stage.district || tr.stageId,
       lap: Math.min(R.lap, tr.laps || 1), laps: tr.laps, ko: R.nextKnockout(),
-      fuel: P.fuel, nitro: P.nitro, boosting: P.boosting,
+      nitro: P.nitro, boosting: P.boosting,
       cross: this.crossInfo(),
     });
     this.hud.tags(this.state === 'race' || this.state === 'countdown' ? R.tags(this.R.camera) : []);
@@ -761,6 +773,13 @@ export class Game {
     const z = contraAt(P.track, P.s, 700);
     if (!z || P.wrongWay) return null;
     return { d: Math.max(0, z.s0 - P.s) };
+  }
+
+  // the menus have their own song (the night drive); a race fades it into the district's
+  menuMusic() {
+    if (this.musicOff || !audio.ready) return;
+    const i = TRACKS.findIndex((t) => t.id === MENU_TRACK);
+    if (music.index !== i || !music.playing) music.play(i, 2);
   }
 
   // ------------------------------------------------------------ music: each district has its own song

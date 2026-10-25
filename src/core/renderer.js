@@ -10,14 +10,14 @@ const FinalShader = {
     tDiffuse: { value: null },
     uTime: { value: 0 },
     uRes: { value: new THREE.Vector2(1, 1) },
-    uVignette: { value: 0.55 },
-    uGrain: { value: 0.03 },
-    uCA: { value: 0.0022 },
+    uVignette: { value: 0.3 },
+    uGrain: { value: 0 },
+    uCA: { value: 0 },
     uScan: { value: 0 },
     uBlur: { value: 0 },
     uFlash: { value: 0 },
     uFlashCol: { value: new THREE.Color(1, 1, 1) },
-    uSat: { value: 1.08 },
+    uSat: { value: 1.0 },
     uLift: { value: new THREE.Color(0.0, 0.0, 0.015) },
     uDim: { value: 0 },
   },
@@ -79,6 +79,45 @@ const SanitizeShader = {
     }`,
 };
 
+// Ink outlines (art direction): silhouettes and creases from the depth buffer, drawn on the nearer object and faded
+// out with distance so the far layers stay soft in the fog.
+const InkShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    tDepth: { value: null },
+    uTexel: { value: new THREE.Vector2(1, 1) },
+    uNear: { value: 0.3 },
+    uFar: { value: 6000 },
+    uInk: { value: 1 },
+  },
+  vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse, tDepth;
+    uniform vec2 uTexel;
+    uniform float uNear, uFar, uInk;
+    varying vec2 vUv;
+    float lin(vec2 uv){
+      float z = texture2D(tDepth, uv).x * 2.0 - 1.0;
+      return 2.0 * uNear * uFar / (uFar + uNear - z * (uFar - uNear));
+    }
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      float d = lin(vUv);
+      if (uInk <= 0.0 || d > 1500.0) { gl_FragColor = c; return; }
+      vec2 o = uTexel * 2.2;
+      float l = lin(vUv - vec2(o.x, 0.0)), r = lin(vUv + vec2(o.x, 0.0));
+      float u = lin(vUv + vec2(0.0, o.y)), b = lin(vUv - vec2(0.0, o.y));
+      // silhouette: a neighbour is much further away than this pixel
+      float sil = max(max(l, r), max(u, b)) - d;
+      float edge = smoothstep(0.03, 0.07, sil / d);
+      // crease: depth slope changes (box corners, ledges)
+      float crease = max(abs(l + r - 2.0 * d), abs(u + b - 2.0 * d)) / d;
+      edge = max(edge, smoothstep(0.008, 0.02, crease) * 0.85);
+      edge *= (1.0 - smoothstep(90.0, 420.0, d)) * uInk;
+      gl_FragColor = vec4(c.rgb * (1.0 - 0.9 * edge), c.a);
+    }`,
+};
+
 export const QUALITY = {
   low: { pr: 0.7, msaa: 0, bloom: true, bloomScale: 0.35 },
   medium: { pr: 1.0, msaa: 2, bloom: true, bloomScale: 0.5 },
@@ -110,9 +149,18 @@ export class Renderer {
     const size = new THREE.Vector2();
     this.renderer.getSize(size);
     const rt = new THREE.WebGLRenderTarget(Math.max(1, size.x), Math.max(1, size.y), { type: THREE.HalfFloatType, samples: this.q.msaa });
+    rt.depthTexture = new THREE.DepthTexture(Math.max(1, size.x), Math.max(1, size.y));
     this.composer = new EffectComposer(this.renderer, rt);
     this.renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(this.renderPass);
+    this.ink = new ShaderPass(InkShader);
+    // the scene was just drawn into the read buffer; its depth feeds the outline
+    const inkRender = this.ink.render.bind(this.ink);
+    this.ink.render = (renderer, writeBuffer, readBuffer, dt, mask) => {
+      this.ink.uniforms.tDepth.value = readBuffer.depthTexture;
+      inkRender(renderer, writeBuffer, readBuffer, dt, mask);
+    };
+    this.composer.addPass(this.ink);
     this.sanitize = new ShaderPass(SanitizeShader);
     this.composer.addPass(this.sanitize);
     this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.85, 0.55, 0.82);
@@ -136,6 +184,9 @@ export class Renderer {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.final.uniforms.uRes.value.set(Math.floor(w * pr), Math.floor(h * pr));
+    this.ink.uniforms.uTexel.value.set(1 / Math.max(1, w * pr), 1 / Math.max(1, h * pr));
+    this.ink.uniforms.uNear.value = this.camera.near;
+    this.ink.uniforms.uFar.value = this.camera.far;
   }
 
   render(dt) {

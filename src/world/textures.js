@@ -181,7 +181,7 @@ function drawApartment(style) {
           // door inside
           ctx.fillStyle = P.shade(style.trim || '#ddd', -0.4);
           ctx.fillRect(bx + bwid * 0.55, by + bh * 0.15, bwid * 0.3, bh * 0.85);
-          if (rng.chance(0.7)) laundry(ctx, bx + 2, by + bh * 0.18, bwid - 4, rng);
+          if (rng.chance(0.2)) laundry(ctx, bx + 2, by + bh * 0.18, bwid - 4, rng);
           if (e && rng.chance(0.45)) {
             const c = litColor(rng);
             const gg = e.createRadialGradient(bx + bwid / 2, by + 6, 2, bx + bwid / 2, by + bh / 2, bwid);
@@ -208,7 +208,7 @@ function drawApartment(style) {
             grill(ctx, bx, py, bwid, by + bh - py, style.grill || '#ddd', 0);
             if (e) grill(e, bx, py, bwid, by + bh - py, '#000', 0);
           }
-          if (rng.chance(0.5)) plant(ctx, bx + rng.range(8, bwid - 8), py, 12, rng);
+          if (rng.chance(0.15)) plant(ctx, bx + rng.range(8, bwid - 8), py, 12, rng);
           // slab edge
           ctx.fillStyle = P.shade(style.wall, -0.2);
           ctx.fillRect(x0, y0 + fh - 5, bw, 5);
@@ -264,7 +264,7 @@ function drawTiled(style) {
         ctx.fillStyle = '#c9ced1';
         ctx.fillRect(wx + ww / 2 - 1, wy, 2, wh);
         if (rng.chance(0.5)) emissiveWindow(e, wx, wy, ww, wh, rng, 'rgba(0,0,0,0.7)', 0);
-        if (rng.chance(0.3)) acUnit(ctx, wx + ww * 0.65, wy + wh + 6, bw * 0.24, bw * 0.15);
+        if (rng.chance(0.1)) acUnit(ctx, wx + ww * 0.65, wy + wh + 6, bw * 0.24, bw * 0.15);
       }
     }
     grain(ctx, 0, 0, w, h, 0.12);
@@ -572,7 +572,55 @@ function drawTin(style) {
 
 const GOODS = ['#e23b3b', '#f2c230', '#2a62c9', '#2ea36b', '#f07c2a', '#ffffff', '#9b4dca', '#e85d9d', '#20b2c9'];
 
+// stylised shopfronts: per shop a flat sign band, then either a plain shutter or a lit opening with a counter.
+// No goods on shelves, fake lettering, stripes or stains.
+function drawFlatShops(style) {
+  return (ctx, e, w, h) => {
+    const rng = new RNG('flat' + style.name);
+    const n = 4, bw = w / n;
+    const wall = P.mix(style.wall || '#cfc7b8', '#efebe4', 0.4);
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < n; i++) {
+      const x0 = i * bw, sx = x0 + 6, sw = bw - 12, sy = h * 0.32, sh = h * 0.68;
+      const sc = rng.pick(['#c81e2e', '#1f6fb5', '#1c8a4c', '#f2b81f', '#7b2f9e', '#e8561c', '#22222a']);
+      ctx.fillStyle = sc;
+      ctx.fillRect(x0 + 3, h * 0.07, bw - 6, h * 0.19);
+      if (e) {
+        e.fillStyle = P.shade(sc, 0.25);
+        e.fillRect(x0 + 3, h * 0.07, bw - 6, h * 0.19);
+      }
+      const open = style.kind === 'mall' || rng.chance(0.7);
+      if (!open) {
+        ctx.fillStyle = '#8d9296';
+        ctx.fillRect(sx, sy, sw, sh);
+        ctx.fillStyle = '#767b80';
+        ctx.fillRect(sx, sy + sh * 0.3, sw, 3);
+        ctx.fillRect(sx, sy + sh * 0.65, sw, 3);
+      } else {
+        ctx.fillStyle = '#2a2420';
+        ctx.fillRect(sx, sy, sw, sh);
+        ctx.fillStyle = '#5c4632';
+        ctx.fillRect(sx, sy + sh * 0.72, sw, sh * 0.28);
+        if (e) {
+          e.fillStyle = rng.chance(0.6) ? rng.pick(COOL) : rng.pick(WARM);
+          e.fillRect(sx, sy, sw, sh * 0.72);
+        }
+      }
+      if (rng.chance(style.awning ?? 0.5)) {
+        ctx.fillStyle = rng.pick(['#2f6fc0', '#d23b2f', '#1f8a4c', '#e8b21d', '#3b4fae']);
+        ctx.beginPath();
+        ctx.moveTo(x0, sy); ctx.lineTo(x0 + bw, sy); ctx.lineTo(x0 + bw - 4, sy + 14); ctx.lineTo(x0 + 4, sy + 14);
+        ctx.fill();
+      }
+      ctx.fillStyle = P.shade(wall, -0.15);
+      ctx.fillRect(x0, sy, 5, sh);
+    }
+  };
+}
+
 function drawShops(style) {
+  if (P.FLAT) return drawFlatShops(style);
   return (ctx, e, w, h) => {
     const rng = new RNG(style.name);
     const n = 4, bw = w / n;
@@ -710,9 +758,72 @@ export const SHOP_STYLES = [
   { name: 'shop_mall', kind: 'mall', wall: '#d8d6d2', awning: 0 },
 ];
 
+const MATERIAL_WALLS = new Set(['brick', 'apt_tile', 'apt_tile2']);
+
+// Stylised facades (art direction): a solid mass in one colour, window openings as darker shapes and lit windows as
+// the only light detail. Three shapes so districts still read differently: apartment blocks (square windows under a
+// slab line), old Dhaka (tall arched openings) and towers (ribbon glazing).
+export const FLAT_FACADES = P.FLAT;
+
+function flatKind(st) {
+  if (st.fn === drawOld || st.fn === drawBrick) return 'old';
+  if (st.fn === drawGlass || st.fn === drawOffice) return 'tower';
+  return 'apt';
+}
+
+function drawFlat(style, kind) {
+  return (ctx, e, w, h) => {
+    const rng = new RNG('flat' + style.name);
+    const wall = P.mix(style.wall || style.glass || '#cccccc', '#efebe4', kind === 'tower' ? 0.25 : 0.45);
+    const hole = P.mix(P.shade(wall, -0.62), '#1c2433', 0.35);
+    const litP = style.litP ?? (kind === 'tower' ? 0.35 : 0.3);
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 0, w, h);
+    const fh = h / 4, bw = w / 4;
+    const lit = (x, y, ww, hh, path) => {
+      if (!e || !rng.chance(litP)) return;
+      e.fillStyle = rng.pick(WARM);
+      if (path) { path(e); e.fill(); } else e.fillRect(x, y, ww, hh);
+    };
+    if (kind === 'tower') {
+      for (let f = 0; f < 4; f++) {
+        const y = f * fh + fh * 0.3, hh = fh * 0.52;
+        ctx.fillStyle = hole;
+        ctx.fillRect(0, y, w, hh);
+        for (let b = 0; b < 4; b++) lit(b * bw + 3, y + 2, bw - 6, hh - 4);
+      }
+      return;
+    }
+    // two openings per floor, not four: fewer, bigger shapes
+    const bw2 = w / 2;
+    for (let f = 0; f < 4; f++) {
+      const y0 = f * fh;
+      for (let b = 0; b < 2; b++) {
+        const x0 = b * bw2;
+        if (kind === 'old') {
+          const bw = bw2, ww = bw * 0.34, wx = x0 + (bw - ww) / 2, wy = y0 + fh * 0.22, wh = fh * 0.62, r = ww / 2;
+          const arch = (c) => { c.beginPath(); c.moveTo(wx, wy + wh); c.lineTo(wx, wy + r); c.arc(wx + r, wy + r, r, Math.PI, 0); c.lineTo(wx + ww, wy + wh); c.closePath(); };
+          ctx.fillStyle = hole;
+          arch(ctx); ctx.fill();
+          lit(0, 0, 0, 0, arch);
+        } else {
+          const ww = bw2 * 0.56, wh = fh * 0.44, wx = x0 + (bw2 - ww) / 2, wy = y0 + fh * 0.24;
+          ctx.fillStyle = hole;
+          ctx.fillRect(wx, wy, ww, wh);
+          lit(wx, wy, ww, wh);
+        }
+      }
+    }
+  };
+}
+
 export function buildFacadeAtlas() {
   const A = new Atlas(2048, { emissive: true, emissiveScale: 0.5 });
-  for (const st of FACADE_STYLES) A.add(st.name, 384, 384, st.fn(st));
+  // walls are painted pale and muted; the district palette (chunk tint) supplies the hue
+  for (const st of FACADE_STYLES) {
+    if (FLAT_FACADES && st.name !== 'tin') A.add(st.name, 384, 384, drawFlat(st, flatKind(st)));
+    else A.add(st.name, 384, 384, st.fn(st.wall && !MATERIAL_WALLS.has(st.name) ? { ...st, wall: P.mix(st.wall, '#efebe4', 0.5) } : st));
+  }
   for (const st of SHOP_STYLES) A.add(st.name, 384, 120, drawShops(st));
   // roof & misc concrete in the facade atlas too so buildings are 1 draw call
   A.add('roof', 128, 128, (ctx) => {
@@ -739,9 +850,9 @@ export function buildFacadeAtlas() {
   A.add('wall_poster', 384, 96, (ctx) => {
     const rng = new RNG('wallp');
     P.noiseFill(ctx, 0, 0, 384, 96, '#d6cbb5', rng, 0.08, 4);
-    // posters glued in layers
-    for (let i = 0; i < 26; i++) {
-      const pw = rng.range(18, 40), ph = rng.range(24, 44);
+    // posters glued in layers (stylised: a few big plain ones)
+    for (let i = 0; i < (P.FLAT ? 5 : 26); i++) {
+      const pw = rng.range(18, 40) * (P.FLAT ? 1.6 : 1), ph = rng.range(24, 44);
       const x = rng.range(-10, 384), y = rng.range(0, 60);
       ctx.save();
       ctx.translate(x, y);
@@ -749,7 +860,7 @@ export function buildFacadeAtlas() {
       ctx.fillStyle = rng.pick(['#f3eedc', '#f9de4a', '#ea5a5a', '#5ab0ea', '#ffffff', '#9fe08a']);
       ctx.fillRect(0, 0, pw, ph);
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      for (let k = 6; k < ph - 4; k += 6) ctx.fillRect(3, k, pw * rng.range(0.4, 0.9), 2);
+      if (!P.FLAT) for (let k = 6; k < ph - 4; k += 6) ctx.fillRect(3, k, pw * rng.range(0.4, 0.9), 2);
       ctx.restore();
     }
     // the eternal wall warning
@@ -766,6 +877,15 @@ function rickshawArt(ctx, w, h, rng, theme) {
   // background panel
   const bgs = [['#1d5fa8', '#0e2f5a'], ['#c8102e', '#5c0716'], ['#118a4a', '#063d20'], ['#e7a400', '#7a4700'], ['#5b2a86', '#25103a']];
   const [b1, b2] = rng.pick(bgs);
+  if (P.FLAT) {
+    // stylised: a flat panel with a darker border band and one big flower, nothing else
+    ctx.fillStyle = b2;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = b1;
+    ctx.fillRect(8, 8, w - 16, h - 16);
+    P.flower(ctx, w / 2, h / 2, h * 0.34, 6, [rng.pick(['#ffb000', '#ff2e88', '#ffffff', '#e4252b']), '#ffffff', '#ffd23a'], rng.range(0, 1));
+    return;
+  }
   ctx.fillStyle = P.linGrad(ctx, 0, 0, 0, h, [[0, b1], [1, b2]]);
   ctx.fillRect(0, 0, w, h);
   // scene
@@ -862,6 +982,14 @@ function hoodPattern(ctx, w, h, rng, base) {
   ctx.fillRect(0, 0, w, h);
   // concentric bands with dots, typical of rickshaw hoods
   const bands = ['#e4252b', '#ffb000', '#1fae4b', '#1d5fa8', '#ff2e88', '#ffffff'];
+  if (P.FLAT) {
+    // stylised: two plain bands, no dots or flowers
+    const c = rng.pick(bands);
+    ctx.fillStyle = c;
+    ctx.fillRect(0, h * 0.2, w, h * 0.12);
+    ctx.fillRect(0, h * 0.68, w, h * 0.12);
+    return;
+  }
   for (let y = 0; y < h; y += 22) {
     ctx.fillStyle = rng.pick(bands);
     ctx.fillRect(0, y, w, 6);

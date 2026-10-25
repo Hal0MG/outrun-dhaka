@@ -1,6 +1,7 @@
-// Live-synthesised soundtrack. Five original tracks: OutRun-style synth pop
-// built on Bengali scales (Yaman, Kafi, Bhairav, Khamaj) with tabla, bansuri
-// and a plucked ektara.
+// Live-synthesised soundtrack. Five original tracks of modern electronic music
+// (future house, moombahton, melodic techno, UK garage, liquid drum & bass) built
+// on Bengali ragas (Yaman, Kafi, Bhairav, Khamaj, Bilawal), with tabla, bansuri
+// and ektara as the hooks.
 
 import { audio } from './audio.js';
 
@@ -90,13 +91,13 @@ class Instruments {
 
   kick(t, v = 1) {
     const ctx = this.ctx;
-    // body: fast pitch drop, slightly driven
+    // body: fast pitch drop into a long sub tail, driven (a modern 909/808 hybrid)
     const o = ctx.createOscillator();
     o.type = 'sine';
-    o.frequency.setValueAtTime(190, t);
-    o.frequency.exponentialRampToValueAtTime(58, t + 0.05);
-    o.frequency.exponentialRampToValueAtTime(42, t + 0.3);
-    const g = this.g(t, 1.0 * v, 0.001, 0.38);
+    o.frequency.setValueAtTime(165, t);
+    o.frequency.exponentialRampToValueAtTime(54, t + 0.035);
+    o.frequency.exponentialRampToValueAtTime(44, t + 0.42);
+    const g = this.g(t, 1.05 * v, 0.001, 0.5);
     if (!this.kickShape) {
       this.kickShape = ctx.createWaveShaper();
       const c = new Float32Array(512);
@@ -105,7 +106,7 @@ class Instruments {
       this.kickShape.connect(this.drums);
     }
     o.connect(g).connect(this.kickShape);
-    o.start(t); o.stop(t + 0.45);
+    o.start(t); o.stop(t + 0.58);
     // click
     const n = this.nsrc(t, 0.012);
     const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 3800; f.Q.value = 0.9;
@@ -115,8 +116,8 @@ class Instruments {
     const d = this.duckG.gain;
     d.cancelScheduledValues(t);
     d.setValueAtTime(d.value, t);
-    d.linearRampToValueAtTime(0.42, t + 0.006);
-    d.setTargetAtTime(1, t + 0.03, 0.09);
+    d.linearRampToValueAtTime(0.28, t + 0.006);
+    d.setTargetAtTime(1, t + 0.04, 0.12);
   }
 
   snare(t, v = 1, big = true) {
@@ -128,12 +129,11 @@ class Instruments {
     const pan = ctx.createStereoPanner(); pan.pan.value = 0.06;
     n.connect(hp).connect(f).connect(g).connect(pan).connect(this.drums);
     if (big) {
-      // gated 80s reverb: send then hard cut
+      // a short plate, not the gated 80s room
       const sg = ctx.createGain();
-      sg.gain.setValueAtTime(1.0 * v, t);
-      sg.gain.setValueAtTime(1.0 * v, t + 0.17);
-      sg.gain.linearRampToValueAtTime(0.0001, t + 0.26);
+      sg.gain.value = 0.35 * v;
       g.connect(sg).connect(this.rev);
+      this.clap(t, 0.7 * v);
     }
     for (const [fr, a] of [[185, 0.34], [330, 0.14]]) {
       const o = ctx.createOscillator();
@@ -379,16 +379,113 @@ class Instruments {
     g.connect(this.rev);
   }
 
-  ride(t, v = 1) {
+  // sine sub: the low end under the reese and the stabs
+  sub(t, m, dur, v = 1) {
+    const o = this.ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = hz(m);
+    const g = this.g(t, 0.34 * v, 0.006, 0.08, Math.max(0.01, dur - 0.08));
+    o.connect(g).connect(this.out);
+    o.start(t); o.stop(t + dur + 0.15);
+  }
+
+  // reese: two detuned saws beating against each other through a moving lowpass (the modern mid-bass)
+  reese(t, m, dur, v = 1, open = 0.4) {
     const ctx = this.ctx;
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 6500; bp.Q.value = 2;
-    const g = this.g(t, 0.045 * v, 0.001, 0.35);
-    const pan = ctx.createStereoPanner(); pan.pan.value = 0.3;
-    bp.connect(g).connect(pan).connect(this.drums);
-    for (const fr of [512, 761, 1127]) {
-      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = fr * 3.1;
-      o.connect(bp); o.start(t); o.stop(t + 0.4);
+    const flt = ctx.createBiquadFilter();
+    flt.type = 'lowpass'; flt.Q.value = 3;
+    flt.frequency.setValueAtTime(280 + open * 1600, t);
+    flt.frequency.exponentialRampToValueAtTime(220 + open * 500, t + Math.max(0.08, dur));
+    const g = this.g(t, 0.13 * v, 0.004, 0.06, Math.max(0.01, dur - 0.06));
+    flt.connect(g).connect(this.out);
+    for (const det of [-16, 16, 0]) {
+      const o = ctx.createOscillator();
+      o.type = det ? 'sawtooth' : 'square';
+      o.frequency.value = hz(m);
+      o.detune.value = det;
+      o.connect(flt);
+      o.start(t); o.stop(t + dur + 0.1);
     }
+    this.sub(t, m - 12, dur, 0.8 * v);
+  }
+
+  // supersaw chord stab: wide, bright, short, pumped by the kick
+  stab(t, ms, dur, v = 1) {
+    const ctx = this.ctx;
+    const flt = ctx.createBiquadFilter();
+    flt.type = 'lowpass'; flt.Q.value = 2;
+    flt.frequency.setValueAtTime(5200, t);
+    flt.frequency.exponentialRampToValueAtTime(900, t + Math.min(0.3, dur + 0.1));
+    const g = this.g(t, 0.035 * v, 0.002, Math.max(0.08, dur));
+    flt.connect(g).connect(this.out);
+    g.connect(this.rev);
+    g.connect(this.delay);
+    for (const m of ms) {
+      for (const [det, p] of [[-18, -0.6], [0, 0], [18, 0.6]]) {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = hz(m);
+        o.detune.value = det;
+        const pn = ctx.createStereoPanner(); pn.pan.value = p;
+        o.connect(pn).connect(flt);
+        o.start(t); o.stop(t + dur + 0.4);
+      }
+    }
+  }
+
+  // saw pluck lead: snappy filter, into the delay (the modern replacement for the square lead)
+  pluckLead(t, m, dur, v = 1) {
+    const ctx = this.ctx;
+    const flt = ctx.createBiquadFilter();
+    flt.type = 'lowpass'; flt.Q.value = 4;
+    flt.frequency.setValueAtTime(5600, t);
+    flt.frequency.exponentialRampToValueAtTime(1100, t + 0.16);
+    const g = this.g(t, 0.085 * v, 0.003, Math.min(0.9, 0.12 + dur * 0.8));
+    flt.connect(g).connect(this.out);
+    g.connect(this.delay);
+    g.connect(this.rev);
+    for (const [det, ty] of [[-8, 'sawtooth'], [8, 'sawtooth'], [0, 'square']]) {
+      const o = ctx.createOscillator();
+      o.type = ty;
+      o.frequency.value = hz(m);
+      o.detune.value = det;
+      o.connect(flt);
+      o.start(t); o.stop(t + dur + 1);
+    }
+  }
+
+  // vocal chop: a saw through two formant band-passes (ah / oh / ee), with a little vibrato
+  vox(t, m, dur, v = 1, vowel = 'ah') {
+    const ctx = this.ctx;
+    const F = { ah: [800, 1150], oh: [450, 800], ee: [320, 2300] }[vowel] || [800, 1150];
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = hz(m);
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 5.5;
+    const lg = ctx.createGain(); lg.gain.value = hz(m) * 0.008;
+    lfo.connect(lg).connect(o.frequency);
+    const g = this.g(t, 0.12 * v, 0.01, 0.12, Math.max(0.01, dur - 0.1));
+    for (const [f, q, a] of [[F[0], 8, 1], [F[1], 10, 0.6]]) {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+      const ag = ctx.createGain(); ag.gain.value = a;
+      o.connect(bp).connect(ag).connect(g);
+    }
+    g.connect(this.out);
+    g.connect(this.delay);
+    g.connect(this.rev);
+    o.start(t); lfo.start(t); o.stop(t + dur + 0.3); lfo.stop(t + dur + 0.3);
+  }
+
+  // noise sweep down out of a drop into a breakdown
+  downlifter(t, dur, v = 1) {
+    const ctx = this.ctx;
+    const n = this.nsrc(t, dur);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2;
+    bp.frequency.setValueAtTime(8000, t);
+    bp.frequency.exponentialRampToValueAtTime(300, t + dur);
+    const g = this.g(t, 0.07 * v, 0.01, dur);
+    n.connect(bp).connect(g).connect(this.drums);
+    g.connect(this.rev);
   }
 
   // white-noise sweep up into a section change
@@ -420,8 +517,8 @@ class Instruments {
   // bright 16th arpeggio, ping-ponged through the delay
   arp(t, m, dur, v = 1, bright = 0.5) {
     const ctx = this.ctx;
-    const o = ctx.createOscillator(); o.type = 'square';
-    o.frequency.value = hz(m);
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.value = hz(m) * 0.997;
     const o2 = ctx.createOscillator(); o2.type = 'sawtooth';
     o2.frequency.value = hz(m) * 1.003;
     const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.Q.value = 4;
@@ -490,11 +587,16 @@ class Instruments {
 }
 
 // ------------------------------------------------------------ tracks
+// one 16th of drums. In a breakdown (I.part) the kick, snare and clap drop out and only the tops and tabla play;
+// 'roll' hats are doubled into 32nds
 function drums(I, t, step, pat, v = 1) {
+  const brk = I.part === 'break';
   for (const k in pat) {
     const p = pat[k];
     if (!p.includes(step)) continue;
+    if (brk && (k === 'kick' || k === 'snare' || k === 'clap')) continue;
     if (k === 'kick') I.kick(t, v);
+    else if (k === 'roll') { I.hat(t, v * 0.7); I.hat(t + I.sec32, v * 0.5); }
     else if (k === 'snare') I.snare(t, v);
     else if (k === 'clap') I.clap(t, v);
     else if (k === 'hat') I.hat(t, v * (step % 4 === 2 ? 1 : 0.6));
@@ -507,10 +609,14 @@ function drums(I, t, step, pat, v = 1) {
   }
 }
 
+// the chord for a bar (tracks with half: true hold each chord for two bars)
+const chordAt = (tr, c, bar) => c.chords[Math.floor(bar / (tr.half ? 2 : 1)) % c.chords.length];
+
 const range = (a, b, s = 1) => { const o = []; for (let i = a; i < b; i += s) o.push(i); return o; };
 
 export const TRACKS = [
   {
+    // future house: sub on the beat, a bouncing reese on the offbeats, syncopated supersaw stabs, vocal chops
     id: 'monsoon', title: 'Monsoon Shower', station: 'JHALMURI FM', freq: '88.0', bn: 'ঝালমুড়ি এফএম',
     bpm: 124, raga: 'Yaman',
     chords: [
@@ -520,25 +626,22 @@ export const TRACKS = [
       'G2 D3 F#3 B3', 'F#2 C#3 E3 A3', 'B2 F#3 A3 D4', 'E2 B2 D3 G#3',
     ],
     lead: 'A4:2 D5:2 E5:2 F#5:4 E5:2 D5:2 E5:2 | G#5:6 F#5:2 E5:4 B4:4 | A4:2 D5:2 E5:2 F#5:4 A5:2 G#5:2 F#5:2 | E5:8 -:4 C#5:2 D5:2 | F#5:3 E5:3 D5:2 C#5:4 B4:4 | D5:3 C#5:3 B4:2 G#4:4 B4:4 | F#5:4 D5:2 B4:2 A4:4 B4:2 D5:2 | E5:12 -:4 | B5:4 A5:2 F#5:2 -:2 D5:2 E5:2 F#5:2 | A5:4 F#5:2 E5:2 -:2 C#5:2 E5:4 | G5:4 F#5:2 E5:2 D5:2 B4:2 D5:4 | E5:10 D5:2 C#5:2 A4:2 | B5:4 A5:2 F#5:2 -:2 D6:2 C#6:2 B5:2 | A5:6 F#5:2 G#5:4 A5:4 | F#5:4 E5:2 D5:2 C#5:2 B4:2 C#5:2 D5:2 | G#5:12 -:4',
-    leadInst: 'lead',
+    leadInst: 'pluckLead',
     play(I, bar, step, t, ctx) {
       const b = bar % 16;
-      const chord = ctx.chords[b];
-      // bass: octave pump with a fifth
-      if (step % 2 === 0) {
-        const r = chord[0] - 12;
-        const seq = [0, 12, 0, 0, 12, 0, 7, 12];
-        I.bass(t, r + seq[step / 2], ctx.sec16 * 1.8, 0.9);
-      }
-      drums(I, t, step, { kick: [0, 4, 8, 12], snare: [4, 12], ohat: [2, 6, 10, 14], hat: [1, 3, 5, 7, 9, 11, 13, 15], conga: [3, 7, 11], na: b % 4 === 3 ? [13, 14, 15] : [] }, 0.9);
-      if (step === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 16, 0.8);
-      if (b >= 8 && step % 2 === 1) {
-        const tones = chord.slice(1);
-        I.pluck(t, tones[(step >> 1) % tones.length] + 24, ctx.sec16, 0.6);
-      }
+      const chord = chordAt(this, ctx, bar);
+      const r = chord[0] - 12;
+      const drop = I.part !== 'break';
+      if (step % 4 === 0) I.sub(t, r, ctx.sec16 * 1.6, 0.9);
+      if (step % 4 === 2 && drop) I.reese(t, r + 12, ctx.sec16 * 1.3, 0.75, 0.65);
+      drums(I, t, step, { kick: [0, 4, 8, 12], snare: [4, 12], hat: [2, 6, 10, 14], shaker: range(1, 16, 2), roll: b % 4 === 3 ? [13, 14, 15] : [], na: b % 4 === 3 ? [11] : [], tin: [7, 15] }, 0.9);
+      if (drop && (step === 3 || step === 6 || step === 11)) I.stab(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 1.2, 0.9);
+      if (!drop && step === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 16, 0.9);
+      if (drop && b >= 8 && (step === 0 || step === 10)) I.vox(t, chord[chord.length - 1] + 12, ctx.sec16 * 3, 0.8, 'ah');
     },
   },
   {
+    // moombahton: the dembow snare against four-on-the-floor, long reese notes, the bansuri on top, tabla in the gaps
     id: 'kalbaishakhi', title: 'Passing Kalbaishakhi', station: 'RADIO BRISHTI', freq: '91.6', bn: 'রেডিও বৃষ্টি',
     bpm: 100, raga: 'Kafi',
     chords: [
@@ -548,72 +651,73 @@ export const TRACKS = [
     lead: 'B4:6 D5:2 E5:8 | F#5:4 E5:2 D5:2 C#5:8 | B4:4 E5:4 G5:4 F#5:4 | E5:12 -:4 | G5:6 F#5:2 E5:4 D5:4 | F#5:8 D5:4 B4:4 | C5:4 E5:4 A5:6 G5:2 | F#5:12 D#5:4 | E5:4 G5:4 B5:8 | A5:6 G5:2 F#5:4 E5:4 | G5:4 F#5:4 E5:4 D5:4 | E5:12 -:4 | E5:4 D5:4 C5:4 B4:4 | D5:8 F#5:4 A5:4 | G5:6 F#5:2 E5:4 C5:4 | B4:12 -:4',
     leadInst: 'bansuri',
     play(I, bar, step, t, ctx) {
-      const b = bar % 8;
-      const chord = ctx.chords[b];
+      const chord = chordAt(this, ctx, bar);
       const r = chord[0] - 12;
-      const bl = { 0: [0, 6], 6: [7, 4], 10: [12, 4], 14: [b % 2 ? 10 : 11, 2] };
-      if (bl[step]) I.bass(t, r + bl[step][0], ctx.sec16 * bl[step][1], 0.85, 'round');
-      drums(I, t, step, { kick: [0, 10], snare: [8], shaker: range(0, 16), ge: [6, 14], tin: [3, 11], na: bar % 4 === 3 ? [12, 13, 15] : [4] }, 0.85);
-      if (step === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 16, 0.9);
-      if (step === 2 || step === 10) for (const m of chord.slice(1, 4)) I.pluck(t, m + 12, ctx.sec16 * 3, 0.5);
+      const drop = I.part !== 'break';
+      if (step === 0) I.reese(t, r, ctx.sec16 * 6, 0.9, 0.3);
+      if (step === 8) I.reese(t, r + (bar % 2 ? 7 : 0), ctx.sec16 * 6, 0.9, 0.5);
+      drums(I, t, step, { kick: [0, 4, 8, 12], clap: [3, 6, 11, 14], hat: range(0, 16, 2), ge: [6, 14], tin: [3, 11], na: bar % 4 === 3 ? [12, 13, 15] : [9] }, 0.85);
+      if (!drop && step === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 16, 0.9);
+      if (drop && (step === 2 || step === 10)) I.stab(t, chord.slice(1, 4).map((m) => m + 12), ctx.sec16 * 1.5, 0.7);
+      if (drop && bar % 2 === 1 && step === 12) I.vox(t, chord[2] + 12, ctx.sec16 * 2, 0.7, 'oh');
     },
   },
   {
+    // melodic techno in Bhairav: a rolling reese on every off-16th that opens up over the phrase, offbeat open hats
     id: 'buriganga', title: 'Buriganga Wave', station: 'BURIGANGA WAVE', freq: '94.4', bn: 'বুড়িগঙ্গা ওয়েভ',
-    bpm: 112, raga: 'Bhairav',
+    bpm: 126, raga: 'Bhairav',
     chords: ['C3 E3 G3 B3', 'Db3 F3 Ab3 C4', 'F2 C3 F3 Ab3', 'G2 D3 F3 Ab3 B3', 'C3 E3 G3 B3', 'Ab2 C3 Eb3 G3', 'Db3 F3 Ab3 C4', 'G2 B2 D3 F3'],
     lead: 'C5:4 Db5:2 E5:2 F5:4 E5:2 Db5:2 | C5:6 Db5:2 F5:4 Ab5:4 | G5:4 F5:2 E5:2 F5:4 Ab5:2 G5:2 | F5:2 E5:2 Db5:4 B4:8 | C5:2 E5:2 G5:4 Ab5:4 G5:4 | C6:6 B5:2 Ab5:4 G5:4 | F5:4 Ab5:2 G5:2 F5:2 E5:2 Db5:4 | C5:12 -:4',
     leadInst: 'lead',
     leadType: 'sawtooth',
     play(I, bar, step, t, ctx) {
-      const b = bar % 8;
-      const chord = ctx.chords[b];
+      const chord = chordAt(this, ctx, bar);
       const r = chord[0] - 12;
-      const pat = [0, 0, 12, 0, 0, 0, 12, 0, 0, 0, 12, 0, 0, 7, 12, 0];
-      I.bass(t, r + pat[step], ctx.sec16 * 0.9, 0.75);
-      drums(I, t, step, { kick: [0, 4, 8, 12], snare: [4, 12], hat: range(0, 16), ohat: [14], na: bar % 4 === 3 ? [9, 10, 11, 13, 14, 15] : [], ge: bar % 2 ? [7] : [] }, 0.9);
-      if (step === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 16, 0.7);
-      if (bar >= 8 && step % 1 === 0) {
-        const tones = chord.slice(1).concat(chord.slice(1).map((m) => m + 12));
-        I.pluck(t, tones[step % tones.length] + 12, ctx.sec16 * 0.8, 0.45);
-      }
+      if (step % 4 !== 0) I.reese(t, r, ctx.sec16 * 0.8, 0.7, 0.15 + (bar % 8) / 14);
+      drums(I, t, step, { kick: [0, 4, 8, 12], clap: [4, 12], ohat: [2, 6, 10, 14], hat: range(1, 16, 2), na: bar % 4 === 3 ? [9, 10, 11, 13, 14, 15] : [], ge: bar % 2 ? [7] : [] }, 0.9);
+      if (step === 0 && bar % 2 === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 32, 0.7);
     },
   },
   {
+    // UK garage two-step at 132 with swing: skippy kick, shuffled hats, the ektara riff, "oh" vocal chops
     id: 'baul', title: 'Baul Drive', station: 'BAUL FM', freq: '101.1', bn: 'বাউল এফএম',
-    bpm: 120, raga: 'Khamaj',
+    bpm: 132, raga: 'Khamaj', swing: 0.2,
     chords: ['G2 D3 G3 B3', 'F2 C3 F3 A3', 'C3 G3 C4 E4', 'G2 D3 G3 B3', 'G2 D3 G3 B3', 'F2 C3 F3 A3', 'E2 B2 E3 G3', 'D2 A2 D3 F#3'],
     lead: 'D5:4 B4:2 D5:2 E5:4 D5:4 | C5:4 A4:2 C5:2 D5:4 C5:4 | E5:4 G5:4 E5:2 D5:2 C5:4 | B4:8 G4:4 -:4 | D5:2 D5:2 E5:2 G5:2 A5:4 G5:4 | F5:4 E5:2 D5:2 C5:4 A4:4 | B4:4 D5:2 E5:2 G5:4 E5:4 | D5:12 -:4',
     leadInst: 'bansuri',
     play(I, bar, step, t, ctx) {
-      const b = bar % 8;
-      const chord = ctx.chords[b];
+      const chord = chordAt(this, ctx, bar);
       const r = chord[0] - 12;
-      if (step % 4 === 0) I.bass(t, r + (step === 8 ? 7 : 0), ctx.sec16 * 3, 0.8, 'round');
-      if (step % 4 === 2) I.bass(t, r + 12, ctx.sec16 * 1.5, 0.5, 'round');
+      const drop = I.part !== 'break';
+      const bl = { 0: [0, 3], 6: [0, 2], 10: [7, 3], 14: [12, 1] };
+      if (bl[step]) I.reese(t, r + bl[step][0], ctx.sec16 * bl[step][1], 0.85, 0.45);
       // ektara riff with squeezes
       const ek = { 0: [55, 0], 2: [55, 0], 3: [55, 2], 6: [62, 0], 8: [55, 0], 10: [53, 2], 12: [55, 0], 14: [55, 3] };
-      if (ek[step]) I.ektara(t, ek[step][0] + 12, ctx.sec16 * 2, 0.9, ek[step][1]);
-      drums(I, t, step, { kick: [0, 4, 8, 12], clap: [4, 12], hat: [2, 6, 10, 14], ge: [0, 6, 8], na: [3, 11, 14] }, 0.85);
-      if (step === 0 && bar % 2 === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 32, 0.5);
+      if (ek[step]) I.ektara(t, ek[step][0] + 12, ctx.sec16 * 2, 0.85, ek[step][1]);
+      drums(I, t, step, { kick: [0, 10], snare: [4, 12], hat: [2, 6, 10, 14], shaker: range(0, 16), ge: [7], na: [3, 11, 15] }, 0.85);
+      if (drop && bar % 2 === 0 && (step === 2 || step === 5)) I.vox(t, chord[3] + 12, ctx.sec16 * 1.5, 0.75, 'oh');
+      if (step === 0 && bar % 2 === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 32, drop ? 0.45 : 0.8);
     },
   },
   {
+    // liquid drum & bass at 172: two-step breakbeat, long sub notes, lush pads and electric-piano plucks; the chords
+    // and the bansuri melody move at half speed (each takes two bars), so it still sails like a night drive
     id: 'sarobar', title: 'Last Wave at Sarobar', station: 'SAROBAR NIGHTS', freq: '104.2', bn: 'সরোবর নাইটস',
-    bpm: 84, raga: 'Bilawal',
+    bpm: 172, raga: 'Bilawal', half: true, leadScale: 2,
     chords: ['D3 A3 C#4 F#4', 'B2 F#3 A3 D4 C#4', 'G2 D3 F#3 B3', 'A2 E3 F#3 C#4', 'F#2 C#3 E3 A3', 'B2 F#3 A3 D4', 'E2 B2 D3 F#3 G3', 'A2 E3 G3 C#4'],
     lead: 'F#5:8 E5:4 D5:4 | C#5:8 D5:4 E5:4 | D5:6 B4:2 A4:8 | -:16 | A5:8 G5:4 F#5:4 | F#5:6 E5:2 D5:8 | E5:4 F#5:4 G5:4 B5:4 | A5:16',
     leadInst: 'bansuri',
     play(I, bar, step, t, ctx) {
-      const b = bar % 8;
-      const chord = ctx.chords[b];
-      if (step === 0) I.bass(t, chord[0] - 12, ctx.sec16 * 14, 0.6, 'round');
-      if (step === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 16, 1.0);
+      const chord = chordAt(this, ctx, bar);
+      const r = chord[0] - 12;
+      if (step === 0) I.sub(t, r, ctx.sec16 * 10, 0.85);
+      if (step === 10) I.sub(t, r + (bar % 2 ? 7 : 12), ctx.sec16 * 5, 0.7);
+      if (step === 0 && bar % 2 === 0) I.pad(t, chord.slice(1).map((m) => m + 12), ctx.sec16 * 32, 1.0);
       if (step % 2 === 0) {
         const tones = chord.slice(1);
-        I.pluck(t, tones[(step >> 1) % tones.length] + 12 + (step >= 8 ? 12 : 0), ctx.sec16 * 2, 0.45);
+        I.pluck(t, tones[(step >> 1) % tones.length] + 12 + (step >= 8 ? 12 : 0), ctx.sec16 * 2, 0.4);
       }
-      drums(I, t, step, { kick: bar % 2 ? [0] : [0, 10], shaker: [2, 6, 10, 14], tin: [12] }, 0.6);
+      drums(I, t, step, { kick: [0, 10], snare: [4, 12], hat: [2, 6, 10, 14], shaker: range(0, 16), roll: bar % 4 === 3 ? [14, 15] : [], tin: [7, 15] }, 0.75);
     },
   },
 ];
@@ -663,6 +767,9 @@ class Deck {
   }
 }
 
+// the 32-bar form every track shares: drop (bars 0-11), breakdown (12-15), drop (16-27), breakdown (28-31)
+const isBreak = (b32) => (b32 >= 12 && b32 < 16) || b32 >= 28;
+
 export class Music {
   constructor() {
     this.I = null;
@@ -698,25 +805,27 @@ export class Music {
     this.playing = false;
   }
 
-  // shared arrangement: 32-bar form with a breakdown, builds and drops
+  // shared arrangement over the 32-bar form: a downlifter into each breakdown, then a riser and an accelerating
+  // snare roll in its last bar, and a crash and sub impact on the drop; arps and a counter-line fill the drops
   layers(d, t) {
     const I = this.I, c = d.ctx, tr = d.track;
     const bar = d.bar, step = d.step;
     const b32 = bar % 32;
-    const slow = tr.bpm < 95;
-    const chord = c.chords[bar % c.chords.length];
-    const drop = b32 < 12 || (b32 >= 16 && b32 < 28);
-    if (step === 0 && b32 % 8 === 0 && bar > 0) { I.crash(t, 0.9); if (b32 === 0 || b32 === 16) I.impact(t, slow ? 0.6 : 1); }
-    if (b32 % 8 === 7 && step === 0) I.riser(t, c.sec16 * 16, slow ? 0.6 : 1);
-    if (!slow && b32 % 8 === 7 && step >= 10) I.snare(t, 0.35 + (step - 10) * 0.08, false);
-    if (!slow && drop && step % 4 === 2) I.ride(t, 0.8);
-    if (bar >= 4 && (drop || slow)) {
+    const chord = chordAt(tr, c, bar);
+    const brk = isBreak(b32);
+    if (step === 0 && (b32 === 0 || b32 === 16) && bar > 0) { I.crash(t, 0.9); I.impact(t, 1); }
+    if (step === 0 && (b32 === 12 || b32 === 28)) I.downlifter(t, c.sec16 * 16, 0.9);
+    if (b32 === 15 || b32 === 31) {
+      if (step === 0) I.riser(t, c.sec16 * 16, 1);
+      const every = step < 8 ? 4 : step < 12 ? 2 : 1;
+      if (step % every === 0) I.snare(t, 0.3 + step * 0.04, false);
+    }
+    if (bar >= 4 && !brk) {
       const tones = chord.slice(1);
       const up = tones.concat(tones.map((m) => m + 12));
-      const seq = slow ? step % 2 === 0 : true;
-      if (seq) I.arp(t, up[(step >> (slow ? 1 : 0)) % up.length] + 12, c.sec16 * 0.9, slow ? 0.6 : 0.8, (b32 % 8) / 8);
+      if (step % 2 === 0) I.arp(t, up[(step >> 1) % up.length] + 12, c.sec16 * 0.9, 0.55, (b32 % 8) / 8);
     }
-    if (b32 >= 16 && step % 8 === 0) I.counter(t, chord[2] + 12, c.sec16 * 7, 0.9);
+    if (b32 >= 16 && !brk && step % 8 === 0) I.counter(t, chord[2] + 12, c.sec16 * 7, 0.9);
   }
 
   tick() {
@@ -730,18 +839,24 @@ export class Music {
       I.drums = d.drums;
       I.kickShape = d.kickShape;
       const tr = d.track;
+      I.sec32 = d.ctx.sec16 / 2;
+      const ls = tr.leadScale || 1;
       while (d.nextT < ac.currentTime + 0.14) {
         const t = d.nextT;
         const sw = tr.swing && d.step % 2 === 1 ? d.ctx.sec16 * tr.swing : 0;
+        I.part = isBreak(d.bar % 32) ? 'break' : 'drop';
         try {
           tr.play(I, d.bar, d.step, t + sw, d.ctx);
           this.layers(d, t + sw);
-          const lb = d.ctx.lead[d.bar % d.ctx.lead.length];
+          // the melody, stretched over ls bars per written bar on the half-time tracks
+          const lb = d.ctx.lead[Math.floor(d.bar / ls) % d.ctx.lead.length];
+          const at = (d.bar % ls) * 16 + d.step;
           for (const n of lb) {
-            if (n.step === d.step && n.m != null) {
-              const dur = n.len * d.ctx.sec16;
+            if (n.step * ls === at && n.m != null) {
+              const dur = n.len * ls * d.ctx.sec16;
               if (tr.leadInst === 'bansuri') I.bansuri(t, n.m, dur, 1, d.prevNote);
               else if (tr.leadInst === 'pluck') I.pluck(t, n.m, dur, 1);
+              else if (tr.leadInst === 'pluckLead') I.pluckLead(t, n.m, dur, 1);
               else I.lead(t, n.m, dur, 1, n.len <= 2 ? null : d.prevNote, tr.leadType || 'square');
               d.prevNote = n.m;
             }

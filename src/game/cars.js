@@ -23,15 +23,15 @@ const PACK = {
 const TOP = 275, ACCEL = 1.0, GRIP = 0.92;
 const car = (id, name, width, length, colors, extra = {}) => ({ id, name, top: TOP, accel: ACCEL, grip: GRIP, width, length, colors, ...extra });
 export const CARS = [
-  car('rosso', 'ROADSTER', 1.98, 4.5, ['#c8102e', '#f2f0ea', '#111318', '#ffb000', '#1d5fa8']),
-  car('premio', 'SEDAN', 1.74, 4.6, ['#f2f2ee', '#b9bcc0', '#1c1c1e', '#7a1d22', '#2b4a6b']),
-  car('supra', 'SPORTS COUPE', 1.81, 4.52, ['#ff6a00', '#e8e4da', '#111318', '#1d4fd8', '#c8102e'], { engine: 'i6' }),
-  car('skyline', 'MUSCLE CAR', 1.79, 4.6, ['#1d4fd8', '#c0c4cc', '#111318', '#f2f2ee', '#6b6f78'], { engine: 'rb' }),
-  car('celica', 'MUSCLE COUPE', 1.74, 4.34, ['#ffd200', '#c8102e', '#f2f2ee', '#111318', '#1d4fd8'], { engine: 'i4t' }),
-  car('chaser', 'EXECUTIVE SEDAN', 1.76, 4.72, ['#f2f2ee', '#111318', '#1d4fd8', '#6b6f78', '#2f8f4e'], { engine: 'i6' }),
-  car('miata', 'COMPACT ROADSTER', 1.73, 3.92, ['#c8102e', '#f2f2ee', '#111318', '#ffb000', '#22d3ee'], { engine: 'i4t' }),
-  car('cng', 'AUTO', 1.4, 2.7, ['#1f8a3c', '#ffb000', '#c8102e', '#1d5fa8', '#111318']),
-  car('rickshaw', 'RICKSHAW', 1.15, 2.6, ['#c8102e', '#1d5fa8', '#118a4a', '#ffb000', '#7b2f9e'], { locked: true }),
+  car('rosso', 'ROADSTER', 1.98, 4.5, ['#c8102e', '#f2f0ea', '#111318', '#ffb000', '#1d5fa8'], { engine: 'v12', motor: 'V12' }),
+  car('premio', 'SEDAN', 1.74, 4.6, ['#f2f2ee', '#b9bcc0', '#1c1c1e', '#7a1d22', '#2b4a6b'], { engine: 'i4', motor: '1.5 FOUR · AUTOMATIC' }),
+  car('supra', 'SPORTS COUPE', 1.81, 4.52, ['#ff6a00', '#e8e4da', '#111318', '#1d4fd8', '#c8102e'], { engine: '2jz', motor: 'TWIN-TURBO STRAIGHT SIX' }),
+  car('skyline', 'MUSCLE CAR', 1.79, 4.6, ['#1d4fd8', '#c0c4cc', '#111318', '#f2f2ee', '#6b6f78'], { engine: 'rb26', motor: 'TWIN-TURBO SIX · 8000 RPM' }),
+  car('celica', 'MUSCLE COUPE', 1.74, 4.34, ['#ffd200', '#c8102e', '#f2f2ee', '#111318', '#1d4fd8'], { engine: '3sgte', motor: 'TURBO FOUR' }),
+  car('chaser', 'EXECUTIVE SEDAN', 1.76, 4.72, ['#f2f2ee', '#111318', '#1d4fd8', '#6b6f78', '#2f8f4e'], { engine: '1jz', motor: 'TURBO STRAIGHT SIX' }),
+  car('miata', 'COMPACT ROADSTER', 1.73, 3.92, ['#c8102e', '#f2f2ee', '#111318', '#ffb000', '#22d3ee'], { engine: 'bp', motor: '1.8 FOUR · NO TURBO' }),
+  car('cng', 'AUTO', 1.4, 2.7, ['#1f8a3c', '#ffb000', '#c8102e', '#1d5fa8', '#111318'], { engine: 'cng', motor: 'TWO-STROKE SINGLE' }),
+  car('rickshaw', 'RICKSHAW', 1.15, 2.6, ['#c8102e', '#1d5fa8', '#118a4a', '#ffb000', '#7b2f9e'], { engine: 'jet', motor: 'V8 · JET', locked: true }),
 ];
 
 // ------------------------------------------------------------ environment map from the sky colours

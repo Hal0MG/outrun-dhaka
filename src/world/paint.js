@@ -1,8 +1,9 @@
 // Canvas painting toolkit. All textures in the game are painted at boot with
 // these helpers: grimy concrete, rickshaw-art flowers, hand lettering, etc.
 
-export const FONT_BN = '"Galada", "Hind Siliguri", "Nirmala UI", "Vrinda", sans-serif';
-export const FONT_BN_SANS = '"Hind Siliguri", "Nirmala UI", "Vrinda", sans-serif';
+// in-world Bangla lettering: Atma (rounded, hand-drawn) for display, Mina (geometric) for plates and small print
+export const FONT_BN = '"Atma", "Mina", "Nirmala UI", "Vrinda", sans-serif';
+export const FONT_BN_SANS = '"Mina", "Nirmala UI", "Vrinda", sans-serif';
 export const FONT_SIGN = '"Bungee", "Impact", "Arial Black", sans-serif';
 
 export function hexToRgb(hex) {
@@ -28,10 +29,18 @@ export function rgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+// Art direction: surfaces are flat colour. Noise, blotches, stains and grain are switched off here, in one place,
+// rather than at every call site; set GRIME back to 1 to bring the weathered look back.
+export const GRIME = 0;
+// stylised shapes: flat facades with lit windows, trees as a few big inked lobes (see docs/art-direction.md)
+export const FLAT = true;
+
 // Fill with blotchy noise to break up flat colours
 export function noiseFill(ctx, x, y, w, h, base, rng, amt = 0.08, cell = 3) {
   ctx.fillStyle = base;
   ctx.fillRect(x, y, w, h);
+  amt *= GRIME;
+  if (!amt) return;
   for (let yy = 0; yy < h; yy += cell) {
     for (let xx = 0; xx < w; xx += cell) {
       const v = (rng.next() - 0.5) * amt;
@@ -43,6 +52,7 @@ export function noiseFill(ctx, x, y, w, h, base, rng, amt = 0.08, cell = 3) {
 
 // soft large blotches (water damage, sun fade)
 export function blotches(ctx, x, y, w, h, rng, n = 10, color = 'rgba(0,0,0,0.08)', rmin = 10, rmax = 50) {
+  if (!GRIME) return;
   ctx.save();
   for (let i = 0; i < n; i++) {
     const cx = x + rng.next() * w, cy = y + rng.next() * h, r = rng.range(rmin, rmax);
@@ -57,6 +67,7 @@ export function blotches(ctx, x, y, w, h, rng, n = 10, color = 'rgba(0,0,0,0.08)
 
 // monsoon stains: dark streaks running down from ledges
 export function streaks(ctx, x, y, w, h, rng, n = 20, alpha = 0.18) {
+  if (!GRIME) return;
   ctx.save();
   for (let i = 0; i < n; i++) {
     const sx = x + rng.next() * w;
