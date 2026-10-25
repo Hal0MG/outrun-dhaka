@@ -11,7 +11,8 @@ import { shared } from '../world/materials.js';
 const MAX_PER_MODEL = 24;
 
 // Cars are drawn with their own copy of the world's materials, with a night lift: a glow in the car's own colour
-// plus a little cold light, so a dark car in a dark street is still a car and not a hole in the road.
+// plus a little cold light, so a dark car in a dark street is still a car and not a hole in the road. Only dark
+// paints get the colour glow: on white, yellow or pastel cars it pushed them past the bloom threshold and they shone.
 function carMaterial(src, lift) {
   const m = src.clone();
   m.onBeforeCompile = (shader) => {
@@ -19,7 +20,7 @@ function carMaterial(src, lift) {
     shader.uniforms.uCarLift = lift;
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', ['#include <common>', 'uniform float uCarLift;'].join('\n'))
-      .replace(/vec3 outgoingLight = /, ['reflectedLight.indirectDiffuse += (diffuseColor.rgb * 0.8 + vec3(0.05, 0.055, 0.07)) * uCarLift;', '\tvec3 outgoingLight = '].join('\n'));
+      .replace(/vec3 outgoingLight = /, ['float carLum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));', 'reflectedLight.indirectDiffuse += (diffuseColor.rgb * 0.8 * (1.0 - smoothstep(0.12, 0.45, carLum)) + vec3(0.05, 0.055, 0.07)) * uCarLift;', '\tvec3 outgoingLight = '].join('\n'));
   };
   m.customProgramCacheKey = () => 'car' + (src.customProgramCacheKey ? src.customProgramCacheKey() : '');
   return m;

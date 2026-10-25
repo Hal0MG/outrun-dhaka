@@ -244,5 +244,27 @@ export function playerParts(name, fit) {
     wheels: car.wheels.map((w) => ({ cx: w.cx, cy: w.cy, cz: w.cz, r: w.r, front: w.front, geo: geoFrom(w.tris, () => true, W) })),
     dims: car.dims,
   };
+  // the pack's cars are left-hand drive; Bangladesh drives on the left, so the player's car is mirrored into a
+  // right-hand-drive one and the steering wheel sits in front of the driver (the plates are separate meshes)
+  for (const k of ['paint', 'rest', 'head', 'tail']) if (parts[k]) mirrorX(parts[k]);
+  for (const w of parts.wheels) { w.cx = -w.cx; mirrorX(w.geo); }
   return parts;
+}
+
+// mirror a geometry across x and flip its triangle winding so the faces still point outward
+function mirrorX(g) {
+  g.scale(-1, 1, 1);
+  if (g.index) {
+    const ix = g.index.array;
+    for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; }
+    g.index.needsUpdate = true;
+    return;
+  }
+  for (const a of Object.values(g.attributes)) {
+    const n = a.itemSize, arr = a.array;
+    for (let i = 0; i < a.count; i += 3) {
+      for (let c = 0; c < n; c++) { const t = arr[(i + 1) * n + c]; arr[(i + 1) * n + c] = arr[(i + 2) * n + c]; arr[(i + 2) * n + c] = t; }
+    }
+    a.needsUpdate = true;
+  }
 }

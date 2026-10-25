@@ -101,7 +101,9 @@ export class Race {
         // everyone is slower than your top speed and the pace falls down the field. The leader is the one to beat: on
         // a circuit they finish about when a very good run does (a clean run is gold, a better one wins), so you
         // do catch them with nitro and a clean line; the cars behind are passable a few at a time
-        skill: (kind === 'run' ? 0.93 : 0.88) - 0.06 * (i / n), bias: ((i * 7) % 5 - 2) * 0.32, dodge: null, dodgeT: 0,
+        // (the Run is five minutes, not one lap: its leader runs nearly flat out, or a good driver is first by half way,
+        // while the back of the field keeps its old pace so the first knockouts stay passable)
+        skill: kind === 'run' ? 0.9625 - 0.0925 * (i / n) : 0.88 - 0.06 * (i / n), bias: ((i * 7) % 5 - 2) * 0.32, dodge: null, dodgeT: 0,
         w: md.wid / 2, l: md.len / 2,
         car: { model: d.model, md, track: null, s: 0, x: 0, yaw: 0, roll: 0, color: new THREE.Color(d.color), brake: false, rival: true },
       };
@@ -291,8 +293,9 @@ export class Race {
       if (kA > 1e-4) vT = Math.min(vT, Math.sqrt((P.steerGrip * 0.93) / (kA * CORNER_K)));
       // only a loose leash: a leader miles up the road eases a little. Nobody speeds up to catch you, so the field
       // you leave behind stays behind and the field ahead stays spread out.
+      // (except the Run's front five: they start far up the road on purpose and must not wait for you)
       const gap = r.G - PG;
-      if (gap > 1200) vT *= Math.max(0.97, 1 - (gap - 1200) / 8000);
+      if (gap > 1200 && !(this.kind === 'run' && r.i < 5)) vT *= Math.max(0.97, 1 - (gap - 1200) / 8000);
       // rubber band: a car right behind you pushes to hold you off, up to a few percent over its normal pace
       if (go && gap < 0 && gap > -200) vT *= 1 + 0.04 * (1 + gap / 200);
       // mistakes: in a bend a driver now and then runs wide and lifts for a second
