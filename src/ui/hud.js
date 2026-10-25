@@ -12,7 +12,6 @@ export class HUD {
     this.el = $('hud');
     this.time = $('hTime');
     this.timeBox = $('hTimeBox');
-    this.score = $('hScore');
     this.lap = $('hLap');
     this.lapLbl = $('hLapLbl');
     this.speed = $('hSpeed');
@@ -40,8 +39,6 @@ export class HUD {
     this.crossEl = $('hCross');
     this.crossT = $('hCrossT');
     this.crossD = $('hCrossD');
-    this.fuelEl = $('hFuel');
-    this.fuelBar = $('hFuelBar');
     this.charges = $('hCharges');
     this.tagPool = [];
     this.bubble = $('hBubble');
@@ -187,7 +184,7 @@ export class HUD {
     });
   }
 
-  // d: pos, field, near, coins, lapT, speed, rpm, gearN, progress, stageId, lap, laps, ko, fuel, nitro, boosting
+  // d: pos, field, near, lapT, speed, rpm, gearN, progress, stageId, lap, laps, ko, nitro, boosting
   update(dt, d) {
     this.t += dt;
     const L = this.last;
@@ -223,7 +220,6 @@ export class HUD {
       this.gapA.textContent = n.ahead ? `▲ ${n.ahead.name} +${n.ahead.t.toFixed(1)}s` : '▲ CLEAR ROAD';
       this.gapB.textContent = n.behind ? `▼ ${n.behind.name} −${n.behind.t.toFixed(1)}s` : '';
     }
-    if (L.coins !== d.coins) { this.score.textContent = d.coins; L.coins = d.coins; }
     if (this.t - (L.lapT || 0) > 0.07) { this.lap.textContent = fmtTime(d.lapT); L.lapT = this.t; }
     const sp = Math.round(d.speed);
     if (L.speed !== sp) { this.speed.textContent = sp; L.speed = sp; }
@@ -237,9 +233,7 @@ export class HUD {
       L.lit = lit;
     }
     this.prog.style.width = (clamp(d.progress, 0, 1) * 100).toFixed(1) + '%';
-    // fuel and nitro charges
-    const f = Math.round(clamp(d.fuel, 0, 1) * 100);
-    if (L.fuel !== f) { this.fuelBar.style.width = f + '%'; this.fuelEl.classList.toggle('low', f < 20); L.fuel = f; }
+    // nitro charges
     const n = Math.floor(d.nitro) + (d.boosting ? 1 : 0);
     if (L.charges !== n + ':' + d.boosting) {
       [...this.charges.querySelectorAll('i')].forEach((i, k) => i.classList.toggle('on', k < n));

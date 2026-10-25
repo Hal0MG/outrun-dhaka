@@ -266,9 +266,8 @@ export class Menus {
       if (res.pos === 1 || medal === 1) store.set('wins', store.get('wins', 0) + 1);
     }
     const MEDAL = ['NO MEDAL', 'GOLD', 'SILVER', 'BRONZE'];
-    $('overBn').textContent = res.out === 'fuel' ? 'OUT OF FUEL' : res.out === 'knockout' ? 'KNOCKED OUT' : res.par ? MEDAL[medal] : 'FINISHED';
+    $('overBn').textContent = res.out === 'knockout' ? 'KNOCKED OUT' : res.par ? MEDAL[medal] : 'FINISHED';
     if (res.out === 'knockout') $('overEn').textContent = `${ord(res.pos)} AT ${where} · NEEDED TOP ${res.cut}`;
-    else if (res.out === 'fuel') $('overEn').textContent = `RAN DRY IN ${ord(res.pos)}${res.kind === 'run' ? ' · ' + where : ''}`;
     else $('overEn').textContent = fmtTime(res.time);
     $('overSub').textContent = res.out ? '' : newBest ? 'NEW PERSONAL BEST' : '';
     const rows = [['RACE TIME', fmtTime(res.time)]];
@@ -280,7 +279,6 @@ export class Menus {
     } else {
       rows.push(['DISTRICTS', `${ROUTE.indexOf(res.reached?.id) + 1} / ${ROUTE.length}`]);
     }
-    rows.push(['COINS', String(res.coins)]);
     $('overTally').innerHTML = rows.map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join('');
     $('overHint').textContent = 'ENTER race again · BACKSPACE map';
     this.game.hud.show(false);

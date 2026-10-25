@@ -4,8 +4,8 @@
 //             gate everyone below the cut-off is out
 // Every car's progress is a distance G along the whole route (track.base + s),
 // so the field can spread over several district tracks at once. Rivals are
-// real cars for the whole race; contact and grass only ever cost speed. Coins,
-// fuel cans and nitro lie on the road.
+// real cars for the whole race; contact and grass only ever cost speed. Nitro
+// lies on the road.
 
 import * as THREE from 'three';
 import { LANE_W } from '../world/track.js';
@@ -13,7 +13,7 @@ import { KNOCKOUTS, RUN_FIELD, ROUTE } from '../world/stages.js';
 import { CORNER_K, NITRO_MAX } from './player.js';
 import { contraAt } from '../world/contra.js';
 import { oppLayout } from '../world/zones.js';
-import { clamp, damp, RNG } from '../core/util.js';
+import { clamp, damp } from '../core/util.js';
 
 // the field: the named front-runners first (RAJA, the champion, leads), then as many more as a race needs
 const NAMES = ['RAJA', 'NAWAB', 'TURBO SHUMON', 'DJ PIASH', 'CAPTAIN RUBEL', 'RUMANA', 'ZIKO', 'CHAIRMAN’S SON', 'TONY OF UTTARA', 'NIPA',
@@ -36,12 +36,6 @@ RIVALS[0].color = '#ff2e88';
 
 export const CIRCUIT_FIELD = 24;
 
-// fuel: metres a full tank lasts, and how much a can puts back
-// (a circuit tank is 70% of the race, so you need the fuel rows; nitro burns it faster)
-const TANK_RUN = 16000; // about half the Run's length
-const CAN_FUEL = 0.3; // fuel rows are the only way to top up: one a lap on a circuit, one every ~6 km on the Run
-const FUEL_EVERY_RUN = 6000;
-const NITRO_BURN = 2.5; // fuel burns this much faster while the nitro is on
 const PASS_NITRO = 8; // cars passed per free nitro charge
 const ROLL_V = 22; // the rolling start: everyone rolls at this speed until GO
 const FIELD_GAP = 38; // metres between one racer and the next, strung out along the road ahead of you
@@ -71,10 +65,8 @@ export class Race {
     this.lap = 1;
     this.lapT = 0;
     this.lapTimes = [];
-    this.coins = 0;
     this.finished = null;
     this.field = kind === 'run' ? RUN_FIELD : CIRCUIT_FIELD;
-    this.tank = kind === 'run' ? TANK_RUN : tr.lapLen * tr.laps * 0.7; // 70% of the race: you need the fuel rows to finish
     this.passes = 0;
     this.passNitro = 0;
     this.wrongAcc = 0;
@@ -143,20 +135,9 @@ export class Race {
   }
 
   // ------------------------------------------------------------ pickups
-  // coin trails, fuel cans and nitro; on a circuit every lap gets the same pattern
+  // nitro rows across the whole road, so you never have to hug a side to catch them: two a lap on a circuit
   layCircuit(tr) {
-    const rng = new RNG(4242);
-    const lapLen = tr.lapLen;
-    const pattern = [];
-    // fuel and nitro come in rows across the whole road (a fuel row and two nitro rows a lap),
-    // so you never have to hug a side to catch them
-    const special = [[0.25, 'nitro'], [0.5, 'fuel'], [0.75, 'nitro']];
-    for (let u = 70; u < lapLen - 60; u += rng.range(95, 150)) {
-      if (special.some(([f]) => Math.abs(u - f * lapLen) < 60)) continue;
-      if (rng.chance(0.62)) pattern.push({ u, kind: 'trail', a: rng.next(), b: rng.next() });
-    }
-    for (const [f, kind] of special) pattern.push({ u: f * lapLen, kind, a: rng.next() });
-    for (let i = 0; i < tr.laps; i++) for (const p of pattern) this.place(tr, tr.lapS(i) + p.u, p.kind, p.a, p.b);
+    for (let i = 0; i < tr.laps; i++) for (const f of [0.25, 0.75]) this.place(tr, tr.lapS(i) + f * tr.lapLen);
     this.pickups.sort((a, b) => a.G - b.G);
   }
 
@@ -164,31 +145,21 @@ export class Race {
   layTrack(tr) {
     tr.stocked = true;
     this.game.stalls.stock(tr);
-    const rng = new RNG(tr.base | 0);
+    // a nitro row about every 2.2 km
     const s0 = tr.isFirst ? tr.gateS + 60 : 60;
     const s1 = (tr.isFinal ? tr.goalS : tr.length) - 40;
-    for (let s = s0; s < s1; s += rng.range(95, 150)) {
+    for (let s = s0; s < s1; s += 50) {
       const G = tr.base + s;
-      const fuel = Math.floor(G / FUEL_EVERY_RUN) !== Math.floor((G - 200) / FUEL_EVERY_RUN);
-      const nitro = Math.floor((G + 400) / 2200) !== Math.floor((G + 200) / 2200);
-      if (fuel) this.place(tr, s, 'fuel', rng.next());
-      else if (nitro) this.place(tr, s, 'nitro', rng.next());
-      else if (rng.chance(0.62)) this.place(tr, s, 'trail', rng.next(), rng.next());
+      if (Math.floor((G + 400) / 2200) !== Math.floor((G + 350) / 2200)) this.place(tr, s);
     }
     this.pickups.sort((a, b) => a.G - b.G);
   }
 
-  place(tr, s, kind, a, b) {
+  // a row of nitro, one in every lane
+  place(tr, s) {
     const lanes = Math.max(1, Math.round(tr.lanesAt(s)));
     const hw = tr.halfWAt(s);
-    const lx = (f) => -hw + LANE_W * (Math.min(lanes - 1, Math.floor(f * lanes)) + 0.5);
-    if (kind !== 'trail') {
-      for (let l = 0; l < lanes; l++) this.pickups.push({ tr, s, G: tr.base + s, x: -hw + LANE_W * (l + 0.5), kind, taken: false });
-      return;
-    }
-    // a trail of coins drifting across a lane or two
-    const xa = lx(a), xb = clamp(xa + (b < 0.33 ? -LANE_W : b > 0.66 ? LANE_W : 0), -hw + LANE_W / 2, hw - LANE_W / 2);
-    for (let k = 0; k < 7; k++) this.pickups.push({ tr, s: s + k * 5.5, G: tr.base + s + k * 5.5, x: xa + (xb - xa) * (k / 6), kind: 'coin', taken: false });
+    for (let l = 0; l < lanes; l++) this.pickups.push({ tr, s, G: tr.base + s, x: -hw + LANE_W * (l + 0.5), kind: 'nitro', taken: false });
   }
 
   buildMeshes(scene) {
@@ -201,9 +172,6 @@ export class Race {
       return m;
     };
     this.meshes = {
-      coin: mk(new THREE.CylinderGeometry(0.55, 0.55, 0.14, 20).rotateX(Math.PI / 2), new THREE.Color(2.2, 1.5, 0.25), 200),
-      fuel: mk(new THREE.BoxGeometry(0.9, 1.1, 0.5), new THREE.Color(1.9, 0.18, 0.12), 64),
-      cap: mk(new THREE.CylinderGeometry(0.12, 0.12, 0.25, 8).translate(0.28, 0.66, 0), new THREE.Color(2.2, 1.9, 0.3), 64),
       nitro: mk(new THREE.OctahedronGeometry(0.75), new THREE.Color(0.35, 1.6, 2.4), 64),
     };
     this._m = new THREE.Matrix4();
@@ -225,7 +193,6 @@ export class Race {
     if (racing) {
       this.time += dt;
       this.lapT += dt;
-      P.fuel = Math.max(0, P.fuel - (P.v * dt * (P.boosting ? NITRO_BURN : 1)) / this.tank);
     }
     const show = !!g.attract?.on; // the title showreel: rivals race on, and nothing touches the (hidden) player
     this.driveRivals(dt, racing || show || g.state === 'goal' || g.state === 'gameover');
@@ -240,7 +207,7 @@ export class Race {
     const g = this.game;
     const P = g.player;
     const tr = P.track;
-    const result = (extra) => ({ kind: this.kind, pos: this.position, field: this.field, time: this.time, par: this.par, laps: this.lapTimes.slice(), coins: this.coins, reached: tr.stage, ...extra });
+    const result = (extra) => ({ kind: this.kind, pos: this.position, field: this.field, time: this.time, par: this.par, laps: this.lapTimes.slice(), reached: tr.stage, ...extra });
     if (this.kind === 'circuit') {
       const lapNow = clamp(Math.floor((P.s - tr.gateS) / tr.lapLen) + 1, 1, tr.laps + 1);
       if (lapNow > this.lap) {
@@ -266,9 +233,6 @@ export class Race {
     }
     if (tr.isFinal && P.s >= tr.goalS) {
       this.finished = result({ out: false });
-      g.onFinish?.(this.finished);
-    } else if (P.fuel <= 0 && P.v < 1.5) {
-      this.finished = result({ out: 'fuel' });
       g.onFinish?.(this.finished);
     }
   }
@@ -456,9 +420,7 @@ export class Race {
       if (p.G > PG + 8) break;
       if (p.taken || Math.abs(p.G - PG) > rs || Math.abs(p.x - P.x) > rx) continue;
       p.taken = true;
-      if (p.kind === 'coin') this.coins++;
-      else if (p.kind === 'fuel') P.fuel = Math.min(1, P.fuel + CAN_FUEL);
-      else if (p.kind === 'nitro') P.nitro = Math.min(NITRO_MAX, P.nitro + 1);
+      if (p.kind === 'nitro') P.nitro = Math.min(NITRO_MAX, P.nitro + 1);
       g.onPickup?.(p);
     }
   }
@@ -572,7 +534,7 @@ export class Race {
 
   // ------------------------------------------------------------ drawing
   render(time) {
-    const counts = { coin: 0, fuel: 0, cap: 0, nitro: 0 };
+    const counts = { nitro: 0 };
     const M = this.meshes;
     if (this.active) {
       const PG = this.playerG();
@@ -583,14 +545,12 @@ export class Race {
         if (pk.G > PG + VIEW) break;
         if (pk.taken || !tracks.has(pk.tr.id)) continue;
         const tr = pk.tr;
-        tr.point(pk.s, pk.x, (pk.kind === 'coin' ? 1.0 : 0.85) + Math.sin(time * 3 + pk.s * 0.2) * 0.12, p);
-        const spin = pk.kind === 'fuel' ? Math.sin(time * 2 + pk.s) * 0.5 : time * 3.2 + pk.s * 0.3;
-        e.set(0, -tr.yawAt(pk.s) + spin, 0, 'YXZ');
+        tr.point(pk.s, pk.x, 0.85 + Math.sin(time * 3 + pk.s * 0.2) * 0.12, p);
+        e.set(0, -tr.yawAt(pk.s) + time * 3.2 + pk.s * 0.3, 0, 'YXZ');
         q.setFromEuler(e);
         m.compose(p, q, this._one);
         const put = (key) => { if (counts[key] < M[key].instanceMatrix.count) M[key].setMatrixAt(counts[key]++, m); };
         put(pk.kind);
-        if (pk.kind === 'fuel') put('cap');
       }
     }
     for (const key in M) {

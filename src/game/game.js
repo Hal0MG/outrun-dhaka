@@ -156,7 +156,6 @@ export class Game {
     this.areaMusic(tr.stage, 1.5);
     this.hud.reset(kind);
     this.say.reset();
-    this._lowFuel = false;
     this.raceT = 0;
     this._warned = new Set();
     this.hud.setStage(tr.stage, kind);
@@ -206,9 +205,7 @@ export class Game {
   }
 
   onPickup(p) {
-    if (p.kind === 'coin') audio.tone('square', 1500 + (this.race.coins % 5) * 120, 0.07, 0.05, { lp: 5000 });
-    else if (p.kind === 'fuel') { audio.checkpoint(); this.hud.combo('FUEL', '+TANK'); this.say.say('fuel', 0.4); }
-    else if (p.kind === 'nitro') { audio.blip(1800); this.hud.combo('NITRO', '+1 CHARGE'); this.say.say('nitroPick', 0.35); }
+    if (p.kind === 'nitro') { audio.blip(1800); this.hud.combo('NITRO', '+1 CHARGE'); this.say.say('nitroPick', 0.35); }
   }
 
   onFinish(res) {
@@ -216,7 +213,7 @@ export class Game {
     const tr = P.track;
     if (res.out) {
       this.state = 'gameover';
-      this.hud.message(res.out === 'fuel' ? 'OUT OF FUEL' : 'KNOCKED OUT', 3);
+      this.hud.message('KNOCKED OUT', 3);
       this.say.say('out', 1, true);
       this.onRaceEnd?.(res, 2400);
       return;
@@ -407,7 +404,6 @@ export class Game {
     // advice is rare: a few well-timed words, not a running commentary
     if (P.nitro >= 1 && !P.boosting && vr > 0.7 && R.position > 1 && Math.max(kAt(60), kAt(140), kAt(220)) < 0.0015) say.say('tipNitro', 0.6, false, 90);
     if (vr > 0.9 && !P.boosting && kAt(95) > 0.0075) say.say('tipBend', 0.5, false, 80);
-    if (P.fuel < 0.3) say.say('tipFuel', 1, false, 90);
     if (P.offroad > 0.85 && P.v > 35) this._grass = (this._grass || 0) + dt; else this._grass = 0;
     if (this._grass > 1.5) say.say('tipGrass', 1, false, 70);
     // the next knockout gate
@@ -486,8 +482,6 @@ export class Game {
     if (P.boosting && !this._wasBoost) { audio.nitro(); this.backfire = 0.15; }
     if (!P.boosting && this._wasBoost && P.nitro < 1) this.say.say('nitroOut', 0.5, false, 45);
     this._wasBoost = P.boosting;
-    if (P.fuel < 0.2 && !this._lowFuel) { this._lowFuel = true; this.hud.message('LOW FUEL', 1.6); this.say.say('fuelLow', 1, true); }
-    else if (P.fuel > 0.4) this._lowFuel = false;
   }
 
   // the Run crosses into the next district at the end of each track
@@ -747,11 +741,11 @@ export class Game {
     if (this.kind === 'circuit') progress = (P.s - tr.gateS) / (tr.goalS - tr.gateS);
     else progress = (ROUTE.indexOf(tr.stageId) + clamp(P.s / tr.length, 0, 1)) / ROUTE.length;
     this.hud.update(dt, {
-      pos: R.position, field: R.field, near: R.neighbours(), coins: R.coins, raceT: R.time, par: R.par, lapT: this.kind === 'circuit' ? R.lapT : R.time,
+      pos: R.position, field: R.field, near: R.neighbours(), raceT: R.time, par: R.par, lapT: this.kind === 'circuit' ? R.lapT : R.time,
       speed: P.kmh, rpm: audio.rpmNorm ?? P.rpm, gearN: audio.vg ? audio.vg.gear : 0,
       progress: clamp(progress, 0, 1), stageId: tr.stage.district || tr.stageId,
       lap: Math.min(R.lap, tr.laps || 1), laps: tr.laps, ko: R.nextKnockout(),
-      fuel: P.fuel, nitro: P.nitro, boosting: P.boosting,
+      nitro: P.nitro, boosting: P.boosting,
       cross: this.crossInfo(),
     });
     this.hud.tags(this.state === 'race' || this.state === 'countdown' ? R.tags(this.R.camera) : []);

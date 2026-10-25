@@ -1,7 +1,7 @@
 // Driving model, after Horizon Chase Turbo: hold gas, steer, fire nitro. No
 // gearbox, no crashes, no jumps. Corners push you to the outside in proportion
 // to speed squared, so the skill is the line you hold through them. Contact and
-// grass cost speed; nothing ever stops the race except an empty tank.
+// grass cost speed; nothing ever stops the race.
 // Everything lives in road space: s along the track, x across it.
 
 import * as THREE from 'three';
@@ -49,7 +49,6 @@ export class Player {
     this.nitro = 1;
     this.nitroT = 0;
     this.boosting = false;
-    this.fuel = 1;
     this.wrongWay = false;
     this.inWorks = false;
     // nothing in this game wrecks or launches the car; the camera still asks
@@ -92,7 +91,6 @@ export class Player {
       if (input.boostHeld && !this._boostWas) this.fireNitro();
       this._boostWas = input.boostHeld;
     }
-    if (this.fuel <= 0) throttle = 0;
     if (this.boosting) {
       this.nitroT -= dt;
       throttle = 1;

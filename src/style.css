@@ -252,12 +252,8 @@ body.touch .h-radio, body.touch #hMap { display: none; }
 body.touch .h-pause { display: none; }
 
 
-/* ---- fuel gauge and nitro charges; the city map only on the Run */
+/* ---- nitro charges; the city map only on the Run */
 .h-hct { display: flex; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); align-items: center; gap: 18px; font-family: var(--f-display); font-size: 11px; letter-spacing: 0.1em; text-shadow: 1px 1px 0 #000; }
-.h-hct .fuel { display: flex; align-items: center; gap: 6px; color: var(--marigold); }
-.h-hct .fb { width: 150px; height: 12px; border: 2px solid #000; background: rgba(0, 0, 0, 0.45); box-shadow: 3px 3px 0 #000; }
-.h-hct .fb b { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--red), var(--marigold) 35%, var(--parrot)); }
-.h-hct .fuel.low span { color: var(--red); animation: lowtime 0.5s steps(2) infinite; }
 .h-hct .charges { display: flex; align-items: center; gap: 5px; color: var(--cyan); }
 .h-hct .charges i { width: 16px; height: 16px; border: 2px solid #000; transform: rotate(45deg); background: rgba(0, 0, 0, 0.45); box-shadow: 2px 2px 0 #000; }
 .h-hct .charges i.on { background: var(--cyan); }
@@ -350,9 +346,9 @@ body.touch .bubble { font-size: 14px; }
 body.touch .h-cross { top: calc(33vh + env(safe-area-inset-top, 0px)); }
 
 /* ---- phones: a stripped-down HUD. The gas is automatic, so the thumbs only steer (left), and brake and nitro (right).
-   Only the essentials stay on screen: the clock and your position, the lap, speed, fuel and nitro, and pause. */
+   Only the essentials stay on screen: the clock and your position, the lap, speed and nitro, and pause. */
 body.touch .h-radio, body.touch #hMap, body.touch .h-tags, body.touch .h-cam, body.touch .h-score,
-body.touch .h-obj .gap, body.touch .h-obj .par, body.touch .h-hct .charges span, body.touch .h-hct .fuel span,
+body.touch .h-obj .gap, body.touch .h-obj .par, body.touch .h-hct .charges span,
 body.touch .gear, body.touch #tacho, body.touch .kmh i { display: none; }
 body.touch .h-time { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: scale(0.62); transform-origin: left top; min-width: 0; }
 body.touch .h-obj { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(58px + env(safe-area-inset-top, 0px)); }
