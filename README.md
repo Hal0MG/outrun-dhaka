@@ -9,7 +9,7 @@ Runs in the browser. No install, no assets to download: the world, the music and
 | | |
 |---|---|
 | ![Shahbag at sunset](docs/screenshots/shahbag.jpg) | ![Kawran Bazar in the rain](docs/screenshots/kawran-bazar.jpg) |
-| ![Old Dhaka at night](docs/screenshots/old-dhaka.jpg) | ![Gulshan lakeside](docs/screenshots/gulshan.jpg) |
+| ![Old Dhaka at night](docs/screenshots/old-dhaka.jpg) | ![Gulshan at night](docs/screenshots/gulshan.jpg) |
 | ![Motijheel in the monsoon](docs/screenshots/motijheel.jpg) | ![Race picker](docs/screenshots/map.jpg) |
 
 ## Play
