@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hal0mg.github.io/outrun-dhaka/sitemap.xml
