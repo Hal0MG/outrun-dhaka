@@ -3,3 +3,6 @@ dist
 .claude
 scratch_index.py
 *.log
+ml/.venv
+ml/runs
+__pycache__

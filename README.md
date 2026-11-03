@@ -64,6 +64,26 @@ When using these, the build is a folder (`dist/`), not just one file.
 - `src/audio/` synthesised engines and effects, the music sequencer
 - `src/ui/` HUD, menus, the Dhaka map
 
+## AI driver
+
+The game's driving model also runs with no graphics, in Node, at about 12,000 decisions a second per process: a full three-lap race takes about 15 ms. `sim/` wraps it as an environment for training AI drivers, and `ml/` trains them with reinforcement learning (PPO, via Stable-Baselines3).
+
+- `sim/env.mjs` builds a district circuit with the game's own track code and steps the real `Player`. It races alone for now: no rivals, traffic or pickups.
+- `sim/baseline.mjs` (`npm run sim:baseline`) is the hand-written driver to beat: flat out, steer against the corner push (curvature × speed²), nitro on straights.
+- `ml/outrun_env.py` is the Gymnasium environment (one Node process per env, JSON over stdin/stdout).
+- `ml/train.py` trains on one-lap stints from random points on the lap. Gulshan, Old Dhaka and Padma are held out, to tell driving from memorising tracks.
+- `ml/evaluate.py` races every district, writes `results.csv`, and for each district a telemetry CSV (line, speed, inputs per decision) and a chart.
+
+```
+python -m venv ml/.venv
+ml/.venv/Scripts/pip install -r ml/requirements.txt    # macOS/Linux: ml/.venv/bin/pip
+cd ml
+../ml/.venv/Scripts/python train.py --steps 2000000 --name ppo-v1
+../ml/.venv/Scripts/python evaluate.py --name ppo-v1
+```
+
+Racing alone, the medal times are easy: the baseline takes gold on most districts. Judge drivers by raw time against the baseline, and against the floor of about 93 s (the race at top speed throughout).
+
 ## Credits
 
 - Car meshes: "Free Low Poly Vehicles Pack" by Rgsdev, CC0 (`src/assets/cars/LICENSE.txt`). Refitted, recoloured and smooth-shaded at startup.
