@@ -66,23 +66,26 @@ When using these, the build is a folder (`dist/`), not just one file.
 
 ## AI driver
 
-The game's driving model also runs with no graphics, in Node, at about 12,000 decisions a second per process: a full three-lap race takes about 15 ms. `sim/` wraps it as an environment for training AI drivers, and `ml/` trains them with reinforcement learning (PPO, via Stable-Baselines3).
+The game's driving model and race also run with no graphics, in Node: a full three-lap race against the field takes about 120 ms (15 ms alone). `sim/` wraps it as an environment for training AI drivers, and `ml/` trains them with reinforcement learning (PPO, via Stable-Baselines3).
 
-- `sim/env.mjs` builds a district circuit with the game's own track code and steps the real `Player`. It races alone for now: no rivals, traffic or pickups.
-- `sim/baseline.mjs` (`npm run sim:baseline`) is the hand-written driver to beat: flat out, steer against the corner push (curvature × speed²), nitro on straights.
+- `sim/env.mjs` builds a district circuit with the game's own track code and steps the real `Player` and `Race`: the 23 rivals, contact, nitro rows and nitro for passes. No traffic or pedestrians yet. Races are seeded, so the same seed replays exactly.
+- `sim/baseline.mjs` (`npm run sim:baseline`) is the hand-written driver to beat: flat out, steer against the corner push (curvature × speed²), nitro on straights, and no attention to the other cars. `--solo` races it alone.
 - `ml/outrun_env.py` is the Gymnasium environment (one Node process per env, JSON over stdin/stdout).
-- `ml/train.py` trains on one-lap stints from random points on the lap. Gulshan, Old Dhaka and Padma are held out, to tell driving from memorising tracks.
+- `ml/train.py` races the field from a grid moved to a random point on the lap. Train in two stages: alone first, then the field from there (`--init`). Thrown straight in with the rivals, it learns to sit behind them at their pace and never pass. Gulshan, Old Dhaka and Padma are held out, to tell driving from memorising tracks.
 - `ml/evaluate.py` races every district, writes `results.csv`, and for each district a telemetry CSV (line, speed, inputs per decision) and a chart.
 
 ```
 python -m venv ml/.venv
 ml/.venv/Scripts/pip install -r ml/requirements.txt    # macOS/Linux: ml/.venv/bin/pip
 cd ml
-../ml/.venv/Scripts/python train.py --steps 2000000 --name ppo-v1
-../ml/.venv/Scripts/python evaluate.py --name ppo-v1
+../ml/.venv/Scripts/python train.py --solo --steps 1500000 --name solo
+../ml/.venv/Scripts/python train.py --init solo --steps 2500000 --name field
+../ml/.venv/Scripts/python evaluate.py --name field
 ```
 
-Racing alone, the medal times are easy: the baseline takes gold on most districts. Judge drivers by raw time against the baseline, and against the floor of about 93 s (the race at top speed throughout).
+Judge drivers by finishing place first. Racing alone, the medal times are easy: the baseline takes gold on most districts. Against the field it wins 2 of 15 (mean place 11.5 of 24); the two-stage driver above wins 3 (mean place 11.7), so it is not yet better than the baseline.
+
+The opposite carriageway is closed in the sim outside ROAD WORKS (`openOpposite` in `sim/env.mjs`): in the game it carries oncoming traffic, which the sim does not have yet, and the first driver trained without that rule learned to race on the empty side.
 
 ## Credits
 

@@ -23,7 +23,7 @@ from train import HELD_OUT, RUNS
 
 
 def race(model, norm, env, district):
-    obs, info = env.reset(options={"district": district})
+    obs, info = env.reset(seed=1, options={"district": district})
     rows, done = [], False
     while not done:
         action, _ = model.predict(norm.normalize_obs(obs[None]), deterministic=True)
@@ -32,7 +32,7 @@ def race(model, norm, env, district):
         done = terminated or truncated
         rows.append({
             "time": info["time"], "s": info["s"], "x": info["x"], "half_width": info["halfW"], "curvature": info["k"],
-            "kmh": info["kmh"], "steer": action[0], "pedal": action[1], "nitro": action[2] > 0,
+            "kmh": info["kmh"], "position": info["position"], "steer": action[0], "pedal": action[1], "nitro": action[2] > 0,
         })
     return info, terminated, pd.DataFrame(rows)
 
@@ -57,11 +57,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", default="ppo")
     ap.add_argument("--districts", nargs="*")
+    ap.add_argument("--solo", action="store_true", help="race alone, without the rivals")
     args = ap.parse_args()
 
     run = RUNS / args.name
     model = PPO.load(run / "model")
-    env = OutrunEnv()
+    env = OutrunEnv(rivals=not args.solo)
     norm = VecNormalize.load(str(run / "vecnormalize.pkl"), DummyVecEnv([lambda: env]))
     norm.training = False
     (run / "telemetry").mkdir(exist_ok=True)
@@ -74,9 +75,9 @@ def main():
         par = env.par(district)
         results.append({
             "district": district, "held_out": district in HELD_OUT, "finished": finished,
-            "time": round(info["time"], 1), "gold": round(par["gold"], 1), "bronze": round(par["bronze"], 1),
+            "place": f'{info["position"]}/{info["field"]}', "time": round(info["time"], 1), "gold": round(par["gold"], 1), "bronze": round(par["bronze"], 1),
             "medal": medal(info["time"], par) if finished else "-",
-            "offroad_s": round(info["offroad"], 1), "scrape_s": round(info["scrape"], 1), "nitro": info["nitro"],
+            "passed": info["passed"], "hits": info["hits"], "offroad_s": round(info["offroad"], 1), "wrong_way_s": round(info["wrong_way"], 1), "nitro": info["nitro"],
             "avg_kmh": round(df["kmh"].mean()),
         })
     env.close()
