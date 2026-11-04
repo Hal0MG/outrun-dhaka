@@ -97,6 +97,7 @@ function take(r, tr, tracks) {
 
 export const OBS_SIZE = 12 + LOOK.length * 3 + (SEE_AHEAD + SEE_BEHIND) * 4 + 4 + 4;
 export const ACT_SIZE = 3;
+const LANE_SHIFT = 0.5; // how much of a scripted rival's lane bias the learned ones keep
 
 export class RaceEnv {
   // opts.mode: 'circuit' (a district, three laps; the default) or 'run' (The Run: 48 cars, all fifteen districts, the
@@ -136,6 +137,9 @@ export class RaceEnv {
       const pay = this.race.wrongWayReward;
       this.race.wrongWayReward = (dt) => { if (contraAt(this.player.track, this.player.s)) pay.call(this.race, dt); };
     }
+    // a whole field of learned cars is tougher than the scripted one (no leash, grip-limit bends): a little under the
+    // scripted skill gives The Run the same gate margins (median finish 7th for the simple driver, as scripted)
+    this.pace = opts.learnedPace ?? (this.mode === 'run' ? 0.97 : 1);
     this.learnedCount = opts.brain ? (opts.learned ?? 0) : 0;
     this.brain = this.learnedCount ? Brain.load(opts.brain) : null;
     if (this.brain) this.hookLearned();
@@ -146,6 +150,7 @@ export class RaceEnv {
     const R = this.race;
     const scripted = R.driveRivals.bind(R);
     R.driveRivals = (dt, go) => {
+      this.go = go;
       const all = R.rivals;
       R.rivals = all.filter((r) => !r.brain);
       R._all = all;
@@ -174,6 +179,21 @@ export class RaceEnv {
     };
   }
 
+  // the network steers for the middle of what it sees, so each rival is shown a road shifted sideways by where it means to
+  // run: its own lane across the straights and, when it makes a mistake, wide of the bend (as race.js's xT)
+  shifted(obs, r) {
+    const P = r.brain.P, tr = P.track;
+    const hw = tr.halfWAt(Math.min(P.s, tr.length - 1));
+    const kIn = this.race.kAt(r.G + 55);
+    const bend = clamp(Math.abs(kIn) / 0.009, 0, 1);
+    const dx = LANE_SHIFT * r.bias * hw * (1 - bend) + (r.slipT > 0 ? Math.sign(kIn || 1) * hw * 0.3 : 0);
+    if (!dx) return obs;
+    obs[1] -= dx / hw;
+    obs[7] -= dx / 10; obs[8] += dx / 10;
+    for (let i = 0; i < LOOK.length; i++) { obs[12 + 3 * i + 1] -= dx / 10; obs[12 + 3 * i + 2] += dx / 10; }
+    return obs;
+  }
+
   driveLearned(dt) {
     const end = this.endG, tracks = this.mode === 'run' ? chain : null;
     for (const r of this.race.rivals) {
@@ -183,7 +203,19 @@ export class RaceEnv {
       const tr = take(r, this.track, tracks);
       // the network drives flat out: hold it to the pace its scripted self runs (race.js skill), and after the flag
       // roll out at the same 26 m/s they do
-      const vT = r.done ? 26 : r.skill * P.vmax;
+      let vT = r.done ? 26 : r.skill * P.vmax * this.pace;
+      // what a scripted rival does too (race.js driveRivals): a car right behind the player pushes to hold it off, and
+      // now and then a driver runs wide in a bend and lifts for a second
+      const gap = r.G - this.race.playerG();
+      if (this.go && gap < 0 && gap > -200) vT *= 1 + 0.04 * (1 + gap / 200);
+      r.mistakeT -= dt;
+      r.slipT = Math.max(0, r.slipT - dt);
+      if (this.go && r.mistakeT <= 0) {
+        r.mistakeT = 5 + Math.random() * 9;
+        const kA = Math.max(Math.abs(this.race.kAt(r.G + 30)), Math.abs(this.race.kAt(r.G + 70)));
+        if (kA > 0.004 && Math.random() < 0.5) r.slipT = 1.1;
+      }
+      if (r.slipT > 0) vT *= 0.84;
       let [steer, pedal] = b.act;
       // a car pinned to a rail can stand there braking for ever (the network has never been at rest on the road to
       // learn otherwise): after a second stopped, drive it for four seconds, floored and steering for the middle
@@ -273,7 +305,7 @@ export class RaceEnv {
       for (const r of R.rivals) {
         if (!r.brain || r.out) continue;
         take(r, tr, tracks);
-        r.brain.act = this.brain.act(this.observation(r.brain.P, r));
+        r.brain.act = this.brain.act(this.shifted(this.observation(r.brain.P, r), r));
       }
     }
     for (let i = 0; i < this.repeat; i++) {
