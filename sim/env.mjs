@@ -82,9 +82,17 @@ function shove(a, b) {
 
 // a learned rival is a real Player; its rival entry stays the truth the rest of the race reads and shoves, so the car
 // takes its place from the entry before each step and writes it back after
-function take(r, tr) {
+// (on The Run it is also on whichever district's road its place along the route puts it)
+function take(r, tr, tracks) {
   const P = r.brain.P;
+  if (tracks) {
+    // the road it is on: the last district that has begun (the gap to the next is the fork, so it stays on the one before)
+    tr = tracks[0];
+    for (const t of tracks) if (t.base <= r.G) tr = t;
+  }
+  P.track = tr;
   P.s = r.G - tr.base; P.x = r.x; P.v = r.v; P.vx = r.vx;
+  return tr;
 }
 
 export const OBS_SIZE = 12 + LOOK.length * 3 + (SEE_AHEAD + SEE_BEHIND) * 4 + 4 + 4;
@@ -92,7 +100,7 @@ export const ACT_SIZE = 3;
 
 export class RaceEnv {
   // opts.mode: 'circuit' (a district, three laps; the default) or 'run' (The Run: 48 cars, all fifteen districts, the
-  //   knockout gates; the player is out below the cut and the episode ends there). The Run has scripted rivals only.
+  //   knockout gates; the player is out below the cut and the episode ends there). Learned rivals work there too.
   // opts.rivals: race the field (default) or alone
   // opts.repeat: physics frames per decision (4 = 15 decisions a second)
   // opts.randomStart: move the whole grid to a random point on the first lap, so training sees every corner early
@@ -106,7 +114,6 @@ export class RaceEnv {
   // opts.detail: say how every rival is doing in info.rivals
   constructor(opts = {}) {
     this.mode = opts.mode ?? 'circuit';
-    if (this.mode === 'run' && opts.brain) throw new Error('learned rivals race circuits only for now');
     this.rivals = opts.rivals ?? true;
     this.openOpposite = !!opts.openOpposite;
     this.detail = !!opts.detail;
@@ -168,12 +175,12 @@ export class RaceEnv {
   }
 
   driveLearned(dt) {
-    const tr = this.track, end = tr.goalS;
+    const end = this.endG, tracks = this.mode === 'run' ? chain : null;
     for (const r of this.race.rivals) {
       const b = r.brain;
       if (!b || r.out) continue;
       const P = b.P;
-      take(r, tr);
+      const tr = take(r, this.track, tracks);
       // the network drives flat out: hold it to the pace its scripted self runs (race.js skill), and after the flag
       // roll out at the same 26 m/s they do
       const vT = r.done ? 26 : r.skill * P.vmax;
@@ -185,7 +192,7 @@ export class RaceEnv {
       if (b.rescue > 0) {
         b.rescue -= dt;
         pedal = 1;
-        steer = clamp(-P.x / tr.halfWAt(Math.min(P.s, tr.length - 1)), -1, 1);
+        steer = clamp(-P.x / P.track.halfWAt(Math.min(P.s, P.track.length - 1)), -1, 1);
       }
       const throttle = Math.min(Math.max(0, pedal), clamp((vT - P.v) * 0.5, 0, 1));
       const brake = Math.max(0, -pedal, r.done && P.v > 28 ? 0.6 : 0);
@@ -193,7 +200,7 @@ export class RaceEnv {
       P.events.length = 0;
       b.off += P.offroad * dt;
       b.scrape += P.scrape * dt;
-      r.G = tr.base + P.s; r.x = P.x; r.v = P.v; r.vx = P.vx;
+      r.G = P.track.base + P.s; r.x = P.x; r.v = P.v; r.vx = P.vx;
       if (!r.done && r.G >= end) r.done = true;
       if (r.G > end + 300) { r.G = end + 300; r.v = 0; }
     }
@@ -223,6 +230,7 @@ export class RaceEnv {
     const last = run ? chain[chain.length - 1] : tr;
     this.goalG = last.base + (this.laps && !run ? this.goalS : last.goalS);
     this.startG = tr.base + P.s;
+    this.endG = last.base + last.goalS;
     this.fieldStart = R.field;
     this.gates = [];
     this.time = 0;
@@ -242,6 +250,7 @@ export class RaceEnv {
       for (const r of R.rivals.slice(0, this.learnedCount)) {
         const P = new Player({ ...CAR, width: r.w * 2, length: r.l * 2 });
         P.reset(tr);
+
         P.nitro = 0;
         r.brain = { P, act: [0, 0, 0], off: 0, scrape: 0, still: 0, rescue: 0 };
       }
@@ -260,10 +269,10 @@ export class RaceEnv {
     const G0 = P.track.base + P.s;
     let off = 0, scrape = 0, wrong = 0, coned = 0;
     if (this.brain) {
-      const tr = this.track;
+      const tr = this.track, tracks = this.mode === 'run' ? chain : null;
       for (const r of R.rivals) {
         if (!r.brain || r.out) continue;
-        take(r, tr);
+        take(r, tr, tracks);
         r.brain.act = this.brain.act(this.observation(r.brain.P, r));
       }
     }

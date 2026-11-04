@@ -1,5 +1,6 @@
 // The Run, many times over: how often a driver gets through each knockout gate, and how it finishes.
 //   node sim/run.mjs [--runs 20] [--brain ml/runs/<name>/brain.json]    one driver, gate by gate
+//   node sim/run.mjs --rivals ml/runs/<name>/brain.json [--learned 5]   the front-runners driven by a trained network
 //   node sim/run.mjs --sweep 0.84,0.88,0.92,0.96,1 [--runs 30]        a range of paces, as a stand-in for weaker players
 //
 // Each run is a fresh seed: the field's mistakes differ, so the margin at each gate does too. A gate is survived when
@@ -17,10 +18,12 @@ const flag = (name, dflt) => { const i = args.indexOf(name); return i < 0 ? dflt
 const runs = +flag('--runs', 20);
 const brainPath = flag('--brain', null);
 const sweep = flag('--sweep', null);
+const rivalBrain = flag('--rivals', null); // a trained driver for the front-running rivals
+const learned = +flag('--learned', 5);
 const brain = brainPath ? Brain.load(brainPath) : null;
 const VMAX_MS = (275 / 3.6) * 1.35; // top speed in m/s (src/game/player.js SPEED_K)
 
-const env = new RaceEnv({ mode: 'run' });
+const env = new RaceEnv({ mode: 'run', ...(rivalBrain && { brain: rivalBrain, learned }) });
 const gateIds = ROUTE.filter((id) => KNOCKOUTS[id]);
 
 function play(pace) {

@@ -125,6 +125,8 @@ A full Run is about 4,800 decisions, 0.3 s of real time. Over 100 runs each, the
 
 Each gate asks for more pace than the one before: about 91% of top speed to get past Shahbag, 94% for Kawran Bazar, and at 96% a quarter of runs still go out later on (median finish 23rd, the last place that stays in at the final gate). The pace is a cap on speed, not an average, so bends cost a real player more. The cut-offs and the rivals' pace (`KNOCKOUTS` in `stages.js`, `skill` in `race.js`) are the dials.
 
+**Learned rivals in The Run.** `--rivals ml/runs/<name>/brain.json --learned K` drives the K front-runners with a trained network; each is placed on whichever district's road its distance along the route puts it, so they cross forks like the player. With 5 learned, the simple driver finishes 20/20 at a median of 7th (mean 320.2 s), the same as against the scripted field. With all 47 learned it still finishes 20/20, but at 13th, and the margin at every gate is the same in every run (tightest equals mean): the learned cars never make a mistake, so the field is tighter and every race is the same. That is what the skill and variety work is for. It also costs 213 decisions a second in the sim (456 s for 20 runs), against 2,100 with 5 learned.
+
 ## Credits
 
 - Car meshes: "Free Low Poly Vehicles Pack" by Rgsdev, CC0 (`src/assets/cars/LICENSE.txt`). Refitted, recoloured and smooth-shaded at startup.
