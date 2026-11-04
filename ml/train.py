@@ -28,6 +28,7 @@ def main():
     ap.add_argument("--laps", type=int, default=0, help="race this many laps per episode (default: the whole race)")
     ap.add_argument("--solo", action="store_true", help="race alone, without the rivals")
     ap.add_argument("--init", help="carry on from this run's driver (for a curriculum: learn alone first, then the field)")
+    ap.add_argument("--run-envs", type=int, default=0, help="how many of the envs race The Run (all fifteen districts, the knockout gates) instead of a district")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
@@ -38,8 +39,12 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     print(f"training on {len(districts)} districts: {', '.join(districts)}")
 
-    make = lambda: OutrunEnv(districts=districts, rivals=not args.solo, random_start=True, laps=args.laps or None)
-    venv = VecMonitor(SubprocVecEnv([make] * args.envs))
+    def make(i):
+        if i < args.run_envs:
+            return lambda: OutrunEnv(mode="run")
+        return lambda: OutrunEnv(districts=districts, rivals=not args.solo, random_start=True, laps=args.laps or None)
+
+    venv = VecMonitor(SubprocVecEnv([make(i) for i in range(args.envs)]))
     if args.init:
         # its observation scaling keeps learning: the rival slots it never saw alone get their real range
         env = VecNormalize.load(str(RUNS / args.init / "vecnormalize.pkl"), venv)

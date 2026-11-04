@@ -432,7 +432,7 @@ export class RaceEnv {
     // the next knockout gate on The Run: how far off (1 when out of sight), its cut, how far past the cut this car is
     // (above 0 is out), and that this is The Run. All zeros on a circuit.
     const ko = R.kind === 'run' && !self ? R.nextKnockout() : null;
-    obs.push(ko ? (ko.d == null ? 1 : clamp(ko.d / 3000, 0, 1)) : 0, ko ? ko.cut / RUN_FIELD : 0, ko ? (place - ko.cut) / RUN_FIELD : 0, R.kind === 'run' ? 1 : 0);
+    obs.push(ko ? (ko.d == null ? 1 : clamp(ko.d / 3000, 0, 1)) : 0, ko ? ko.cut / RUN_FIELD : 0, ko ? (place - ko.cut) / RUN_FIELD : 0, R.kind === 'run' && !self ? 1 : 0);
     return obs;
   }
 
