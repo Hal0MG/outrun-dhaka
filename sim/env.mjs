@@ -1,6 +1,7 @@
 // A district circuit raced with no renderer: the game's own track builder (World.makeTrack), driving model
 // (Player) and race (Race: the rivals, contact, nitro rows and nitro for passes), stepped by a driver that is
-// not a person. For training and measuring AI drivers. No traffic or pedestrians yet.
+// not a person. For training and measuring AI drivers, and for trying trained ones as rivals. No traffic or
+// pedestrians yet.
 
 import { World } from '../src/world/world.js';
 import { ROUTE, circuitStage } from '../src/world/stages.js';
@@ -8,6 +9,7 @@ import { contraAt } from '../src/world/contra.js';
 import { Player, NITRO_MAX, SPEED_K } from '../src/game/player.js';
 import { Race } from '../src/game/race.js';
 import { RNG, clamp, mulberry32 } from '../src/core/util.js';
+import { Brain } from './brain.mjs';
 
 export { ROUTE as DISTRICTS };
 
@@ -44,7 +46,30 @@ export function parTimes(district) {
   return { gold: nom * 1.12, silver: nom * 1.19, bronze: nom * 1.28 };
 }
 
-export const OBS_SIZE = 12 + LOOK.length * 3 + (SEE_AHEAD + SEE_BEHIND) * 4;
+// a rival's own shove against another car: the same as the one in Race.driveRivals, which only covers the scripted ones
+function shove(a, b) {
+  const ds = b.G - a.G, dx = b.x - a.x;
+  const wl = a.l + b.l, ww = a.w + b.w;
+  if (Math.abs(ds) > wl || Math.abs(dx) > ww) return;
+  const ox = ww - Math.abs(dx), os = wl - Math.abs(ds);
+  if (os < ox) {
+    const [back, front] = ds > 0 ? [a, b] : [b, a];
+    back.G = front.G - wl - 0.05;
+    back.v = Math.min(back.v, front.v);
+  } else {
+    const p = Math.sign(dx || 1) * ox * 0.5;
+    a.x -= p; b.x += p;
+  }
+}
+
+// a learned rival is a real Player; its rival entry stays the truth the rest of the race reads and shoves, so the car
+// takes its place from the entry before each step and writes it back after
+function take(r, tr) {
+  const P = r.brain.P;
+  P.s = r.G - tr.base; P.x = r.x; P.v = r.v; P.vx = r.vx;
+}
+
+export const OBS_SIZE = 12 + LOOK.length * 3 + (SEE_AHEAD + SEE_BEHIND) * 4 + 4;
 export const ACT_SIZE = 3;
 
 export class RaceEnv {
@@ -55,9 +80,14 @@ export class RaceEnv {
   // opts.openOpposite: let the driver use the opposite carriageway anywhere, as the game does. Off by default: in the
   //   game it is full of oncoming traffic, which is not simulated yet, so here it would be an empty road that pays
   //   nitro. Closed, it costs reward and pays no nitro, except through ROAD WORKS, where the game sends you across.
+  // opts.learned and opts.brain: how many of the front-running rivals (the leader first) are driven by a trained
+  //   network (brain: its brain.json from ml/export.py) instead of the scripted driver. Each is a real Player, held
+  //   to the pace its scripted self would run so it is as beatable, and it has no nitro.
+  // opts.detail: say how every rival is doing in info.rivals
   constructor(opts = {}) {
     this.rivals = opts.rivals ?? true;
     this.openOpposite = !!opts.openOpposite;
+    this.detail = !!opts.detail;
     this.repeat = opts.repeat ?? 4;
     this.randomStart = !!opts.randomStart;
     this.laps = opts.laps ?? null;
@@ -76,6 +106,74 @@ export class RaceEnv {
     if (!this.openOpposite) {
       const pay = this.race.wrongWayReward;
       this.race.wrongWayReward = (dt) => { if (contraAt(this.track, this.player.s)) pay.call(this.race, dt); };
+    }
+    this.learnedCount = opts.brain ? (opts.learned ?? 0) : 0;
+    this.brain = this.learnedCount ? Brain.load(opts.brain) : null;
+    if (this.brain) this.hookLearned();
+  }
+
+  // the scripted driver moves every rival; leave the learned ones to the network, but let the scripted ones see them
+  hookLearned() {
+    const R = this.race;
+    const scripted = R.driveRivals.bind(R);
+    R.driveRivals = (dt, go) => {
+      const all = R.rivals;
+      R.rivals = all.filter((r) => !r.brain);
+      R._all = all;
+      scripted(dt, go);
+      R.rivals = all;
+      for (let i = 0; i < all.length; i++) {
+        const a = all[i];
+        if (!a.brain || a.out) continue;
+        for (let j = 0; j < all.length; j++) {
+          const b = all[j];
+          if (b !== a && !b.out && !(b.brain && j < i)) shove(a, b);
+        }
+      }
+    };
+    // as Race.blockerAhead, but every car counts
+    R.blockerAhead = function (r, range) {
+      let best = null;
+      const test = (G, x, v) => {
+        const d = G - r.G;
+        if (d <= 0 || d > range + 6 || Math.abs(x - r.x) > 2.4) return;
+        if (!best || d < best.d) best = { d, x, v };
+      };
+      for (const o of this._all || this.rivals) if (o !== r && !o.out) test(o.G, o.x, o.v);
+      test(this.playerG(), this.game.player.x, this.game.player.v);
+      return best;
+    };
+  }
+
+  driveLearned(dt) {
+    const tr = this.track, end = tr.goalS;
+    for (const r of this.race.rivals) {
+      const b = r.brain;
+      if (!b || r.out) continue;
+      const P = b.P;
+      take(r, tr);
+      // the network drives flat out: hold it to the pace its scripted self runs (race.js skill), and after the flag
+      // roll out at the same 26 m/s they do
+      const vT = r.done ? 26 : r.skill * P.vmax;
+      let [steer, pedal] = b.act;
+      // a car pinned to a rail can stand there braking for ever (the network has never been at rest on the road to
+      // learn otherwise): after a second stopped, drive it for four seconds, floored and steering for the middle
+      b.still = P.v < 3 && !r.done ? b.still + dt : 0;
+      if (b.still > 1) { b.rescue = 4; b.still = 0; }
+      if (b.rescue > 0) {
+        b.rescue -= dt;
+        pedal = 1;
+        steer = clamp(-P.x / tr.halfWAt(Math.min(P.s, tr.length - 1)), -1, 1);
+      }
+      const throttle = Math.min(Math.max(0, pedal), clamp((vT - P.v) * 0.5, 0, 1));
+      const brake = Math.max(0, -pedal, r.done && P.v > 28 ? 0.6 : 0);
+      P.update(dt, { steer, throttle, brake, boostHeld: false }, world);
+      P.events.length = 0;
+      b.off += P.offroad * dt;
+      b.scrape += P.scrape * dt;
+      r.G = tr.base + P.s; r.x = P.x; r.v = P.v; r.vx = P.vx;
+      if (!r.done && r.G >= end) r.done = true;
+      if (r.G > end + 300) { r.G = end + 300; r.v = 0; }
     }
   }
 
@@ -108,7 +206,17 @@ export class RaceEnv {
     this.passed = 0;
     this.hits = 0;
     this.wrongTime = 0;
+    this.conedTime = 0;
     this.stillTime = 0;
+    for (const r of R.rivals) r.finishT = null;
+    if (this.brain) {
+      for (const r of R.rivals.slice(0, this.learnedCount)) {
+        const P = new Player({ ...CAR, width: r.w * 2, length: r.l * 2 });
+        P.reset(tr);
+        P.nitro = 0;
+        r.brain = { P, act: [0, 0, 0], off: 0, scrape: 0, still: 0, rescue: 0 };
+      }
+    }
     R.standings();
     this.lastPos = R.position;
     return { obs: this.observe(), info: this.info() };
@@ -121,16 +229,26 @@ export class RaceEnv {
     const pedal = clamp(+action[1] || 0, -1, 1);
     const input = { steer, throttle: Math.max(0, pedal), brake: Math.max(0, -pedal), boostHeld: (+action[2] || 0) > 0 };
     const s0 = P.s;
-    let off = 0, scrape = 0, wrong = 0;
+    let off = 0, scrape = 0, wrong = 0, coned = 0;
+    if (this.brain) {
+      for (const r of R.rivals) {
+        if (!r.brain || r.out) continue;
+        take(r, tr);
+        r.brain.act = this.brain.act(this.observation(r.brain.P, r));
+      }
+    }
     for (let i = 0; i < this.repeat; i++) {
       P.update(DT, input, world);
+      if (this.brain) this.driveLearned(DT);
       R.update(DT);
       for (const e of P.events) { if (e.type === 'hit') this.hits++; else if (e.type === 'nitro') this.nitroUsed++; }
       P.events.length = 0;
       this.time += DT;
+      for (const r of R.rivals) if (r.done && r.finishT == null) r.finishT = this.time;
       off += P.offroad;
       scrape += P.scrape;
       if (P.wrongWay && !this.openOpposite && !contraAt(tr, P.s)) wrong++;
+      if (P.inWorks) coned++;
       if (P.s >= tr.gateS + (this.lapsDone + 1) * tr.lapLen && this.lapsDone < tr.laps) {
         this.lapsDone++;
         this.lapTimes.push(this.time - this.lapStart);
@@ -141,13 +259,16 @@ export class RaceEnv {
     this.offroadTime += off * DT;
     this.scrapeTime += scrape * DT;
     this.wrongTime += wrong * DT;
+    this.conedTime += coned * DT;
     this.stillTime = P.v < 2 ? this.stillTime + DT * this.repeat : 0;
     // reward is progress down the road (1 per decision at top speed) less a cost for the time taken, so standing still
     // never pays and a faster race scores more; off the road and against the wall are slow anyway, their small extra
     // cost just teaches it sooner
     const progress = (P.s - s0) / (P.vmax * DT * this.repeat);
     const n = this.repeat;
-    let reward = progress - 0.3 - 0.05 * (off / n) - 0.1 * (scrape / n) - 0.5 * (wrong / n);
+    // the coned-off lane in ROAD WORKS is rough, and the way out is across the kerb onto the opposite carriageway, which
+    // takes starting early: say so, the slow speed it costs only shows up a second or two after the mistake
+    let reward = progress - 0.3 - 0.05 * (off / n) - 0.25 * (scrape / n) - 0.5 * (wrong / n) - 0.4 * (coned / n);
     const terminated = P.s >= this.goalS;
     // stopped for five seconds: the race is lost, stop wasting the run on it
     const truncated = !terminated && (this.time >= this.maxTime || this.stillTime > 5);
@@ -158,12 +279,21 @@ export class RaceEnv {
   }
 
   // everything the driver sees, scaled to roughly -1..1
-  observe() {
-    const P = this.player, tr = this.track, R = this.race;
+  observe() { return this.observation(this.player, null); }
+
+  // what a car sees: P is its Player, self its rival entry (the player has none, and the rivals see the player as
+  // one more car)
+  observation(P, self) {
+    const tr = this.track, R = this.race;
     const s = Math.min(P.s, tr.length - 1);
     const hw = tr.halfWAt(s);
     const lim = world.limits(tr, s, P.x);
     const field = Math.max(1, R.rivals.length);
+    const PG = P.track.base + P.s;
+    const others = R.rivals.filter((r) => !r.out && r !== self);
+    if (self) others.push({ G: this.player.track.base + this.player.s, x: this.player.x, v: this.player.v });
+    let place = 1;
+    for (const o of others) if (o.G > PG) place++;
     const obs = [
       P.v / P.vmax,
       P.x / hw,
@@ -175,8 +305,8 @@ export class RaceEnv {
       (P.x - lim.lSoft) / 10,
       (lim.rSoft - P.x) / 10,
       contraAt(tr, s, 150) ? 1 : 0,
-      R.rivals.length ? (R.position - 1) / field : 0,
-      (R.passNitro || 0) / 8,
+      R.rivals.length ? (place - 1) / field : 0,
+      self ? 0 : (R.passNitro || 0) / 8,
     ];
     // the road ahead: how hard it bends, and how much room the car will have either side if it keeps its line
     for (const d of LOOK) {
@@ -185,10 +315,8 @@ export class RaceEnv {
       obs.push(tr.kAt(sa) * 150, (P.x - la.lSoft) / 10, (la.rSoft - P.x) / 10);
     }
     // the nearest rivals: there or not, how far along, how far across, how much faster (an empty slot is all zeros)
-    const PG = P.track.base + P.s;
     const ahead = [], behind = [];
-    for (const r of R.rivals) {
-      if (r.out) continue;
+    for (const r of others) {
       const d = r.G - PG;
       if (d >= 0 && d < SEE_AHEAD_M) ahead.push([d, r]);
       else if (d < 0 && d > -SEE_BEHIND_M) behind.push([-d, r]);
@@ -201,12 +329,19 @@ export class RaceEnv {
         else obs.push(0, 0, 0, 0);
       }
     }
+    // road works: how far to the start (0 when none ahead), whether inside, how far to the end, and where the opposite
+    // carriageway starts across the kerb, which is the way out of the coned-off lane
+    const z = contraAt(tr, s, 300);
+    obs.push(z && s < z.s0 ? (z.s0 - s) / 300 : 0, z && s >= z.s0 ? 1 : 0, z && s >= z.s0 ? (z.s1 - s) / 300 : 0, lim.near ? (lim.near - P.x) / 10 : 0);
     return obs;
   }
 
   info() {
     const P = this.player, tr = this.track, R = this.race;
     return {
+      ...(this.detail && {
+        rivals: R.rivals.map((r) => ({ name: r.name, learned: !!r.brain, finish: r.finishT, offroad: r.brain?.off, scrape: r.brain?.scrape, G: r.G })),
+      }),
       district: this.district,
       time: this.time,
       progress: clamp((P.s - this.startS) / (this.goalS - this.startS), 0, 1),
@@ -217,6 +352,7 @@ export class RaceEnv {
       hits: this.hits,
       offroad: this.offroadTime,
       wrong_way: this.wrongTime,
+      coned: this.conedTime,
       scrape: this.scrapeTime,
       nitro: this.nitroUsed,
       s: P.s,

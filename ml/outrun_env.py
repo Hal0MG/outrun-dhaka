@@ -25,12 +25,14 @@ class OutrunEnv(gym.Env):
     Observation: speed, line across the road, sideways speed, off-road and wall contact, nitro, room either
     side, road works ahead, place in the field, passes towards the next nitro; then for each look-ahead distance
     the bend and the room either side; then the nearest four rivals ahead and two behind (there or not, gap,
-    offset across the road, speed difference).
+    offset across the road, speed difference); then the road works (distance to them, inside, distance to the end,
+    where the opposite carriageway starts).
     Action: [steer, pedal, nitro], each -1..1. Pedal above 0 is throttle, below is brake; nitro above 0 fires
     (it is a tap: hold it and it fires once).
     Reward: progress (1 a decision at top speed) less 0.3 a decision for the time taken, a little less for the
-    verge and the wall and more for the opposite carriageway outside road works (its oncoming traffic is not
-    simulated yet), and 20 spread over the places made, from last to first.
+    verge and the wall, 0.4 for staying in the coned-off lane in road works and more for the opposite carriageway
+    outside them (its oncoming traffic is not simulated yet), and 20 spread over the places made, from last to
+    first.
     """
 
     metadata = {"render_modes": []}

@@ -83,9 +83,24 @@ cd ml
 ../ml/.venv/Scripts/python evaluate.py --name field
 ```
 
-Judge drivers by finishing place first. Racing alone, the medal times are easy: the baseline takes gold on most districts. Against the field it wins 2 of 15 (mean place 11.5 of 24); the two-stage driver above wins 3 (mean place 11.7), so it is not yet better than the baseline.
+Judge drivers by finishing place first. Racing alone, the medal times are easy: the baseline takes gold on most districts. Against the field the baseline wins 2 of 15 (mean place 11.5 of 24); the two-stage driver above wins 10 (mean place 2.6) and takes gold in 13, in about seven minutes of training.
 
-The opposite carriageway is closed in the sim outside ROAD WORKS (`openOpposite` in `sim/env.mjs`): in the game it carries oncoming traffic, which the sim does not have yet, and the first driver trained without that rule learned to race on the empty side.
+The opposite carriageway is closed in the sim outside ROAD WORKS (`openOpposite` in `sim/env.mjs`): in the game it carries oncoming traffic, which the sim does not have yet, and the first driver trained without that rule learned to race on the empty side. Inside the works the coned-off lane is rough and the way out is across the kerb onto the opposite carriageway, which takes starting early. The driver sees how far off the works are, whether it is in them and where the opposite carriageway starts, and the reward charges for staying in the coned-off lane. Without that it never learned the crossover; with it, `coned_s` in `results.csv` is about zero in every district.
+
+### Trained drivers as rivals
+
+A trained driver is a small network (two layers of 256, about 83,000 weights, 0.8 MB as JSON) that runs in plain JavaScript, about 75 µs a decision, so 23 of them cost under 3% of a core.
+
+```
+cd ml && ../ml/.venv/Scripts/python export.py --name field     # weights, plus states to check against
+cd .. && node sim/brain-check.mjs ml/runs/field                # JavaScript against Python: 111 states, largest difference 2e-5
+node sim/rivals.mjs ml/runs/field/brain.json --learned 5       # the five front-runners are learned, in every district
+```
+
+- `sim/brain.mjs` is the network in JavaScript. `sim/env.mjs` takes `learned` and `brain` options: that many front-runners (the leader first) become a real `Player` driven by the network, held to the pace their scripted selves run, with no nitro. Everything else in `Race` (contact, standings, passes) treats them as ordinary rivals. If one is ever stopped for a second (a network at rest on the road is something it has never seen), it drives itself for four seconds, floored and steering for the middle; the final driver never needs it.
+- `sim/rivals.mjs` races the same stand-in player against the scripted field and the learned one.
+
+What it shows (the two-stage driver above): all five learned front-runners finish every district at the scripted pace (100.3 s on average against 100.7 s), spend no time off the road and never scrape a wall. A stand-in player finishes within a few places of where it does against the scripted field. Not done yet: the rest of the field, rivals that race each other rather than the scripted ones, a skill setting instead of the copied pace, and the game itself.
 
 ## Credits
 

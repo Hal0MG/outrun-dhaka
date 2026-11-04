@@ -77,7 +77,7 @@ def main():
             "district": district, "held_out": district in HELD_OUT, "finished": finished,
             "place": f'{info["position"]}/{info["field"]}', "time": round(info["time"], 1), "gold": round(par["gold"], 1), "bronze": round(par["bronze"], 1),
             "medal": medal(info["time"], par) if finished else "-",
-            "passed": info["passed"], "hits": info["hits"], "offroad_s": round(info["offroad"], 1), "wrong_way_s": round(info["wrong_way"], 1), "nitro": info["nitro"],
+            "passed": info["passed"], "hits": info["hits"], "offroad_s": round(info["offroad"], 1), "wrong_way_s": round(info["wrong_way"], 1), "coned_s": round(info["coned"], 1), "nitro": info["nitro"],
             "avg_kmh": round(df["kmh"].mean()),
         })
     env.close()
