@@ -33,7 +33,7 @@ class OutrunEnv(gym.Env):
     (it is a tap: hold it and it fires once).
     Reward: progress (1 a decision at top speed) less 0.3 a decision for the time taken, a little less for the
     verge and the wall, 0.4 for staying in the coned-off lane in road works and more for the opposite carriageway
-    outside them (its oncoming traffic is not simulated yet), and 20 spread over the places made, from last to
+    outside them (the game pays nitro for it, but rivals never drive there), and 20 spread over the places made, from last to
     first.
     """
 

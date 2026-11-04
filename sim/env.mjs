@@ -1,7 +1,7 @@
 // A district circuit, or The Run, raced with no renderer: the game's own track builder (World.makeTrack), driving
 // model (Player) and race (Race: the rivals, contact, nitro rows, nitro for passes and the knockout gates), stepped by
 // a driver that is not a person. For training and measuring AI drivers, and for trying trained ones as rivals. No
-// traffic or pedestrians yet.
+// traffic, pedestrians or stalls: in the game they cost a racer nothing, so they are left out.
 
 import { World } from '../src/world/world.js';
 import { ROUTE, KNOCKOUTS, RUN_FIELD, circuitStage } from '../src/world/stages.js';
@@ -107,8 +107,8 @@ export class RaceEnv {
   // opts.randomStart: move the whole grid to a random point on the first lap, so training sees every corner early
   // opts.laps: race this many laps from the start (default: the whole race)
   // opts.openOpposite: let the driver use the opposite carriageway anywhere, as the game does. Off by default: in the
-  //   game it is full of oncoming traffic, which is not simulated yet, so here it would be an empty road that pays
-  //   nitro. Closed, it costs reward and pays no nitro, except through ROAD WORKS, where the game sends you across.
+  //   game it pays wrong-way nitro, but the scripted rivals never use it, so a learned rival must not either, and
+  //   on the empty road it would pay nitro all lap. Closed, it costs reward and pays no nitro, except through ROAD WORKS, where the game sends you across.
   // opts.learned and opts.brain: how many of the front-running rivals (the leader first) are driven by a trained
   //   network (brain: its brain.json from ml/export.py) instead of the scripted driver. Each is a real Player, held
   //   to the pace its scripted self would run so it is as beatable, and it has no nitro.

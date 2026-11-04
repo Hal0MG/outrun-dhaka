@@ -68,7 +68,7 @@ When using these, the build is a folder (`dist/`), not just one file.
 
 The game's driving model and race also run with no graphics, in Node: a full three-lap race against the field takes about 120 ms (15 ms alone). `sim/` wraps it as an environment for training AI drivers, and `ml/` trains them with reinforcement learning (PPO, via Stable-Baselines3).
 
-- `sim/env.mjs` builds a district circuit with the game's own track code and steps the real `Player` and `Race`: the 23 rivals, contact, nitro rows and nitro for passes. No traffic or pedestrians yet. Races are seeded, so the same seed replays exactly.
+- `sim/env.mjs` builds a district circuit with the game's own track code and steps the real `Player` and `Race`: the 23 rivals, contact, nitro rows and nitro for passes. No traffic, pedestrians or stalls, on purpose: in the game they never slow a racer (a car or stall you hit is flung off the road and costs nothing; only potholes take a sliver of speed), so they would change what the road looks like to a driver and not how it drives. Races are seeded, so the same seed replays exactly.
 - `sim/baseline.mjs` (`npm run sim:baseline`) is the hand-written driver to beat: flat out, steer against the corner push (curvature × speed²), nitro on straights, and no attention to the other cars. `--solo` races it alone.
 - `ml/outrun_env.py` is the Gymnasium environment (one Node process per env, JSON over stdin/stdout).
 - `ml/train.py` races the field from a grid moved to a random point on the lap. Train in two stages: alone first, then the field from there (`--init`). Thrown straight in with the rivals, it learns to sit behind them at their pace and never pass. Gulshan, Old Dhaka and Padma are held out, to tell driving from memorising tracks.
@@ -85,7 +85,7 @@ cd ml
 
 Judge drivers by finishing place first. Racing alone, the medal times are easy: the baseline takes gold on most districts. Against the field the baseline wins 2 of 15 (mean place 11.5 of 24); the two-stage driver above wins 10 (mean place 2.6) and takes gold in 13, in about seven minutes of training.
 
-The opposite carriageway is closed in the sim outside ROAD WORKS (`openOpposite` in `sim/env.mjs`): in the game it carries oncoming traffic, which the sim does not have yet, and the first driver trained without that rule learned to race on the empty side. Inside the works the coned-off lane is rough and the way out is across the kerb onto the opposite carriageway, which takes starting early. The driver sees how far off the works are, whether it is in them and where the opposite carriageway starts, and the reward charges for staying in the coned-off lane. Without that it never learned the crossover; with it, `coned_s` in `results.csv` is about zero in every district.
+The opposite carriageway is closed in the sim outside ROAD WORKS (`openOpposite` in `sim/env.mjs`): the game lets you drive it and pays nitro for the wrong way, but the scripted rivals never do, so a rival that did would look wrong; and the first driver trained without that rule learned to race on the empty side. Inside the works the coned-off lane is rough and the way out is across the kerb onto the opposite carriageway, which takes starting early. The driver sees how far off the works are, whether it is in them and where the opposite carriageway starts, and the reward charges for staying in the coned-off lane. Without that it never learned the crossover; with it, `coned_s` in `results.csv` is about zero in every district.
 
 ### Trained drivers as rivals
 
