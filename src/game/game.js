@@ -26,6 +26,8 @@ import { Weather } from './weather.js';
 import { loadCarAssets } from './carassets.js';
 import { loadLandmarkModels } from '../world/models.js';
 import { Race } from './race.js';
+import { Brain } from './brain.js';
+import { LearnedRivals } from './learned.js';
 import { CARS, buildPlayerCar, makeEnvMap, applyEnv, rerollPlates } from './cars.js';
 import { audio } from '../audio/audio.js';
 import { music, TRACKS } from '../audio/music.js';
@@ -77,6 +79,7 @@ export class Game {
     this.particles = new Particles(this.scene);
     this.weather = new Weather(this.scene);
     this.race = new Race(this);
+    this.loadLearnedRivals();
     this.attract = null; // built once the first car exists
     this.cam = new CameraRig(this.R.camera);
     this.carIndex = this.settings.car ?? 0;
@@ -228,6 +231,18 @@ export class Game {
     this.hud.message(res.pos === 1 ? 'WINNER!' : `FINISHED P${res.pos}`, 3.5);
     this.say.say(res.pos === 1 ? 'win' : 'finish', 1, true);
     this.onRaceEnd?.(res, 3800);
+  }
+
+  // ?ai=N drives the N front-running rivals (?ai=all: every rival) with the trained network (public/ai/brain.json,
+  // ml/) instead of the scripted driver. Off unless asked for; if the weights do not load the race is the scripted one.
+  loadLearnedRivals() {
+    const ask = new URLSearchParams(location.search).get('ai');
+    if (!ask) return;
+    const count = ask === 'all' ? 999 : Math.max(1, parseInt(ask, 10) || 5);
+    fetch(import.meta.env.BASE_URL + 'ai/brain.json')
+      .then((r) => r.json())
+      .then((json) => { this.ai = new LearnedRivals(this.race, new Brain(json), { count }).attach(); })
+      .catch((e) => console.warn('learned rivals unavailable, racing the scripted field', e));
   }
 
   // ------------------------------------------------------------ per-frame

@@ -102,6 +102,12 @@ node sim/rivals.mjs ml/runs/field/brain.json --learned 5       # the five front-
 
 What it shows (the two-stage driver above): all five learned front-runners finish every district at the scripted pace (100.3 s on average against 100.7 s), spend no time off the road and never scrape a wall. A stand-in player finishes within a few places of where it does against the scripted field. Not done yet: the rest of the field, rivals that race each other rather than the scripted ones, a skill setting instead of the copied pace, and the game itself.
 
+### In the game
+
+Add `?ai=5` to the address (`?ai=all` for every rival) and that many front-running rivals are driven by the trained network instead of the scripted driver; without it nothing changes, and if the weights fail to load the race is the scripted one. The weights are `public/ai/brain.json` (0.8 MB, the circuit driver `road-2-field`). The game and the sim run the same code: `src/game/learned.js` holds the observation, the lane and mistake variety and the driving, `src/game/brain.js` the network; `sim/env.mjs` attaches it to the sim's race the way `src/game/game.js` attaches it to the game's, so what is measured in the sim is what plays. Each learned rival is a real `Player` that decides 15 times a second whatever the frame rate, and its rival entry stays the truth for contact, standings and knockouts. Checked in the game with the browser pane: 5 learned rivals race Dhanmondi at about 325 km/h with no time off the road, and a Run with all 47 learned costs about 1.5 ms a frame on top of the game.
+
+Not done: nobody has played against them yet (whether they are fun is the open question), it is behind a URL flag rather than a menu setting, and the leaders of The Run, further up the road than the loaded district, run at their pace without physics, as the scripted ones do.
+
 ### The Run
 
 `mode: 'run'` in `sim/env.mjs` (`OutrunEnv(mode="run")` in Python) lays all fifteen districts end to end, as the game does while you drive, with the 48-car field and the six knockout gates. The episode ends at the flag or where the player is knocked out. Rivals are scripted for now. The driver also sees the next gate: how far off, its cut, and how far past the cut it is.
