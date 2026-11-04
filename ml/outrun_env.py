@@ -20,13 +20,15 @@ SERVER = ROOT / "sim" / "server.mjs"
 
 
 class OutrunEnv(gym.Env):
-    """Race a district circuit against the game's 23 rivals (or alone, with rivals=False).
+    """Race a district circuit against the game's 23 rivals (or alone, with rivals=False), or, with mode="run", The
+    Run: 48 cars across all fifteen districts, where the episode also ends if the car is knocked out at a gate.
 
     Observation: speed, line across the road, sideways speed, off-road and wall contact, nitro, room either
     side, road works ahead, place in the field, passes towards the next nitro; then for each look-ahead distance
     the bend and the room either side; then the nearest four rivals ahead and two behind (there or not, gap,
     offset across the road, speed difference); then the road works (distance to them, inside, distance to the end,
-    where the opposite carriageway starts).
+    where the opposite carriageway starts); then the next knockout gate on The Run (how far off, its cut, how far
+    past the cut this car is, and that this is The Run; all zeros on a circuit).
     Action: [steer, pedal, nitro], each -1..1. Pedal above 0 is throttle, below is brake; nitro above 0 fires
     (it is a tap: hold it and it fires once).
     Reward: progress (1 a decision at top speed) less 0.3 a decision for the time taken, a little less for the
@@ -37,8 +39,10 @@ class OutrunEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(self, districts=None, rivals=True, random_start=False, laps=None, repeat=4, max_time=400):
-        opts = {"rivals": rivals, "randomStart": random_start, "repeat": repeat, "maxTime": max_time}
+    def __init__(self, districts=None, mode="circuit", rivals=True, random_start=False, laps=None, repeat=4, max_time=None):
+        opts = {"mode": mode, "rivals": rivals, "randomStart": random_start, "repeat": repeat}
+        if max_time:
+            opts["maxTime"] = max_time
         if laps:
             opts["laps"] = laps
         self.proc = subprocess.Popen(

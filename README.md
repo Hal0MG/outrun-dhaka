@@ -102,6 +102,29 @@ node sim/rivals.mjs ml/runs/field/brain.json --learned 5       # the five front-
 
 What it shows (the two-stage driver above): all five learned front-runners finish every district at the scripted pace (100.3 s on average against 100.7 s), spend no time off the road and never scrape a wall. A stand-in player finishes within a few places of where it does against the scripted field. Not done yet: the rest of the field, rivals that race each other rather than the scripted ones, a skill setting instead of the copied pace, and the game itself.
 
+### The Run
+
+`mode: 'run'` in `sim/env.mjs` (`OutrunEnv(mode="run")` in Python) lays all fifteen districts end to end, as the game does while you drive, with the 48-car field and the six knockout gates. The episode ends at the flag or where the player is knocked out. Rivals are scripted for now. The driver also sees the next gate: how far off, its cut, and how far past the cut it is.
+
+```
+node sim/run.mjs --runs 100                                      # the simple driver, gate by gate
+node sim/run.mjs --runs 100 --brain ml/runs/field/brain.json     # a trained driver
+node sim/run.mjs --sweep 0.88,0.92,0.96,1 --runs 30              # a range of paces
+```
+
+A full Run is about 4,800 decisions, 0.3 s of real time. Over 100 runs each, the simple driver and the driver trained on circuits (never on The Run) get through every gate every time, finishing 7th and 3rd on median. Where the knockouts bite is below that. The sweep holds the simple driver to a fraction of top speed with no nitro, as a stand-in for a player who is not as fast; it shows the share of 30 runs still in after each gate:
+
+| pace | Shahbag | Kawran Bazar | Gulshan | Sadarghat | Mirpur | 300 Feet | finished |
+|---|---|---|---|---|---|---|---|
+| 88% | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
+| 90% | 13% | 0% | 0% | 0% | 0% | 0% | 0% |
+| 92% | 97% | 0% | 0% | 0% | 0% | 0% | 0% |
+| 94% | 97% | 77% | 0% | 0% | 0% | 0% | 0% |
+| 96% | 100% | 100% | 93% | 83% | 80% | 73% | 73% |
+| 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
+
+Each gate asks for more pace than the one before: about 91% of top speed to get past Shahbag, 94% for Kawran Bazar, and at 96% a quarter of runs still go out later on (median finish 23rd, the last place that stays in at the final gate). The pace is a cap on speed, not an average, so bends cost a real player more. The cut-offs and the rivals' pace (`KNOCKOUTS` in `stages.js`, `skill` in `race.js`) are the dials.
+
 ## Credits
 
 - Car meshes: "Free Low Poly Vehicles Pack" by Rgsdev, CC0 (`src/assets/cars/LICENSE.txt`). Refitted, recoloured and smooth-shaded at startup.

@@ -1,10 +1,10 @@
-// A district circuit raced with no renderer: the game's own track builder (World.makeTrack), driving model
-// (Player) and race (Race: the rivals, contact, nitro rows and nitro for passes), stepped by a driver that is
-// not a person. For training and measuring AI drivers, and for trying trained ones as rivals. No traffic or
-// pedestrians yet.
+// A district circuit, or The Run, raced with no renderer: the game's own track builder (World.makeTrack), driving
+// model (Player) and race (Race: the rivals, contact, nitro rows, nitro for passes and the knockout gates), stepped by
+// a driver that is not a person. For training and measuring AI drivers, and for trying trained ones as rivals. No
+// traffic or pedestrians yet.
 
 import { World } from '../src/world/world.js';
-import { ROUTE, circuitStage } from '../src/world/stages.js';
+import { ROUTE, KNOCKOUTS, RUN_FIELD, circuitStage } from '../src/world/stages.js';
 import { contraAt } from '../src/world/contra.js';
 import { Player, NITRO_MAX, SPEED_K } from '../src/game/player.js';
 import { Race } from '../src/game/race.js';
@@ -39,6 +39,24 @@ function trackFor(district) {
   return built.get(district);
 }
 
+// The Run: every district's road laid end to end, each the child of the one before, as the game builds them while the
+// player nears each fork (without the gantry sign, which needs a canvas). Built once; what a race leaves on the tracks
+// (the gates passed, the nitro laid, the road taken) is cleared on every reset.
+let chain = null;
+function runChain() {
+  if (!chain) {
+    chain = [];
+    for (const id of ROUTE) {
+      const prev = chain[chain.length - 1] ?? null;
+      const tr = world.makeTrack(id, prev, 0);
+      if (prev) prev.children = [tr, tr];
+      chain.push(tr);
+    }
+  }
+  for (const tr of chain) { tr.koDone = false; tr.stocked = false; tr.chosen = null; }
+  return chain;
+}
+
 // gold, silver and bronze times, as the game sets them (src/game/race.js)
 export function parTimes(district) {
   const tr = trackFor(district);
@@ -69,10 +87,12 @@ function take(r, tr) {
   P.s = r.G - tr.base; P.x = r.x; P.v = r.v; P.vx = r.vx;
 }
 
-export const OBS_SIZE = 12 + LOOK.length * 3 + (SEE_AHEAD + SEE_BEHIND) * 4 + 4;
+export const OBS_SIZE = 12 + LOOK.length * 3 + (SEE_AHEAD + SEE_BEHIND) * 4 + 4 + 4;
 export const ACT_SIZE = 3;
 
 export class RaceEnv {
+  // opts.mode: 'circuit' (a district, three laps; the default) or 'run' (The Run: 48 cars, all fifteen districts, the
+  //   knockout gates; the player is out below the cut and the episode ends there). The Run has scripted rivals only.
   // opts.rivals: race the field (default) or alone
   // opts.repeat: physics frames per decision (4 = 15 decisions a second)
   // opts.randomStart: move the whole grid to a random point on the first lap, so training sees every corner early
@@ -85,13 +105,15 @@ export class RaceEnv {
   //   to the pace its scripted self would run so it is as beatable, and it has no nitro.
   // opts.detail: say how every rival is doing in info.rivals
   constructor(opts = {}) {
+    this.mode = opts.mode ?? 'circuit';
+    if (this.mode === 'run' && opts.brain) throw new Error('learned rivals race circuits only for now');
     this.rivals = opts.rivals ?? true;
     this.openOpposite = !!opts.openOpposite;
     this.detail = !!opts.detail;
     this.repeat = opts.repeat ?? 4;
     this.randomStart = !!opts.randomStart;
     this.laps = opts.laps ?? null;
-    this.maxTime = opts.maxTime ?? 400;
+    this.maxTime = opts.maxTime ?? (this.mode === 'run' ? 900 : 400);
     this.rng = new RNG(opts.seed ?? 1);
     this.player = new Player(CAR);
     // the race only asks the game for these
@@ -105,7 +127,7 @@ export class RaceEnv {
     this.race = new Race(this.game);
     if (!this.openOpposite) {
       const pay = this.race.wrongWayReward;
-      this.race.wrongWayReward = (dt) => { if (contraAt(this.track, this.player.s)) pay.call(this.race, dt); };
+      this.race.wrongWayReward = (dt) => { if (contraAt(this.player.track, this.player.s)) pay.call(this.race, dt); };
     }
     this.learnedCount = opts.brain ? (opts.learned ?? 0) : 0;
     this.brain = this.learnedCount ? Brain.load(opts.brain) : null;
@@ -181,13 +203,14 @@ export class RaceEnv {
     if (opts.seed != null) this.rng = new RNG(opts.seed);
     // the rivals' mistakes come from Math.random: seed it too, so a race replays exactly
     Math.random = mulberry32((this.rng.next() * 2 ** 32) >>> 0);
-    this.district = opts.district ?? this.rng.pick(ROUTE);
-    const tr = (this.track = trackFor(this.district));
+    const run = this.mode === 'run';
+    this.district = run ? 'run' : opts.district ?? this.rng.pick(ROUTE);
+    const tr = (this.track = run ? runChain()[0] : trackFor(this.district));
     const P = this.player, R = this.race;
     P.reset(tr);
-    R.start('circuit');
+    R.start(run ? 'run' : 'circuit');
     if (!this.rivals) R.rivals = [];
-    if (this.randomStart) {
+    if (this.randomStart && !run) {
       // the grid as it is, further round the lap
       const d = this.rng.range(0, tr.lapLen);
       P.s += d;
@@ -195,10 +218,16 @@ export class RaceEnv {
       P.nitro = this.rng.int(0, NITRO_MAX);
     }
     this.startS = P.s;
-    this.goalS = this.laps ? Math.min(tr.goalS, P.s + this.laps * tr.lapLen) : tr.goalS;
+    this.goalS = this.laps && !run ? Math.min(tr.goalS, P.s + this.laps * tr.lapLen) : tr.goalS;
+    // where it all ends, as distance along the route (a circuit is one track, so this is its own s)
+    const last = run ? chain[chain.length - 1] : tr;
+    this.goalG = last.base + (this.laps && !run ? this.goalS : last.goalS);
+    this.startG = tr.base + P.s;
+    this.fieldStart = R.field;
+    this.gates = [];
     this.time = 0;
     this.lapTimes = [];
-    this.lapsDone = Math.max(0, Math.floor((P.s - tr.gateS) / tr.lapLen));
+    this.lapsDone = run ? 0 : Math.max(0, Math.floor((P.s - tr.gateS) / tr.lapLen));
     this.lapStart = 0;
     this.offroadTime = 0;
     this.scrapeTime = 0;
@@ -224,13 +253,14 @@ export class RaceEnv {
 
   // action: [steer -1..1, pedal -1..1 (positive is throttle, negative is brake), nitro (> 0 fires a charge)]
   step(action) {
-    const P = this.player, tr = this.track, R = this.race;
+    const P = this.player, R = this.race;
     const steer = clamp(+action[0] || 0, -1, 1);
     const pedal = clamp(+action[1] || 0, -1, 1);
     const input = { steer, throttle: Math.max(0, pedal), brake: Math.max(0, -pedal), boostHeld: (+action[2] || 0) > 0 };
-    const s0 = P.s;
+    const G0 = P.track.base + P.s;
     let off = 0, scrape = 0, wrong = 0, coned = 0;
     if (this.brain) {
+      const tr = this.track;
       for (const r of R.rivals) {
         if (!r.brain || r.out) continue;
         take(r, tr);
@@ -239,22 +269,25 @@ export class RaceEnv {
     }
     for (let i = 0; i < this.repeat; i++) {
       P.update(DT, input, world);
+      if (this.mode === 'run') this.fork();
       if (this.brain) this.driveLearned(DT);
       R.update(DT);
+      if (this.mode === 'run') this.logGate();
       for (const e of P.events) { if (e.type === 'hit') this.hits++; else if (e.type === 'nitro') this.nitroUsed++; }
       P.events.length = 0;
       this.time += DT;
       for (const r of R.rivals) if (r.done && r.finishT == null) r.finishT = this.time;
       off += P.offroad;
       scrape += P.scrape;
-      if (P.wrongWay && !this.openOpposite && !contraAt(tr, P.s)) wrong++;
+      if (P.wrongWay && !this.openOpposite && !contraAt(P.track, P.s)) wrong++;
       if (P.inWorks) coned++;
-      if (P.s >= tr.gateS + (this.lapsDone + 1) * tr.lapLen && this.lapsDone < tr.laps) {
+      const tr = this.track;
+      if (this.mode === 'circuit' && P.s >= tr.gateS + (this.lapsDone + 1) * tr.lapLen && this.lapsDone < tr.laps) {
         this.lapsDone++;
         this.lapTimes.push(this.time - this.lapStart);
         this.lapStart = this.time;
       }
-      if (P.s >= this.goalS) break;
+      if (R.finished || P.track.base + P.s >= this.goalG) break;
     }
     this.offroadTime += off * DT;
     this.scrapeTime += scrape * DT;
@@ -264,18 +297,37 @@ export class RaceEnv {
     // reward is progress down the road (1 per decision at top speed) less a cost for the time taken, so standing still
     // never pays and a faster race scores more; off the road and against the wall are slow anyway, their small extra
     // cost just teaches it sooner
-    const progress = (P.s - s0) / (P.vmax * DT * this.repeat);
+    const progress = (P.track.base + P.s - G0) / (P.vmax * DT * this.repeat);
     const n = this.repeat;
     // the coned-off lane in ROAD WORKS is rough, and the way out is across the kerb onto the opposite carriageway, which
     // takes starting early: say so, the slow speed it costs only shows up a second or two after the mistake
     let reward = progress - 0.3 - 0.05 * (off / n) - 0.25 * (scrape / n) - 0.5 * (wrong / n) - 0.4 * (coned / n);
-    const terminated = P.s >= this.goalS;
+    // a circuit ends at the flag; The Run also ends where the player is knocked out
+    const terminated = this.mode === 'run' ? !!R.finished : P.s >= this.goalS;
     // stopped for five seconds: the race is lost, stop wasting the run on it
     const truncated = !terminated && (this.time >= this.maxTime || this.stillTime > 5);
     // and the places made as they are made (lost ones cost the same): 20 points for coming from last to first
-    if (R.rivals.length) reward += (20 * (this.lastPos - R.position)) / (R.field - 1);
+    if (R.rivals.length) reward += (20 * (this.lastPos - R.position)) / (this.fieldStart - 1);
     this.lastPos = R.position;
     return { obs: this.observe(), reward, terminated, truncated, info: this.info() };
+  }
+
+  // the road runs on into the next district, as Game.handleFork does
+  fork() {
+    const P = this.player, tr = P.track;
+    if (tr.isFinal || P.s <= tr.length) return;
+    const child = tr.children[0];
+    tr.chosen = child;
+    P.track = child;
+    P.s -= tr.length;
+    this.track = child;
+  }
+
+  // note each knockout gate as it is met: where the player stood, against the cut
+  logGate() {
+    const R = this.race, tr = this.player.track;
+    if (!tr.koDone || this.gates.some((g) => g.stage === tr.stageId)) return;
+    this.gates.push({ stage: tr.stageId, cut: KNOCKOUTS[tr.stageId], position: R.finished?.pos ?? R.position, out: !!R.finished?.out });
   }
 
   // everything the driver sees, scaled to roughly -1..1
@@ -284,7 +336,7 @@ export class RaceEnv {
   // what a car sees: P is its Player, self its rival entry (the player has none, and the rivals see the player as
   // one more car)
   observation(P, self) {
-    const tr = this.track, R = this.race;
+    const tr = P.track, R = this.race;
     const s = Math.min(P.s, tr.length - 1);
     const hw = tr.halfWAt(s);
     const lim = world.limits(tr, s, P.x);
@@ -310,9 +362,12 @@ export class RaceEnv {
     ];
     // the road ahead: how hard it bends, and how much room the car will have either side if it keeps its line
     for (const d of LOOK) {
-      const sa = Math.min(s + d, tr.length - 1);
-      const la = world.limits(tr, sa, P.x);
-      obs.push(tr.kAt(sa) * 150, (P.x - la.lSoft) / 10, (la.rSoft - P.x) / 10);
+      // the road carries on into the next district at the end of this one
+      let t = tr, sa = s + d;
+      if (sa > tr.length - 1 && tr.children) { t = tr.children[0]; sa -= tr.length; }
+      sa = Math.min(sa, t.length - 1);
+      const la = world.limits(t, sa, P.x);
+      obs.push(t.kAt(sa) * 150, (P.x - la.lSoft) / 10, (la.rSoft - P.x) / 10);
     }
     // the nearest rivals: there or not, how far along, how far across, how much faster (an empty slot is all zeros)
     const ahead = [], behind = [];
@@ -333,18 +388,24 @@ export class RaceEnv {
     // carriageway starts across the kerb, which is the way out of the coned-off lane
     const z = contraAt(tr, s, 300);
     obs.push(z && s < z.s0 ? (z.s0 - s) / 300 : 0, z && s >= z.s0 ? 1 : 0, z && s >= z.s0 ? (z.s1 - s) / 300 : 0, lim.near ? (lim.near - P.x) / 10 : 0);
+    // the next knockout gate on The Run: how far off (1 when out of sight), its cut, how far past the cut this car is
+    // (above 0 is out), and that this is The Run. All zeros on a circuit.
+    const ko = R.kind === 'run' && !self ? R.nextKnockout() : null;
+    obs.push(ko ? (ko.d == null ? 1 : clamp(ko.d / 3000, 0, 1)) : 0, ko ? ko.cut / RUN_FIELD : 0, ko ? (place - ko.cut) / RUN_FIELD : 0, R.kind === 'run' ? 1 : 0);
     return obs;
   }
 
   info() {
-    const P = this.player, tr = this.track, R = this.race;
+    const P = this.player, tr = P.track, R = this.race;
     return {
       ...(this.detail && {
         rivals: R.rivals.map((r) => ({ name: r.name, learned: !!r.brain, finish: r.finishT, offroad: r.brain?.off, scrape: r.brain?.scrape, G: r.G })),
       }),
       district: this.district,
+      stage: tr.stageId,
       time: this.time,
-      progress: clamp((P.s - this.startS) / (this.goalS - this.startS), 0, 1),
+      progress: clamp((tr.base + P.s - this.startG) / (this.goalG - this.startG), 0, 1),
+      ...(this.mode === 'run' && { out: R.finished?.out || false, gates: this.gates.map((g) => ({ ...g })) }),
       laps: this.lapTimes.slice(),
       position: R.rivals.length ? R.position : 1,
       field: R.rivals.length ? R.field : 1,
