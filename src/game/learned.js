@@ -24,7 +24,7 @@ export const OBS_SIZE = 12 + LOOK.length * 3 + (SEE_AHEAD + SEE_BEHIND) * 4 + 4 
 
 const ROLL_V = 22; // the rolling start (race.js)
 const DECIDE = 1 / 15; // seconds between decisions
-const RUN_PACE = [0.96, 1.0]; // their pace against the scripted skill in The Run: the first district, the last
+const RUN_PACE = [0.97, 1.01]; // their pace against the scripted skill in The Run: the first district, the last
 const LANE_SHIFT = 0.5; // how much of a scripted rival's lane bias the learned ones keep
 
 // everything a car sees, scaled to roughly -1..1: P is its Player, self its rival entry (the human player has none, and
@@ -107,8 +107,8 @@ function shove(a, b) {
 
 export class LearnedRivals {
   // opts.count: how many of the front-running rivals (the leader first) are learned
-  // opts.pace: their pace against the scripted skill it is copied from (default: 1 on a circuit; in The Run 0.96 in the
-  //   first district rising to 1.0 in the last, so the early knockouts stay easy and the later ones are a harder fight).
+  // opts.pace: their pace against the scripted skill it is copied from (default: 1 on a circuit; in The Run 0.97 in the
+  //   first district rising to 1.01 in the last, so the early knockouts stay easy and the later ones are a harder fight).
   //   A whole field of learned cars is tougher than the scripted one (no leash, bends at the grip limit).
   constructor(race, brain, opts = {}) {
     this.race = race;

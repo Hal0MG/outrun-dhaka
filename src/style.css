@@ -160,7 +160,6 @@ body.touch .keys-hint { display: none; }
 .eq { display: flex; gap: 3px; align-items: flex-end; height: 18px; margin-top: 6px; }
 .eq i { flex: 1; background: var(--vfd); box-shadow: 0 0 5px rgba(125, 255, 201, 0.7); height: 20%; transition: height 0.09s; }
 .h-radio.off .vfd, .h-radio.off .eq i { color: #2f5a4b; background: #1a3a30; box-shadow: none; text-shadow: none; }
-#hMap { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); width: 180px; height: 120px; }
 
 .h-msg { position: absolute; left: 0; right: 0; top: 36vh; text-align: center; font-family: var(--f-display); font-size: clamp(26px, 4.4vw, 52px); color: var(--marigold); text-shadow: 4px 4px 0 #000; -webkit-text-stroke: 1.5px #000; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
 .h-msg .bn { display: block; font-family: var(--f-bn); font-size: 0.8em; color: var(--paper); }
@@ -186,7 +185,7 @@ body.touch .keys-hint { display: none; }
 body:not(.racing) #touch { display: none; }
 #touch button { position: absolute; pointer-events: auto; border: 3px solid #000; background: rgba(255, 241, 210, 0.85); color: #000; font-family: var(--f-display); font-size: 16px; box-shadow: 4px 4px 0 #000; touch-action: none; }
 #touch button.on { background: var(--marigold); }
-body.touch .h-radio, body.touch #hMap { display: none; }
+body.touch .h-radio { display: none; }
 
 @keyframes cardin { from { transform: rotate(-12deg) translateY(60vh); } to { transform: rotate(-1.5deg) translateY(0); } }
 .pc-tally { font-family: var(--f-display); font-size: 14px; display: grid; grid-template-columns: 1fr auto; gap: 4px 20px; max-width: 360px; font-variant-numeric: tabular-nums; }
@@ -240,11 +239,10 @@ body.touch .h-radio, body.touch #hMap { display: none; }
 body.touch .h-pause { display: none; }
 
 
-/* ---- where you are: the line under the clock, the count under the progress bar, and the route card over the map */
+/* ---- where you are: the line under the clock, the count under the progress bar, and the route card over the radio */
 .h-obj .where { color: var(--paper); text-shadow: 2px 2px 0 #000; font-size: 13px; letter-spacing: 0.08em; padding-left: 2px; }
 .h-togo { position: absolute; left: 50%; transform: translateX(-50%); top: calc(98px + env(safe-area-inset-top, 0px)); font-family: var(--f-display); font-size: 13px; letter-spacing: 0.12em; color: var(--paper); text-shadow: 2px 2px 0 #000; white-space: nowrap; }
 .h-route { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); width: 210px; padding: 6px 10px 5px; font-family: var(--f-display); transform: rotate(1deg); }
-body.run .h-route { bottom: calc(214px + env(safe-area-inset-bottom, 0px)); }
 .h-route .rt-head { font-size: 11px; letter-spacing: 0.14em; color: var(--red); }
 .h-route .rt-name { font-size: 17px; line-height: 1.05; margin: 1px 0 5px; }
 .h-route .rt-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 10px; letter-spacing: 0.08em; border-top: 2px solid #000; padding-top: 3px; margin-top: 3px; white-space: nowrap; }
@@ -254,13 +252,12 @@ body.run .h-route { bottom: calc(214px + env(safe-area-inset-bottom, 0px)); }
 body.touch .h-obj .where { font-size: 10px; letter-spacing: 0.05em; }
 body.touch .h-togo { top: calc(10px + env(safe-area-inset-top, 0px)); font-size: 11px; }
 
-/* ---- nitro charges; the city map only on the Run */
+/* ---- nitro charges */
 .h-hct { display: flex; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); align-items: center; gap: 18px; font-family: var(--f-display); font-size: 11px; letter-spacing: 0.1em; text-shadow: 1px 1px 0 #000; }
 .h-hct .charges { display: flex; align-items: center; gap: 5px; color: var(--cyan); }
 .h-hct .charges i { width: 16px; height: 16px; border: 2px solid #000; transform: rotate(45deg); background: rgba(0, 0, 0, 0.45); box-shadow: 2px 2px 0 #000; }
 .h-hct .charges i.on { background: var(--cyan); }
 .h-hct .charges.burn i.on:last-of-type { background: #fff; }
-body:not(.run) #hMap { display: none; }
 body.touch .h-hct { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 
 /* ---- the race picker: tabs for the two kinds of race, Dhaka from above, a list to pick from, and the pick on a card */
@@ -349,7 +346,7 @@ body.touch .h-cross { top: calc(33vh + env(safe-area-inset-top, 0px)); }
 
 /* ---- phones: a stripped-down HUD. The gas is automatic, so the thumbs only steer (left), and brake and nitro (right).
    Only the essentials stay on screen: the clock and your position, the lap, speed and nitro, and pause. */
-body.touch .h-radio, body.touch #hMap, body.touch .h-route, body.touch .h-tags, body.touch .h-cam,
+body.touch .h-radio, body.touch .h-route, body.touch .h-tags, body.touch .h-cam,
 body.touch .h-obj .gap, body.touch .h-obj .par, body.touch .h-hct .charges span { display: none; }
 body.touch .h-time { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: scale(0.62); transform-origin: left top; min-width: 0; }
 body.touch .h-obj { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(80px + env(safe-area-inset-top, 0px)); }

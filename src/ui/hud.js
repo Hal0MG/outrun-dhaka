@@ -3,7 +3,6 @@
 import { fmtTime, clamp } from '../core/util.js';
 import { ROUTE, STAGES } from '../world/stages.js';
 import { audio } from '../audio/audio.js';
-import { drawDhaka } from './dhakamap.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -29,7 +28,6 @@ export class HUD {
     this.freq = $('hFreq');
     this.eq = [...$('hEq').children];
     this.camEl = $('hCam');
-    this.mapCv = $('hMap');
     this.ofEl = $('hOf');
     this.needEl = $('hNeed');
     this.gapA = $('hGapA');
@@ -50,7 +48,6 @@ export class HUD {
     this.comboT = 0;
     this.takeT = 0;
     this.stageT = 0;
-    this.mapT = 0;
   }
 
   show(on) {
@@ -264,14 +261,6 @@ export class HUD {
     // radio EQ
     if (this.radioOn) {
       this.eq.forEach((b, i) => { b.style.height = (20 + Math.abs(Math.sin(this.t * (3 + i * 1.7) + i)) * 80 * (0.6 + 0.4 * Math.random())).toFixed(0) + '%'; });
-    }
-    // the Run's city map, with the route so far
-    if (this.kind === 'run') {
-      this.mapT -= dt;
-      if (this.mapT <= 0) {
-        this.mapT = 0.5;
-        drawDhaka(this.mapCv, { small: true, reached: ROUTE.indexOf(d.stageId) });
-      }
     }
   }
 }
