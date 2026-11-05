@@ -11,7 +11,7 @@
 import { Player, NITRO_MAX } from './player.js';
 import { contraAt } from '../world/contra.js';
 import { RUN_FIELD } from '../world/stages.js';
-import { clamp, damp } from '../core/util.js';
+import { clamp } from '../core/util.js';
 
 // the sports coupe; every car drives the same (src/game/cars.js), only size and sound differ
 export const CAR = { id: 'supra', top: 275, accel: 1.0, grip: 0.92, width: 1.81, length: 4.52 };
@@ -254,8 +254,10 @@ export class LearnedRivals {
     if (!L) return;
     const c = r.car;
     c.track = L.tr; c.s = r.G - L.tr.base; c.x = r.x;
-    c.yaw = -r.vx * 0.03;
-    c.roll = damp(c.roll, -r.vx * 0.01, 4, dt);
+    // drawn as your own car is (Player.pose): the heading and lean its driving model gives it, not the scripted rivals'
+    // sideways-drift look, which points a car the wrong way once it is steering through a bend
+    c.yaw = r.brain.P.yawRel;
+    c.roll = r.brain.P.lean;
     c.brake = !!r.brain.brake;
     R.cars.push(c);
   }
