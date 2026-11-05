@@ -8,7 +8,8 @@ import { World, FORK_OFF } from '../world/world.js';
 import { Sky } from '../world/sky.js';
 import { Atmosphere } from '../world/atmosphere.js';
 import { shared } from '../world/materials.js';
-import { ROUTE, LEVEL_TIME, circuitStage } from '../world/stages.js';
+import { ROUTE, STAGES, LEVEL_TIME, circuitStage } from '../world/stages.js';
+import { RUN_ROUTE } from '../world/runroute.js';
 import { Player } from './player.js';
 import { CameraRig } from './camera.js';
 import { Fleet } from './fleet.js';
@@ -782,13 +783,27 @@ export class Game {
     else progress = (ROUTE.indexOf(tr.stageId) + clamp(P.s / tr.length, 0, 1)) / ROUTE.length;
     this.hud.update(dt, {
       pos: R.position, field: R.field, near: R.neighbours(), raceT: R.time, par: R.par, lapT: this.kind === 'circuit' ? R.lapT : R.time,
-      speed: P.kmh, rpm: audio.rpmNorm ?? P.rpm, gearN: audio.vg ? audio.vg.gear : 0,
       progress: clamp(progress, 0, 1), stageId: tr.stage.district || tr.stageId,
       lap: Math.min(R.lap, tr.laps || 1), laps: tr.laps, ko: R.nextKnockout(),
       nitro: P.nitro, boosting: P.boosting,
       cross: this.crossInfo(),
+      ...this.routeInfo(tr),
     });
     this.hud.tags(this.state === 'race' || this.state === 'countdown' ? R.tags(this.R.camera) : []);
+  }
+
+  // where you are on the route and how far is left, for the HUD (metres; The Run's route is in world/runroute.js because
+  // its districts' roads are only built as you near them)
+  routeInfo(tr) {
+    const P = this.player;
+    if (this.kind === 'circuit') {
+      const lapLeft = tr.lapS(Math.min(this.race.lap, tr.laps)) - P.s;
+      return { name: tr.stage.name, left: tr.goalS - P.s, lapLeft: Math.max(0, lapLeft) };
+    }
+    const G = tr.base + P.s;
+    const ko = this.race.nextKnockout();
+    const gate = ko ? { name: STAGES[ko.at].short, d: (ko.d ?? RUN_ROUTE.gate[ko.at] - G), cut: ko.cut } : null;
+    return { district: ROUTE.indexOf(tr.stageId) + 1, districts: ROUTE.length, name: tr.stage.name, left: RUN_ROUTE.finish - G, gate };
   }
 
   // the road-works cross-over for the HUD: metres to the barrier while it is ahead, and whether you still need to cross

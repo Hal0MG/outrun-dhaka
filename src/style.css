@@ -150,22 +150,9 @@ body.touch .keys-hint { display: none; }
 .h-stage .st-bn { font-family: var(--f-display); font-size: 17px; letter-spacing: 0.06em; color: var(--paper); text-shadow: 2px 2px 0 #000; line-height: 1; }
 .h-stage .st-en { font-family: var(--f-display); font-size: 10px; letter-spacing: 0.16em; color: var(--marigold); text-shadow: 1px 1px 0 #000; }
 
-.h-score { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(14px + env(safe-area-inset-top, 0px)); text-align: right; font-family: var(--f-display); text-shadow: 2px 2px 0 #000; }
-.h-score .row { display: flex; gap: 10px; justify-content: flex-end; align-items: baseline; font-size: 24px; color: var(--paper); font-variant-numeric: tabular-nums; }
-.h-score .row.small { font-size: 14px; color: var(--cyan); }
-.h-score .lbl { font-size: 11px; color: var(--marigold); letter-spacing: 0.14em; }
-
 .h-progress { position: absolute; left: 50%; transform: translateX(-50%); top: calc(84px + env(safe-area-inset-top, 0px)); width: min(360px, 50vw); height: 8px; border: 2px solid #000; background: rgba(0, 0, 0, 0.35); box-shadow: 3px 3px 0 #000; }
 .h-progress .bar { height: 100%; width: 0; background: repeating-linear-gradient(90deg, var(--marigold) 0 8px, var(--red) 8px 16px); }
 .h-progress .flag { position: absolute; right: -14px; top: -8px; width: 14px; height: 18px; background: conic-gradient(#000 25%, #fff 0 50%, #000 0 75%, #fff 0) 0 0 / 7px 7px; border: 1px solid #000; }
-
-.h-speed { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 240px; height: 150px; }
-#tacho { width: 240px; height: 142px; overflow: visible; filter: drop-shadow(3px 3px 0 #000); }
-.kmh { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; font-family: var(--f-display); font-size: 40px; line-height: 1; color: var(--paper); -webkit-text-stroke: 1.5px #000; paint-order: stroke fill; text-shadow: 3px 3px 0 #000; font-variant-numeric: tabular-nums; }
-.kmh i { display: block; font-family: var(--f-display); font-style: normal; font-size: 10px; letter-spacing: 0.2em; color: var(--marigold); -webkit-text-stroke: 0; }
-.gear { position: absolute; right: -8px; bottom: 20px; display: flex; flex-direction: column; gap: 4px; }
-.gear b { font-family: var(--f-display); font-size: 13px; padding: 2px 6px; border: 2px solid #000; background: rgba(0, 0, 0, 0.4); color: rgba(255, 241, 210, 0.4); box-shadow: 2px 2px 0 #000; }
-.gear b.on { background: var(--paper); color: #000; }
 
 .h-radio { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 210px; padding: 8px 10px; background: #0a0d0c; border: 3px solid #000; box-shadow: 5px 5px 0 #000; border-radius: 4px; }
 .h-radio .vfd { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-display); font-size: 12px; color: var(--vfd); text-shadow: 0 0 6px rgba(125, 255, 201, 0.8); letter-spacing: 0.04em; overflow: hidden; white-space: nowrap; }
@@ -213,7 +200,6 @@ body.touch .h-radio, body.touch #hMap { display: none; }
 @media (max-width: 700px) {
   .h-time { transform: rotate(-2deg) scale(0.78); transform-origin: left top; }
   .h-time .big { font-size: 30px; }
-  .h-score .row { font-size: 18px; }
   .h-progress { top: calc(100px + env(safe-area-inset-top, 0px)); width: 56vw; }
   .h-combo { right: 4vw; top: 34vh; }
 }
@@ -228,7 +214,7 @@ body.touch .h-radio, body.touch #hMap { display: none; }
 @keyframes slam { 0% { transform: scale(2.4) rotate(-8deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1) rotate(-3deg); } }
 
 /* ---------------------------------------------------------------- THE RUN */
-.h-time .of { font-family: var(--f-display); font-size: 14px; letter-spacing: 0.1em; margin-top: 1px; }
+.h-time .of { font-family: var(--f-display); font-size: 22px; line-height: 1; letter-spacing: 0.06em; margin-top: 3px; padding-bottom: 2px; }
 .h-time.up { animation: addtime 0.6s ease-out; }
 .h-obj { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: calc(118px + env(safe-area-inset-top, 0px)); font-family: var(--f-display); font-size: 12px; letter-spacing: 0.06em; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
 .h-obj .need { background: var(--marigold); color: #000; border: 2px solid #000; box-shadow: 3px 3px 0 #000; padding: 2px 8px; }
@@ -248,9 +234,25 @@ body.touch .h-radio, body.touch #hMap { display: none; }
   .h-obj { top: calc(108px + env(safe-area-inset-top, 0px)); }
 }
 
-.h-pause { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(96px + env(safe-area-inset-top, 0px)); pointer-events: auto; width: 34px; height: 30px; font-family: var(--f-display); font-size: 13px; background: var(--paper); color: #000; border: 2px solid #000; box-shadow: 3px 3px 0 #000; cursor: pointer; }
+.h-pause { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(14px + env(safe-area-inset-top, 0px)); pointer-events: auto; display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px; font-family: var(--f-display); font-size: 12px; letter-spacing: 0.12em; background: var(--paper); color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 #000; cursor: pointer; }
+.h-pause i, .t-pause i { display: block; width: 4px; height: 14px; background: #000; }
+.h-pause:hover { background: var(--marigold); }
 body.touch .h-pause { display: none; }
 
+
+/* ---- where you are: the line under the clock, the count under the progress bar, and the route card over the map */
+.h-obj .where { color: var(--paper); text-shadow: 2px 2px 0 #000; font-size: 13px; letter-spacing: 0.08em; padding-left: 2px; }
+.h-togo { position: absolute; left: 50%; transform: translateX(-50%); top: calc(98px + env(safe-area-inset-top, 0px)); font-family: var(--f-display); font-size: 13px; letter-spacing: 0.12em; color: var(--paper); text-shadow: 2px 2px 0 #000; white-space: nowrap; }
+.h-route { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); width: 210px; padding: 6px 10px 5px; font-family: var(--f-display); transform: rotate(1deg); }
+body.run .h-route { bottom: calc(214px + env(safe-area-inset-bottom, 0px)); }
+.h-route .rt-head { font-size: 11px; letter-spacing: 0.14em; color: var(--red); }
+.h-route .rt-name { font-size: 17px; line-height: 1.05; margin: 1px 0 5px; }
+.h-route .rt-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 10px; letter-spacing: 0.08em; border-top: 2px solid #000; padding-top: 3px; margin-top: 3px; white-space: nowrap; }
+.h-route .rt-row b { font-weight: 400; font-size: 13px; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) { .h-route, body:not(.touch) .h-togo { display: none; } }
+body.touch .h-obj .where { font-size: 10px; letter-spacing: 0.05em; }
+body.touch .h-togo { top: calc(10px + env(safe-area-inset-top, 0px)); font-size: 11px; }
 
 /* ---- nitro charges; the city map only on the Run */
 .h-hct { display: flex; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); align-items: center; gap: 18px; font-family: var(--f-display); font-size: 11px; letter-spacing: 0.1em; text-shadow: 1px 1px 0 #000; }
@@ -347,21 +349,16 @@ body.touch .h-cross { top: calc(33vh + env(safe-area-inset-top, 0px)); }
 
 /* ---- phones: a stripped-down HUD. The gas is automatic, so the thumbs only steer (left), and brake and nitro (right).
    Only the essentials stay on screen: the clock and your position, the lap, speed and nitro, and pause. */
-body.touch .h-radio, body.touch #hMap, body.touch .h-tags, body.touch .h-cam, body.touch .h-score,
-body.touch .h-obj .gap, body.touch .h-obj .par, body.touch .h-hct .charges span,
-body.touch .gear, body.touch #tacho, body.touch .kmh i { display: none; }
+body.touch .h-radio, body.touch #hMap, body.touch .h-route, body.touch .h-tags, body.touch .h-cam,
+body.touch .h-obj .gap, body.touch .h-obj .par, body.touch .h-hct .charges span { display: none; }
 body.touch .h-time { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); transform: scale(0.62); transform-origin: left top; min-width: 0; }
-body.touch .h-obj { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(58px + env(safe-area-inset-top, 0px)); }
+body.touch .h-obj { left: max(10px, env(safe-area-inset-left, 0px)); top: calc(80px + env(safe-area-inset-top, 0px)); }
 body.touch .h-obj .need { font-size: 10px; padding: 1px 6px; }
 body.touch .h-progress { left: 0; right: 0; top: 0; transform: none; width: auto; height: 4px; border: 0; box-shadow: none; }
 body.touch .h-progress .flag { display: none; }
 body.touch .h-hct { left: auto; right: max(10px, env(safe-area-inset-right, 0px)); top: calc(60px + env(safe-area-inset-top, 0px)); bottom: auto; transform: none; flex-direction: column; align-items: flex-end; gap: 5px; }
 body.touch .h-hct .fb { width: 78px; height: 8px; box-shadow: 2px 2px 0 #000; }
 body.touch .h-hct .charges i { width: 11px; height: 11px; }
-/* speed: a plain number over the steering buttons */
-body.touch .h-speed { left: max(14px, env(safe-area-inset-left, 0px)); bottom: calc(118px + env(safe-area-inset-bottom, 0px)); width: auto; height: auto; transform: none; }
-body.touch .kmh { position: static; font-size: 34px; text-align: left; }
-body.touch .kmh::after { content: " km/h"; font-size: 11px; letter-spacing: 0.1em; color: var(--marigold); -webkit-text-stroke: 0; }
 body.touch .h-cross { top: calc(33vh + env(safe-area-inset-top, 0px)); }
 body.touch .h-cross b { font-size: 11px; }
 body.touch .h-cross span { font-size: 20px; }
@@ -375,10 +372,9 @@ body.touch .h-pause { display: none; }
 .t-right { left: calc(max(14px, env(safe-area-inset-left, 0px)) + 102px); }
 .t-brake { right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 92px; height: 92px; border-radius: 26px; background: rgba(228, 37, 43, 0.9) !important; color: #fff !important; font-size: 15px; }
 .t-nitro { right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(126px + env(safe-area-inset-bottom, 0px)); width: 92px; height: 92px; border-radius: 50%; background: rgba(34, 211, 238, 0.92) !important; font-size: 15px; }
-.t-pause { right: max(10px, env(safe-area-inset-right, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); width: 38px; height: 38px; border-radius: 10px; font-size: 14px; }
+.t-pause { right: max(10px, env(safe-area-inset-right, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 5px; }
 @media (orientation: landscape) and (max-height: 520px) {
   .t-left, .t-right, .t-brake, .t-nitro { width: 76px; height: 76px; }
   .t-right { left: calc(max(14px, env(safe-area-inset-left, 0px)) + 86px); }
   .t-nitro { right: calc(max(14px, env(safe-area-inset-right, 0px)) + 86px); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); }
-  body.touch .h-speed { bottom: calc(108px + env(safe-area-inset-bottom, 0px)); }
 }
