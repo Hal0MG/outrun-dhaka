@@ -10,7 +10,7 @@ import { music } from './audio/music.js';
 
 const DEFAULTS = {
   quality: 'high', qualityAuto: false, difficulty: 'normal', manual: false, musicVol: 0.6, sfxVol: 0.8,
-  camera: 'chase', blur: true, crt: false, touch: 'auto', car: 0, color: 0, station: 0, slowmo: true,
+  camera: 'chase', blur: true, crt: false, touch: 'auto', car: 0, color: 0, station: 0, slowmo: true, rivalAI: 'off',
 };
 // v3 presets: the CRT filter goes off for everyone, once (it stays in the settings)
 const saved = store.get('settings', {});
@@ -65,6 +65,7 @@ async function boot() {
   };
 
   menus.onSettingsChanged = (key) => {
+    if (key === 'rivalAI') game.applyRivalAI();
     if (key === 'quality') { settings.qualityAuto = false; R.setQuality(settings.quality); }
     if (key === 'musicVol' || key === 'sfxVol') { audio.vol.music = settings.musicVol; audio.vol.sfx = settings.sfxVol; audio.applyVolumes(); }
   };

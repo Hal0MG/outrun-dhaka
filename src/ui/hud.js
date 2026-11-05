@@ -3,7 +3,6 @@
 import { fmtTime, clamp } from '../core/util.js';
 import { ROUTE, STAGES } from '../world/stages.js';
 import { audio } from '../audio/audio.js';
-import { drawDhaka } from './dhakamap.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -12,10 +11,10 @@ export class HUD {
     this.el = $('hud');
     this.time = $('hTime');
     this.timeBox = $('hTimeBox');
-    this.lap = $('hLap');
-    this.lapLbl = $('hLapLbl');
-    this.speed = $('hSpeed');
-    this.gear = $('hGear');
+    this.where = $('hWhere');
+    this.toGo = $('hToGo');
+    this.route = $('hRoute');
+    this.rt = { head: $('hRtHead'), name: $('hRtName'), l1: $('hRtL1'), v1: $('hRtV1'), l2: $('hRtL2'), v2: $('hRtV2') };
     this.prog = $('hProg');
     this.stage = $('hStage');
     this.stageBn = $('hStageBn');
@@ -29,7 +28,6 @@ export class HUD {
     this.freq = $('hFreq');
     this.eq = [...$('hEq').children];
     this.camEl = $('hCam');
-    this.mapCv = $('hMap');
     this.ofEl = $('hOf');
     this.needEl = $('hNeed');
     this.gapA = $('hGapA');
@@ -44,14 +42,12 @@ export class HUD {
     this.bubble = $('hBubble');
     this.bubbleText = $('hSay');
     this.speakT = 0;
-    this.buildTacho();
     this.last = {};
     this.t = 0;
     this.msgT = 0;
     this.comboT = 0;
     this.takeT = 0;
     this.stageT = 0;
-    this.mapT = 0;
   }
 
   show(on) {
@@ -65,29 +61,10 @@ export class HUD {
     this.last = {};
     this.crossEl.classList.remove('show', 'now');
     document.body.classList.toggle('run', kind === 'run');
-    this.lapLbl.textContent = kind === 'run' ? 'TIME' : 'LAP';
     for (const el of [this.msg, this.comboEl, this.takeEl, this.bubble]) el.classList.remove('show');
     this.speakT = 0;
     this.msgT = this.comboT = this.takeT = this.stageT = 0;
     this.stage.classList.remove('show');
-  }
-
-  buildTacho() {
-    const svg = $('tacho');
-    const N = 15;
-    let html = '';
-    // backing arc (cream enamel with dots)
-    html += '<path d="M -104 8 A 104 104 0 0 1 104 8 L 60 8 A 60 60 0 0 0 -60 8 Z" fill="rgba(11,10,26,0.55)" stroke="#000" stroke-width="3"/>';
-    for (let i = 0; i < N; i++) {
-      const a = 180 + (i / (N - 1)) * 180;
-      html += `<path class="pt" data-i="${i}" transform="rotate(${a})" d="M 58 0 C 70 -11, 90 -10, 101 0 C 90 10, 70 11, 58 0 Z" fill="rgba(255,241,210,0.12)" stroke="#000" stroke-width="2.5"/>`;
-    }
-    for (let i = 0; i <= 6; i++) {
-      const a = Math.PI + (i / 6) * Math.PI;
-      html += `<circle cx="${Math.cos(a) * 52}" cy="${Math.sin(a) * 52}" r="2.5" fill="#ffb000"/>`;
-    }
-    svg.innerHTML = html;
-    this.petals = [...svg.querySelectorAll('.pt')];
   }
 
   // the driver's speech bubble; bubbleAt() keeps it on the car
@@ -184,7 +161,37 @@ export class HUD {
     });
   }
 
-  // d: pos, field, near, lapT, speed, rpm, gearN, progress, stageId, lap, laps, ko, nitro, boosting
+  // where you are and how far there is to go: the line under the clock, the count under the progress bar, and the card
+  // above the map. On a phone the first two are all there is, so they say everything the card does.
+  updateRoute(d) {
+    const L = this.last;
+    const km = (m) => (Math.max(0, m) / 1000).toFixed(1);
+    let where, togo, head, name, l1, v1, l2, v2;
+    if (this.kind === 'circuit') {
+      // (the lap clock only matters on a circuit)
+      const lapNo = d.lap >= d.laps ? `FINAL LAP ${d.lap}/${d.laps}` : `LAP ${d.lap}/${d.laps}`;
+      if (this.t - (L.lapClk || 0) > 0.1) { L.lapClk = this.t; L.lapTxt = fmtTime(d.lapT); }
+      where = `${lapNo} · ${L.lapTxt}`;
+      togo = `${km(d.left)} KM TO GO`;
+      head = lapNo; name = d.name.toUpperCase(); l1 = 'THIS LAP'; v1 = `${km(d.lapLeft)} KM`; l2 = 'TO THE FLAG'; v2 = `${km(d.left)} KM`;
+    } else {
+      where = `DISTRICT ${d.district} / ${d.districts} · ${d.name.toUpperCase()}`;
+      togo = `${km(d.left)} KM TO PADMA`;
+      head = `DISTRICT ${d.district} / ${d.districts}`; name = d.name.toUpperCase();
+      l1 = d.gate ? `NEXT GATE · ${d.gate.name}` : 'FINAL'; v1 = d.gate ? `${km(d.gate.d)} KM · TOP ${d.gate.cut}` : 'WIN IT';
+      l2 = 'FINISH'; v2 = `${km(d.left)} KM`;
+    }
+    const key = [where, togo, head, name, l1, v1, l2, v2].join('|');
+    if (L.route === key) return;
+    L.route = key;
+    this.where.textContent = where;
+    this.toGo.textContent = togo;
+    const r = this.rt;
+    r.head.textContent = head; r.name.textContent = name; r.l1.textContent = l1; r.v1.textContent = v1; r.l2.textContent = l2; r.v2.textContent = v2;
+  }
+
+  // d: pos, field, near, raceT, lapT, progress, stageId, lap, laps, ko, nitro, boosting, cross, and the route: district,
+  // districts (this one's number and how many), name, left (metres to the finish), gate {name, d, cut} (the next knockout)
   update(dt, d) {
     this.t += dt;
     const L = this.last;
@@ -206,7 +213,7 @@ export class HUD {
       need = d.lap >= d.laps ? `FINAL LAP ${d.lap}/${d.laps}` : `LAP ${d.lap}/${d.laps}`;
       ok = d.lap >= d.laps;
     } else if (d.ko) {
-      const where = d.ko.d != null ? `${(Math.max(0, d.ko.d) / 1000).toFixed(1)} KM` : STAGES[d.ko.at].short;
+      const where = d.gate ? `${(Math.max(0, d.gate.d) / 1000).toFixed(1)} KM` : STAGES[d.ko.at].short;
       need = `KNOCKOUT · ${where} · TOP ${d.ko.cut}`;
       ok = d.pos <= d.ko.cut;
     } else {
@@ -220,18 +227,7 @@ export class HUD {
       this.gapA.textContent = n.ahead ? `▲ ${n.ahead.name} +${n.ahead.t.toFixed(1)}s` : '▲ CLEAR ROAD';
       this.gapB.textContent = n.behind ? `▼ ${n.behind.name} −${n.behind.t.toFixed(1)}s` : '';
     }
-    if (this.t - (L.lapT || 0) > 0.07) { this.lap.textContent = fmtTime(d.lapT); L.lapT = this.t; }
-    const sp = Math.round(d.speed);
-    if (L.speed !== sp) { this.speed.textContent = sp; L.speed = sp; }
-    if (L.gearN !== d.gearN) { this.gear.innerHTML = d.gearN ? `<b class="on">${d.gearN}</b>` : ''; L.gearN = d.gearN; }
-    const lit = Math.round(clamp(d.rpm, 0, 1) * this.petals.length);
-    if (L.lit !== lit) {
-      this.petals.forEach((p, i) => {
-        const f = i / this.petals.length;
-        p.setAttribute('fill', i < lit ? (f > 0.8 ? '#e4252b' : f > 0.55 ? '#ffb000' : '#19a84a') : 'rgba(255,241,210,0.12)');
-      });
-      L.lit = lit;
-    }
+    this.updateRoute(d);
     this.prog.style.width = (clamp(d.progress, 0, 1) * 100).toFixed(1) + '%';
     // nitro charges
     const n = Math.floor(d.nitro) + (d.boosting ? 1 : 0);
@@ -265,14 +261,6 @@ export class HUD {
     // radio EQ
     if (this.radioOn) {
       this.eq.forEach((b, i) => { b.style.height = (20 + Math.abs(Math.sin(this.t * (3 + i * 1.7) + i)) * 80 * (0.6 + 0.4 * Math.random())).toFixed(0) + '%'; });
-    }
-    // the Run's city map, with the route so far
-    if (this.kind === 'run') {
-      this.mapT -= dt;
-      if (this.mapT <= 0) {
-        this.mapT = 0.5;
-        drawDhaka(this.mapCv, { small: true, reached: ROUTE.indexOf(d.stageId) });
-      }
     }
   }
 }

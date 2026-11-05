@@ -11,7 +11,8 @@
     "build": "vite build",
     "preview": "vite preview --port 5174",
     "artifact": "vite build && node scripts/make-artifact.mjs",
-    "exe": "vite build && node scripts/make-exe.mjs"
+    "exe": "vite build && node scripts/make-exe.mjs",
+    "sim:baseline": "node sim/baseline.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"

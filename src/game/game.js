@@ -8,7 +8,8 @@ import { World, FORK_OFF } from '../world/world.js';
 import { Sky } from '../world/sky.js';
 import { Atmosphere } from '../world/atmosphere.js';
 import { shared } from '../world/materials.js';
-import { ROUTE, LEVEL_TIME, circuitStage } from '../world/stages.js';
+import { ROUTE, STAGES, LEVEL_TIME, circuitStage } from '../world/stages.js';
+import { RUN_ROUTE } from '../world/runroute.js';
 import { Player } from './player.js';
 import { CameraRig } from './camera.js';
 import { Fleet } from './fleet.js';
@@ -26,6 +27,8 @@ import { Weather } from './weather.js';
 import { loadCarAssets } from './carassets.js';
 import { loadLandmarkModels } from '../world/models.js';
 import { Race } from './race.js';
+import { Brain } from './brain.js';
+import { LearnedRivals } from './learned.js';
 import { CARS, buildPlayerCar, makeEnvMap, applyEnv, rerollPlates } from './cars.js';
 import { audio } from '../audio/audio.js';
 import { music, TRACKS } from '../audio/music.js';
@@ -77,6 +80,7 @@ export class Game {
     this.particles = new Particles(this.scene);
     this.weather = new Weather(this.scene);
     this.race = new Race(this);
+    this.applyRivalAI();
     this.attract = null; // built once the first car exists
     this.cam = new CameraRig(this.R.camera);
     this.carIndex = this.settings.car ?? 0;
@@ -228,6 +232,27 @@ export class Game {
     this.hud.message(res.pos === 1 ? 'WINNER!' : `FINISHED P${res.pos}`, 3.5);
     this.say.say(res.pos === 1 ? 'win' : 'finish', 1, true);
     this.onRaceEnd?.(res, 3800);
+  }
+
+  // how many of the front-running rivals the trained network drives (public/ai/brain.json, ml/) instead of the scripted
+  // driver: the RIVALS setting (scripted, the front five, or all), or ?ai=N / ?ai=all in the address, which wins
+  rivalAICount() {
+    const ask = new URLSearchParams(location.search).get('ai');
+    if (ask) return ask === 'all' ? 999 : Math.max(1, parseInt(ask, 10) || 5);
+    return { off: 0, front: 5, all: 999 }[this.settings.rivalAI] ?? 0;
+  }
+
+  // takes effect at the next race start; the weights load the first time they are wanted, and if they do not load
+  // the race is the scripted one
+  applyRivalAI() {
+    const count = this.rivalAICount();
+    if (this.ai) { this.ai.count = count; return; }
+    if (!count || this.aiLoading) return;
+    this.aiLoading = true;
+    fetch(import.meta.env.BASE_URL + 'ai/brain.json')
+      .then((r) => r.json())
+      .then((json) => { this.ai = new LearnedRivals(this.race, new Brain(json), { count: this.rivalAICount() }).attach(); })
+      .catch((e) => { this.aiLoading = false; console.warn('learned rivals unavailable, racing the scripted field', e); });
   }
 
   // ------------------------------------------------------------ per-frame
@@ -758,13 +783,27 @@ export class Game {
     else progress = (ROUTE.indexOf(tr.stageId) + clamp(P.s / tr.length, 0, 1)) / ROUTE.length;
     this.hud.update(dt, {
       pos: R.position, field: R.field, near: R.neighbours(), raceT: R.time, par: R.par, lapT: this.kind === 'circuit' ? R.lapT : R.time,
-      speed: P.kmh, rpm: audio.rpmNorm ?? P.rpm, gearN: audio.vg ? audio.vg.gear : 0,
       progress: clamp(progress, 0, 1), stageId: tr.stage.district || tr.stageId,
       lap: Math.min(R.lap, tr.laps || 1), laps: tr.laps, ko: R.nextKnockout(),
       nitro: P.nitro, boosting: P.boosting,
       cross: this.crossInfo(),
+      ...this.routeInfo(tr),
     });
     this.hud.tags(this.state === 'race' || this.state === 'countdown' ? R.tags(this.R.camera) : []);
+  }
+
+  // where you are on the route and how far is left, for the HUD (metres; The Run's route is in world/runroute.js because
+  // its districts' roads are only built as you near them)
+  routeInfo(tr) {
+    const P = this.player;
+    if (this.kind === 'circuit') {
+      const lapLeft = tr.lapS(Math.min(this.race.lap, tr.laps)) - P.s;
+      return { name: tr.stage.name, left: tr.goalS - P.s, lapLeft: Math.max(0, lapLeft) };
+    }
+    const G = tr.base + P.s;
+    const ko = this.race.nextKnockout();
+    const gate = ko ? { name: STAGES[ko.at].short, d: (ko.d ?? RUN_ROUTE.gate[ko.at] - G), cut: ko.cut } : null;
+    return { district: ROUTE.indexOf(tr.stageId) + 1, districts: ROUTE.length, name: tr.stage.name, left: RUN_ROUTE.finish - G, gate };
   }
 
   // the road-works cross-over for the HUD: metres to the barrier while it is ahead, and whether you still need to cross
