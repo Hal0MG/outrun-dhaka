@@ -310,6 +310,8 @@ export class Menus {
       ['MUSIC VOLUME', 'musicVol', [0, 0.2, 0.4, 0.6, 0.8, 1], (v) => Math.round(v * 100) + '%'],
       ['SFX VOLUME', 'sfxVol', [0, 0.2, 0.4, 0.6, 0.8, 1], (v) => Math.round(v * 100) + '%'],
       ['SCANLINES', 'crt', [false, true], (v) => (v ? 'ON' : 'OFF')],
+      // who drives the rivals; takes effect at the next race start
+      ['RIVALS', 'rivalAI', ['off', 'front', 'all'], (v) => ({ off: 'SCRIPTED', front: 'AI FRONT RUNNERS', all: 'AI ALL' })[v]],
     ];
   }
 

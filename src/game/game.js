@@ -79,7 +79,7 @@ export class Game {
     this.particles = new Particles(this.scene);
     this.weather = new Weather(this.scene);
     this.race = new Race(this);
-    this.loadLearnedRivals();
+    this.applyRivalAI();
     this.attract = null; // built once the first car exists
     this.cam = new CameraRig(this.R.camera);
     this.carIndex = this.settings.car ?? 0;
@@ -233,16 +233,25 @@ export class Game {
     this.onRaceEnd?.(res, 3800);
   }
 
-  // ?ai=N drives the N front-running rivals (?ai=all: every rival) with the trained network (public/ai/brain.json,
-  // ml/) instead of the scripted driver. Off unless asked for; if the weights do not load the race is the scripted one.
-  loadLearnedRivals() {
+  // how many of the front-running rivals the trained network drives (public/ai/brain.json, ml/) instead of the scripted
+  // driver: the RIVALS setting (scripted, the front five, or all), or ?ai=N / ?ai=all in the address, which wins
+  rivalAICount() {
     const ask = new URLSearchParams(location.search).get('ai');
-    if (!ask) return;
-    const count = ask === 'all' ? 999 : Math.max(1, parseInt(ask, 10) || 5);
+    if (ask) return ask === 'all' ? 999 : Math.max(1, parseInt(ask, 10) || 5);
+    return { off: 0, front: 5, all: 999 }[this.settings.rivalAI] ?? 0;
+  }
+
+  // takes effect at the next race start; the weights load the first time they are wanted, and if they do not load
+  // the race is the scripted one
+  applyRivalAI() {
+    const count = this.rivalAICount();
+    if (this.ai) { this.ai.count = count; return; }
+    if (!count || this.aiLoading) return;
+    this.aiLoading = true;
     fetch(import.meta.env.BASE_URL + 'ai/brain.json')
       .then((r) => r.json())
-      .then((json) => { this.ai = new LearnedRivals(this.race, new Brain(json), { count }).attach(); })
-      .catch((e) => console.warn('learned rivals unavailable, racing the scripted field', e));
+      .then((json) => { this.ai = new LearnedRivals(this.race, new Brain(json), { count: this.rivalAICount() }).attach(); })
+      .catch((e) => { this.aiLoading = false; console.warn('learned rivals unavailable, racing the scripted field', e); });
   }
 
   // ------------------------------------------------------------ per-frame
