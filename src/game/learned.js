@@ -10,7 +10,7 @@
 
 import { Player, NITRO_MAX } from './player.js';
 import { contraAt } from '../world/contra.js';
-import { RUN_FIELD } from '../world/stages.js';
+import { RUN_FIELD, ROUTE } from '../world/stages.js';
 import { clamp } from '../core/util.js';
 
 // the sports coupe; every car drives the same (src/game/cars.js), only size and sound differ
@@ -24,6 +24,7 @@ export const OBS_SIZE = 12 + LOOK.length * 3 + (SEE_AHEAD + SEE_BEHIND) * 4 + 4 
 
 const ROLL_V = 22; // the rolling start (race.js)
 const DECIDE = 1 / 15; // seconds between decisions
+const RUN_PACE = [0.96, 1.0]; // their pace against the scripted skill in The Run: the first district, the last
 const LANE_SHIFT = 0.5; // how much of a scripted rival's lane bias the learned ones keep
 
 // everything a car sees, scaled to roughly -1..1: P is its Player, self its rival entry (the human player has none, and
@@ -106,9 +107,9 @@ function shove(a, b) {
 
 export class LearnedRivals {
   // opts.count: how many of the front-running rivals (the leader first) are learned
-  // opts.pace: their pace against the scripted skill it is copied from (default: 1 on a circuit, 0.97 in The Run). A
-  //   whole field of learned cars is tougher than the scripted one (no leash, bends at the grip limit); a little under
-  //   gives The Run the same gate margins.
+  // opts.pace: their pace against the scripted skill it is copied from (default: 1 on a circuit; in The Run 0.96 in the
+  //   first district rising to 1.0 in the last, so the early knockouts stay easy and the later ones are a harder fight).
+  //   A whole field of learned cars is tougher than the scripted one (no leash, bends at the grip limit).
   constructor(race, brain, opts = {}) {
     this.race = race;
     this.brain = brain;
@@ -160,7 +161,6 @@ export class LearnedRivals {
   // a new race: the front-runners get cars
   begin() {
     const R = this.race, tr = R.game.player.track;
-    this.p = this.pace ?? (R.kind === 'run' ? 0.97 : 1);
     R.rivals.forEach((r, i) => {
       if (i >= this.count) { r.brain = null; return; }
       const P = new Player({ ...CAR, width: r.w * 2, length: r.l * 2 });
@@ -186,6 +186,14 @@ export class LearnedRivals {
     return obs;
   }
 
+  // their pace on this district's road
+  paceAt(tr) {
+    if (this.pace != null) return this.pace;
+    if (this.race.kind !== 'run') return 1;
+    const i = Math.max(0, ROUTE.indexOf(tr?.stageId));
+    return RUN_PACE[0] + (RUN_PACE[1] - RUN_PACE[0]) * (i / (ROUTE.length - 1));
+  }
+
   // one step of one learned rival
   drive(r, dt, go) {
     const R = this.race, b = r.brain, P = b.P;
@@ -198,7 +206,7 @@ export class LearnedRivals {
     const end = R.endG();
     const L = R.locate(r.G);
     // the road is not loaded this far from the player (the leaders of The Run): they carry on at their pace
-    let vT = r.done ? 26 : r.skill * vmax * this.p;
+    let vT = r.done ? 26 : r.skill * vmax * this.paceAt(L?.tr);
     if (!L) {
       r.v = clamp(r.v + clamp(vT - r.v, -18 * dt, 8 * dt), 0, vmax);
       r.G += r.v * dt;
